@@ -1,0 +1,543 @@
+/*
+ * BKDict Vocabulary App Stylesheet
+ * Light blue theme optimized for 16:10 aspect ratio (Lenovo Slim5)
+ * Clean, minimalist design for comfortable long-term study sessions
+ */
+
+/* ============================================
+   CSS Variables - Light Blue Theme
+   ============================================ */
+:root {
+    /* Primary Colors - Light Blue Palette */
+    --primary-blue: #87CEEB;        /* Sky blue */
+    --primary-light: #B0E0E6;       /* Powder blue */
+    --primary-dark: #4682B4;        /* Steel blue */
+    --accent-blue: #5F9EA0;         /* Cadet blue */
+
+    /* Background Colors */
+    --bg-main: #E6F3F9;             /* Very light blue background */
+    --bg-card: #FFFFFF;             /* White for cards */
+    --bg-hover: #D4E9F3;            /* Slightly darker blue for hover */
+
+    /* Text Colors */
+    --text-primary: #2C3E50;        /* Dark blue-gray for main text */
+    --text-secondary: #5D6D7E;      /* Medium gray for secondary text */
+    --text-light: #7F8C8D;          /* Light gray for hints */
+
+    /* UI Colors */
+    --border-color: #B8D4E3;        /* Light blue border */
+    --shadow: rgba(70, 130, 180, 0.15);  /* Subtle blue shadow */
+    --success: #52C65D;             /* Green for success messages */
+    --warning: #F39C12;             /* Orange for warnings */
+    --error: #E74C3C;               /* Red for errors */
+
+    /* Spacing */
+    --spacing-xs: 0.5rem;
+    --spacing-sm: 1rem;
+    --spacing-md: 1.5rem;
+    --spacing-lg: 2rem;
+    --spacing-xl: 3rem;
+
+    /* Border Radius */
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 15px;
+}
+
+/* ============================================
+   Global Styles
+   ============================================ */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, var(--bg-main) 0%, var(--primary-light) 100%);
+    color: var(--text-primary);
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ============================================
+   Main Container
+   ============================================ */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--spacing-md);
+    flex: 1;
+}
+
+/* ============================================
+   Header Section
+   ============================================ */
+.app-header {
+    text-align: center;
+    padding: var(--spacing-md) 0;
+    margin-bottom: var(--spacing-lg);
+}
+
+.app-title {
+    font-size: 2.5rem;
+    color: var(--primary-dark);
+    font-weight: 700;
+    margin-bottom: var(--spacing-xs);
+    text-shadow: 2px 2px 4px var(--shadow);
+}
+
+.app-subtitle {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
+/* ============================================
+   Control Panel
+   ============================================ */
+.control-panel {
+    background: var(--bg-card);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    box-shadow: 0 4px 6px var(--shadow);
+    margin-bottom: var(--spacing-lg);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+}
+
+.control-label {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+/* Category Selection */
+.category-select {
+    padding: 0.6rem 1rem;
+    font-size: 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: white;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 200px;
+}
+
+.category-select:hover {
+    border-color: var(--primary-dark);
+}
+
+.category-select:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(135, 206, 235, 0.2);
+}
+
+.category-info {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-style: italic;
+}
+
+/* Import Section */
+.import-section {
+    margin-left: auto;
+}
+
+.import-panel {
+    display: flex;
+    gap: var(--spacing-xs);
+    align-items: center;
+    margin-top: var(--spacing-xs);
+}
+
+.file-input {
+    padding: 0.5rem;
+    font-size: 0.9rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: white;
+}
+
+.upload-status {
+    margin-top: var(--spacing-xs);
+    padding: var(--spacing-xs);
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+}
+
+.upload-status.success {
+    background: rgba(82, 198, 93, 0.1);
+    color: var(--success);
+    border: 1px solid var(--success);
+}
+
+.upload-status.error {
+    background: rgba(231, 76, 60, 0.1);
+    color: var(--error);
+    border: 1px solid var(--error);
+}
+
+/* ============================================
+   Buttons
+   ============================================ */
+.btn {
+    padding: 0.6rem 1.2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-primary {
+    background: var(--primary-blue);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px var(--shadow);
+}
+
+.btn-secondary {
+    background: var(--accent-blue);
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+}
+
+.btn-edit {
+    background: transparent;
+    color: var(--primary-dark);
+    border: 2px solid var(--primary-blue);
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+}
+
+.btn-edit:hover {
+    background: var(--primary-blue);
+    color: white;
+}
+
+.btn-save {
+    background: var(--success);
+    color: white;
+}
+
+.btn-save:hover {
+    background: #46B356;
+}
+
+.btn-cancel {
+    background: var(--text-light);
+    color: white;
+}
+
+.btn-cancel:hover {
+    background: var(--text-secondary);
+}
+
+.btn-nav {
+    background: var(--primary-blue);
+    color: white;
+    padding: 0.8rem 1.5rem;
+    font-size: 1.1rem;
+}
+
+.btn-nav:hover {
+    background: var(--primary-dark);
+}
+
+.btn-nav:disabled {
+    background: var(--border-color);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* ============================================
+   Word Card
+   ============================================ */
+.word-card {
+    background: var(--bg-card);
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 8px 16px var(--shadow);
+    margin-bottom: var(--spacing-lg);
+}
+
+/* Navigation Info */
+.nav-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.position-info {
+    font-weight: 600;
+    color: var(--primary-dark);
+    font-size: 1rem;
+}
+
+.keyboard-hint {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    font-style: italic;
+}
+
+/* Word Display */
+.word-section {
+    text-align: center;
+    padding: var(--spacing-lg) 0;
+    border-bottom: 2px solid var(--border-color);
+    margin-bottom: var(--spacing-md);
+}
+
+.word-display {
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--primary-dark);
+    margin: 0;
+    text-shadow: 2px 2px 4px var(--shadow);
+}
+
+/* Content Sections */
+.translation-section,
+.sample-section {
+    margin-bottom: var(--spacing-lg);
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-sm);
+}
+
+.section-title {
+    font-size: 1.3rem;
+    color: var(--primary-dark);
+    font-weight: 600;
+}
+
+.content-display {
+    padding: var(--spacing-md);
+    background: var(--bg-main);
+    border-radius: var(--radius-sm);
+    border-left: 4px solid var(--primary-blue);
+    font-size: 1.1rem;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    min-height: 60px;
+}
+
+.content-display.empty {
+    color: var(--text-light);
+    font-style: italic;
+}
+
+.content-edit {
+    margin-top: var(--spacing-sm);
+}
+
+.content-textarea {
+    width: 100%;
+    padding: var(--spacing-sm);
+    font-size: 1rem;
+    font-family: inherit;
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    resize: vertical;
+    transition: border-color 0.3s ease;
+}
+
+.content-textarea:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(135, 206, 235, 0.2);
+}
+
+.edit-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-sm);
+}
+
+/* Navigation Buttons */
+.navigation-buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-lg);
+    padding-top: var(--spacing-md);
+    border-top: 2px solid var(--border-color);
+}
+
+/* ============================================
+   Welcome Message
+   ============================================ */
+.welcome-message {
+    background: var(--bg-card);
+    padding: var(--spacing-xl);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 8px 16px var(--shadow);
+    text-align: center;
+    margin-top: var(--spacing-lg);
+}
+
+.welcome-icon {
+    font-size: 4rem;
+    margin-bottom: var(--spacing-md);
+}
+
+.welcome-message h2 {
+    font-size: 2rem;
+    color: var(--primary-dark);
+    margin-bottom: var(--spacing-sm);
+}
+
+.welcome-message p {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.welcome-hint {
+    color: var(--text-light);
+    font-style: italic;
+}
+
+/* ============================================
+   Loading Indicator
+   ============================================ */
+.loading-indicator {
+    text-align: center;
+    padding: var(--spacing-xl);
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid var(--border-color);
+    border-top-color: var(--primary-blue);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto var(--spacing-md);
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ============================================
+   Error Message
+   ============================================ */
+.error-message {
+    background: rgba(231, 76, 60, 0.1);
+    border: 2px solid var(--error);
+    color: var(--error);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-sm);
+    margin: var(--spacing-md) 0;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.error-icon {
+    font-size: 1.5rem;
+}
+
+/* ============================================
+   Footer
+   ============================================ */
+.app-footer {
+    background: rgba(255, 255, 255, 0.9);
+    text-align: center;
+    padding: var(--spacing-md);
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    border-top: 2px solid var(--border-color);
+    margin-top: auto;
+}
+
+/* ============================================
+   Responsive Design
+   ============================================ */
+@media (max-width: 768px) {
+    .container {
+        padding: var(--spacing-sm);
+    }
+
+    .app-title {
+        font-size: 2rem;
+    }
+
+    .word-display {
+        font-size: 2rem;
+    }
+
+    .control-panel {
+        flex-direction: column;
+    }
+
+    .import-section {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .navigation-buttons {
+        flex-direction: column;
+    }
+
+    .btn-nav {
+        width: 100%;
+    }
+}
+
+/* ============================================
+   Print Styles (for printing vocabulary)
+   ============================================ */
+@media print {
+    body {
+        background: white;
+    }
+
+    .control-panel,
+    .navigation-buttons,
+    .btn,
+    .app-footer {
+        display: none;
+    }
+
+    .word-card {
+        box-shadow: none;
+        border: 1px solid #ccc;
+    }
+}

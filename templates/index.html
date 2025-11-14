@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BKDict - Vocabulary Learning App</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Main Container -->
+    <div class="container">
+
+        <!-- Header Section -->
+        <header class="app-header">
+            <h1 class="app-title">📚 BKDict Vocabulary</h1>
+            <p class="app-subtitle">Your Personal English Vocabulary Learning Tool</p>
+        </header>
+
+        <!-- Control Panel -->
+        <div class="control-panel">
+
+            <!-- Category Selection -->
+            <div class="control-group">
+                <label for="categorySelect" class="control-label">Select Category:</label>
+                <select id="categorySelect" class="category-select">
+                    <option value="">-- Loading categories... --</option>
+                </select>
+                <span id="categoryInfo" class="category-info"></span>
+            </div>
+
+            <!-- Import XML Section -->
+            <div class="control-group import-section">
+                <button id="importBtn" class="btn btn-secondary">Import XML File</button>
+                <div id="importPanel" class="import-panel" style="display: none;">
+                    <input type="file" id="fileInput" accept=".xml" class="file-input">
+                    <button id="uploadBtn" class="btn btn-primary">Upload</button>
+                    <button id="cancelUploadBtn" class="btn btn-cancel">Cancel</button>
+                    <div id="uploadStatus" class="upload-status"></div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Word Display Card -->
+        <div id="wordCard" class="word-card" style="display: none;">
+
+            <!-- Navigation Info -->
+            <div class="nav-info">
+                <span id="positionInfo" class="position-info">Word 1 of 100</span>
+                <span class="keyboard-hint">Use ← → arrow keys to navigate</span>
+            </div>
+
+            <!-- Word Section -->
+            <div class="word-section">
+                <h2 id="wordDisplay" class="word-display">Loading...</h2>
+            </div>
+
+            <!-- Translation Section -->
+            <div class="translation-section">
+                <div class="section-header">
+                    <h3 class="section-title">Translation:</h3>
+                    <button id="editTransBtn" class="btn btn-edit">Edit</button>
+                </div>
+                <div id="translationDisplay" class="content-display"></div>
+                <div id="translationEdit" class="content-edit" style="display: none;">
+                    <textarea id="translationInput" class="content-textarea" rows="4"></textarea>
+                    <div class="edit-actions">
+                        <button id="saveTransBtn" class="btn btn-save">Save</button>
+                        <button id="cancelTransBtn" class="btn btn-cancel">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sample Sentence Section -->
+            <div class="sample-section">
+                <div class="section-header">
+                    <h3 class="section-title">Sample Sentence:</h3>
+                    <button id="editSampleBtn" class="btn btn-edit">Edit</button>
+                </div>
+                <div id="sampleDisplay" class="content-display empty">No sample sentence yet. Click Edit to add one.</div>
+                <div id="sampleEdit" class="content-edit" style="display: none;">
+                    <textarea id="sampleInput" class="content-textarea" rows="3"></textarea>
+                    <div class="edit-actions">
+                        <button id="saveSampleBtn" class="btn btn-save">Save</button>
+                        <button id="cancelSampleBtn" class="btn btn-cancel">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Buttons -->
+            <div class="navigation-buttons">
+                <button id="prevBtn" class="btn btn-nav">← Previous</button>
+                <button id="nextBtn" class="btn btn-nav">Next →</button>
+            </div>
+
+        </div>
+
+        <!-- Welcome Message (shown when no category selected) -->
+        <div id="welcomeMessage" class="welcome-message">
+            <div class="welcome-icon">📖</div>
+            <h2>Welcome to BKDict!</h2>
+            <p>Select a category from the dropdown above to start reviewing vocabulary.</p>
+            <p class="welcome-hint">Or import a new XML file to add more words to your collection.</p>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+            <div class="spinner"></div>
+            <p>Loading...</p>
+        </div>
+
+        <!-- Error Message -->
+        <div id="errorMessage" class="error-message" style="display: none;">
+            <span class="error-icon">⚠️</span>
+            <span id="errorText"></span>
+        </div>
+
+    </div>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        <p>Built with Flask + MySQL | Use arrow keys (← →) to navigate between words</p>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

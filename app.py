@@ -1,0 +1,515 @@
+"""
+BKDict - Vocabulary Web Application
+Main Flask application with REST API endpoints
+Author: Built for vocabulary learning and management
+"""
+
+from flask import Flask, render_template, request, jsonify, send_from_directory
+import mysql.connector
+from mysql.connector import pooling
+import os
+from werkzeug.utils import secure_filename
+from config import Config
+from utils import parse_and_import_xml, XMLParserError
+
+# Initialize Flask application
+app = Flask(__name__)
+app.config.from_object(Config)
+
+# Initialize MySQL connection pool for better performance
+db_pool = None
+
+
+def init_db_pool():
+    """
+    Initialize MySQL connection pool
+    Connection pooling improves performance for concurrent requests
+    """
+    global db_pool
+    try:
+        db_pool = pooling.MySQLConnectionPool(
+            pool_name="bkdict_pool",
+            pool_size=app.config['DB_POOL_SIZE'],
+            pool_reset_session=True,
+            host=app.config['DB_HOST'],
+            port=app.config['DB_PORT'],
+            user=app.config['DB_USER'],
+            password=app.config['DB_PASSWORD'],
+            database=app.config['DB_NAME'],
+            charset='utf8mb4',
+            collation='utf8mb4_unicode_ci'
+        )
+        print("✓ Database connection pool initialized successfully")
+    except mysql.connector.Error as err:
+        print(f"✗ Error initializing database pool: {err}")
+        raise
+
+
+def get_db_connection():
+    """
+    Get a database connection from the pool
+
+    Returns:
+        MySQL connection object
+
+    Raises:
+        Exception if connection pool is not initialized
+    """
+    if db_pool is None:
+        raise Exception("Database pool not initialized")
+    return db_pool.get_connection()
+
+
+def allowed_file(filename):
+    """
+    Check if uploaded file has allowed extension
+
+    Args:
+        filename: Name of the uploaded file
+
+    Returns:
+        Boolean indicating if file type is allowed
+    """
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
+
+# ============================================
+# Web Routes
+# ============================================
+
+@app.route('/')
+def index():
+    """
+    Serve the main vocabulary web application page
+
+    Returns:
+        Rendered HTML template
+    """
+    return render_template('index.html')
+
+
+@app.route('/favicon.ico')
+def favicon():
+    """
+    Serve favicon
+
+    Returns:
+        Favicon file or 404
+    """
+    return send_from_directory(
+        os.path.join(app.root_path, 'static'),
+        'favicon.ico',
+        mimetype='image/vnd.microsoft.icon'
+    )
+
+
+# ============================================
+# API Endpoints
+# ============================================
+
+@app.route('/api/categories', methods=['GET'])
+def get_categories():
+    """
+    Get list of all categories with word counts
+
+    Returns:
+        JSON response:
+        {
+            "success": true,
+            "categories": [
+                {"name": "文化", "word_count": 120},
+                {"name": "AI", "word_count": 85},
+                ...
+            ]
+        }
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Query category statistics using the view
+        cursor.execute("""
+            SELECT category AS name, word_count, last_updated
+            FROM category_stats
+            ORDER BY category
+        """)
+
+        categories = cursor.fetchall()
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'categories': categories
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/words/<category>', methods=['GET'])
+def get_word_by_category(category):
+    """
+    Get a specific word from a category by index position
+
+    Args:
+        category: Category name (from URL path)
+
+    Query Parameters:
+        index: Position of word in category (0-based, default=0)
+
+    Returns:
+        JSON response:
+        {
+            "success": true,
+            "word": {
+                "id": 123,
+                "word": "example",
+                "translation": "例子",
+                "category": "文化",
+                "sample_sentence": "This is an example.",
+                "total_in_category": 120,
+                "current_index": 0
+            }
+        }
+    """
+    try:
+        # Get index from query parameter (default to 0)
+        index = int(request.args.get('index', 0))
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Get total count in category
+        cursor.execute("""
+            SELECT COUNT(*) as total
+            FROM words
+            WHERE category = %s
+        """, (category,))
+
+        count_result = cursor.fetchone()
+        total_count = count_result['total'] if count_result else 0
+
+        if total_count == 0:
+            cursor.close()
+            conn.close()
+            return jsonify({
+                'success': False,
+                'error': 'No words found in this category'
+            }), 404
+
+        # Ensure index is within bounds
+        if index < 0:
+            index = 0
+        elif index >= total_count:
+            index = total_count - 1
+
+        # Get the word at the specified index
+        # Using LIMIT with OFFSET for pagination
+        cursor.execute("""
+            SELECT id, word, translation, category, sample_sentence
+            FROM words
+            WHERE category = %s
+            ORDER BY word
+            LIMIT 1 OFFSET %s
+        """, (category, index))
+
+        word = cursor.fetchone()
+
+        cursor.close()
+        conn.close()
+
+        if word:
+            word['total_in_category'] = total_count
+            word['current_index'] = index
+            return jsonify({
+                'success': True,
+                'word': word
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Word not found'
+            }), 404
+
+    except ValueError:
+        return jsonify({
+            'success': False,
+            'error': 'Invalid index parameter'
+        }), 400
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/words/<int:word_id>', methods=['PUT'])
+def update_word(word_id):
+    """
+    Update translation or sample sentence for a word
+
+    Args:
+        word_id: ID of the word to update (from URL path)
+
+    Request Body (JSON):
+        {
+            "translation": "updated translation",  // optional
+            "sample_sentence": "updated sentence"  // optional
+        }
+
+    Returns:
+        JSON response:
+        {
+            "success": true,
+            "message": "Word updated successfully"
+        }
+    """
+    try:
+        data = request.get_json()
+
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No data provided'
+            }), 400
+
+        # Build dynamic UPDATE query based on provided fields
+        update_fields = []
+        params = []
+
+        if 'translation' in data:
+            update_fields.append('translation = %s')
+            params.append(data['translation'])
+
+        if 'sample_sentence' in data:
+            update_fields.append('sample_sentence = %s')
+            params.append(data['sample_sentence'])
+
+        if not update_fields:
+            return jsonify({
+                'success': False,
+                'error': 'No valid fields to update'
+            }), 400
+
+        # Add word_id to params
+        params.append(word_id)
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Execute update
+        update_query = f"""
+            UPDATE words
+            SET {', '.join(update_fields)}
+            WHERE id = %s
+        """
+        cursor.execute(update_query, params)
+        conn.commit()
+
+        rows_affected = cursor.rowcount
+
+        cursor.close()
+        conn.close()
+
+        if rows_affected > 0:
+            return jsonify({
+                'success': True,
+                'message': 'Word updated successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Word not found'
+            }), 404
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/category/<category>/count', methods=['GET'])
+def get_category_count(category):
+    """
+    Get total word count for a specific category
+
+    Args:
+        category: Category name (from URL path)
+
+    Returns:
+        JSON response:
+        {
+            "success": true,
+            "category": "文化",
+            "count": 120
+        }
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT COUNT(*) as count
+            FROM words
+            WHERE category = %s
+        """, (category,))
+
+        result = cursor.fetchone()
+        count = result['count'] if result else 0
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'category': category,
+            'count': count
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/upload', methods=['POST'])
+def upload_xml():
+    """
+    Upload and import XML vocabulary file
+
+    Request:
+        multipart/form-data with 'file' field containing XML file
+
+    Returns:
+        JSON response:
+        {
+            "success": true,
+            "stats": {
+                "total_processed": 500,
+                "added": 450,
+                "skipped_duplicates": 50,
+                "errors": 0
+            },
+            "message": "Import completed: 450 words added, 50 duplicates skipped"
+        }
+    """
+    try:
+        # Check if file is in request
+        if 'file' not in request.files:
+            return jsonify({
+                'success': False,
+                'error': 'No file provided'
+            }), 400
+
+        file = request.files['file']
+
+        # Check if filename is empty
+        if file.filename == '':
+            return jsonify({
+                'success': False,
+                'error': 'No file selected'
+            }), 400
+
+        # Validate file type
+        if not allowed_file(file.filename):
+            return jsonify({
+                'success': False,
+                'error': 'Invalid file type. Only XML files are allowed.'
+            }), 400
+
+        # Save file securely
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+
+        # Parse and import XML
+        try:
+            conn = get_db_connection()
+            stats = parse_and_import_xml(
+                filepath,
+                conn,
+                batch_size=app.config['XML_BATCH_SIZE']
+            )
+            conn.close()
+
+            # Clean up uploaded file
+            os.remove(filepath)
+
+            # Build response message
+            message = f"Import completed: {stats['added']} words added"
+            if stats['skipped_duplicates'] > 0:
+                message += f", {stats['skipped_duplicates']} duplicates skipped"
+            if stats['errors'] > 0:
+                message += f", {stats['errors']} errors encountered"
+
+            return jsonify({
+                'success': True,
+                'stats': stats,
+                'message': message
+            })
+
+        except XMLParserError as e:
+            # Clean up uploaded file on error
+            if os.path.exists(filepath):
+                os.remove(filepath)
+            return jsonify({
+                'success': False,
+                'error': f'XML parsing error: {str(e)}'
+            }), 400
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+# ============================================
+# Application Initialization
+# ============================================
+
+def create_app():
+    """
+    Application factory function
+
+    Returns:
+        Configured Flask application instance
+    """
+    Config.init_app(app)
+    init_db_pool()
+    return app
+
+
+# ============================================
+# Main Entry Point
+# ============================================
+
+if __name__ == '__main__':
+    # Create uploads directory if it doesn't exist
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+    # Initialize database connection pool
+    init_db_pool()
+
+    # Run Flask development server
+    print("\n" + "="*50)
+    print("  BKDict Vocabulary Web Application")
+    print("="*50)
+    print(f"  🌐 Server running on: http://localhost:5000")
+    print(f"  📚 Database: {app.config['DB_NAME']}")
+    print(f"  🔧 Debug mode: {app.config['DEBUG']}")
+    print("="*50 + "\n")
+
+    app.run(
+        host='0.0.0.0',
+        port=5000,
+        debug=app.config['DEBUG']
+    )

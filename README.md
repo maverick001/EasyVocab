@@ -1,0 +1,327 @@
+# BKDict - Vocabulary Learning Web Application
+
+📚 A responsive vocabulary web application for reviewing and managing English vocabulary with Chinese translations. Built with Flask, MySQL, and vanilla JavaScript.
+
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Python](https://img.shields.io/badge/python-3.8%2B-blue)
+![Flask](https://img.shields.io/badge/flask-3.0.0-green)
+![MySQL](https://img.shields.io/badge/mysql-8.0-orange)
+
+## 🌟 Features
+
+- **Browse by Category**: Organize and review vocabulary by 20+ categories
+- **Interactive Word Cards**: Clean, card-based UI showing word, translation, and sample sentences
+- **Keyboard Navigation**: Use left/right arrow keys to quickly navigate between words
+- **In-Place Editing**: Edit translations and add sample sentences directly in the interface
+- **XML Import**: Bulk import vocabulary from XML files with validation and duplicate handling
+- **Performance Optimized**: Handles 30,000+ words efficiently with database indexing
+- **Beautiful UI**: Light blue theme optimized for comfortable long-term study sessions
+
+## 📋 Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- **Python 3.8+** (Download from [python.org](https://www.python.org/downloads/))
+- **MySQL 8.0+** (MySQL Workbench 8.0.43 recommended)
+- **Conda** (Optional, for environment management)
+- **Git** (Optional, for version control)
+
+## 🚀 Installation & Setup
+
+### Step 1: Clone or Download the Project
+
+```bash
+cd c:\Users\bbcba\Downloads\BKDict
+```
+
+### Step 2: Create and Activate Conda Environment (Recommended)
+
+```bash
+# Create new conda environment
+conda create -n bkdict python=3.11
+
+# Activate the environment
+conda activate bkdict
+```
+
+### Step 3: Install Python Dependencies
+
+```bash
+# Install required packages
+pip install -r requirements.txt
+```
+
+### Step 4: Setup MySQL Database
+
+1. **Open MySQL Workbench** and connect to your MySQL server
+
+2. **Run the initialization script**:
+   - Open the file `database/init_database.sql` in MySQL Workbench
+   - Execute the entire script (this will create the database, tables, indexes, and stored procedures)
+
+3. **Verify the setup**:
+   ```sql
+   USE bkdict_db;
+   SHOW TABLES;
+   -- Should show: words, categories, and category_stats view
+   ```
+
+### Step 5: Configure Environment Variables
+
+1. **Copy the example environment file**:
+   ```bash
+   copy .env.example .env
+   ```
+
+2. **Edit `.env` file** with your MySQL credentials:
+   ```env
+   DB_HOST=localhost
+   DB_PORT=3306
+   DB_USER=root
+   DB_PASSWORD=your_mysql_password_here
+   DB_NAME=bkdict_db
+   ```
+
+### Step 6: Create Required Directories
+
+The application will create these automatically, but you can do it manually:
+
+```bash
+mkdir uploads
+```
+
+## ▶️ Running the Application
+
+### Start the Flask Server
+
+```bash
+# Make sure you're in the BKDict directory and conda environment is activated
+python app.py
+```
+
+You should see:
+
+```
+==================================================
+  BKDict Vocabulary Web Application
+==================================================
+  🌐 Server running on: http://localhost:5000
+  📚 Database: bkdict_db
+  🔧 Debug mode: True
+==================================================
+```
+
+### Access the Application
+
+Open your web browser and navigate to:
+```
+http://localhost:5000
+```
+
+## 📖 Usage Guide
+
+### 1. Importing Vocabulary from XML Files
+
+1. Click the **"Import XML File"** button in the control panel
+2. Select your XML file (must follow the BKDict XML format)
+3. Click **"Upload"** and wait for processing
+4. You'll see a success message with import statistics
+
+**XML Format Example**:
+```xml
+<wordbook>
+  <item>
+    <word>example</word>
+    <trans><![CDATA[n. 例子；示例]]></trans>
+    <tags>文化</tags>
+  </item>
+</wordbook>
+```
+
+### 2. Browsing Vocabulary
+
+1. Select a category from the dropdown menu
+2. The first word in that category will be displayed
+3. Use the **← → arrow keys** or click **Previous/Next** buttons to navigate
+4. The position indicator shows your current location (e.g., "Word 5 of 120")
+
+### 3. Editing Translations
+
+1. Click the **"Edit"** button next to the translation
+2. Modify the text in the textarea
+3. Click **"Save"** to update or **"Cancel"** to discard changes
+
+### 4. Adding/Editing Sample Sentences
+
+1. Click the **"Edit"** button next to "Sample Sentence"
+2. Type or paste your example sentence
+3. Click **"Save"** to store the sentence
+
+### 5. Keyboard Shortcuts
+
+- **← (Left Arrow)**: Go to previous word
+- **→ (Right Arrow)**: Go to next word
+
+## 🗂️ Project Structure
+
+```
+BKDict/
+├── app.py                      # Main Flask application
+├── config.py                   # Configuration settings
+├── requirements.txt            # Python dependencies
+├── README.md                   # This file
+├── .env.example               # Environment variables template
+├── .env                       # Your environment variables (create this)
+│
+├── database/
+│   └── init_database.sql      # Database initialization script
+│
+├── utils/
+│   ├── __init__.py
+│   └── xml_parser.py          # XML parsing and import logic
+│
+├── templates/
+│   └── index.html             # Main HTML template
+│
+├── static/
+│   ├── css/
+│   │   └── style.css          # Stylesheet (light blue theme)
+│   └── js/
+│       └── app.js             # Frontend JavaScript logic
+│
+├── data/
+│   ├── 文化_cleaned.xml        # Example vocabulary file
+│   └── AI.xml                 # Example vocabulary file
+│
+└── uploads/                   # Temporary storage for uploaded files
+```
+
+## 🎨 Design Features
+
+- **Color Scheme**: Light blue theme (#87CEEB, #B0E0E6) for comfortable viewing
+- **Optimized for**: Lenovo Slim5 with 16:10 aspect ratio (also works on other displays)
+- **Typography**: Clean, readable fonts (Segoe UI)
+- **Responsive**: Adapts to different screen sizes
+
+## 🔧 Troubleshooting
+
+### Database Connection Issues
+
+**Error**: `Access denied for user 'root'@'localhost'`
+- **Solution**: Check your MySQL password in the `.env` file
+- Ensure MySQL server is running
+
+**Error**: `Unknown database 'bkdict_db'`
+- **Solution**: Run the `database/init_database.sql` script in MySQL Workbench
+
+### Import Issues
+
+**Error**: "XML validation failed"
+- **Solution**: Ensure your XML file follows the correct format (see Usage Guide)
+- Check that all `<item>` elements have `<word>`, `<trans>`, and `<tags>` children
+
+**Error**: "No file selected"
+- **Solution**: Click "Choose File" before clicking "Upload"
+
+### Performance Issues
+
+If the app feels slow with large datasets:
+
+1. **Verify indexes exist**:
+   ```sql
+   SHOW INDEX FROM words;
+   -- Should show indexes on: id, word, category, (word, category)
+   ```
+
+2. **Update category counts**:
+   ```sql
+   CALL update_category_counts();
+   ```
+
+## 🛠️ Advanced Configuration
+
+### Changing the Port
+
+Edit `app.py` (line 482):
+```python
+app.run(host='0.0.0.0', port=5000, debug=True)  # Change 5000 to your desired port
+```
+
+### Adjusting Batch Size for Imports
+
+Edit `config.py`:
+```python
+XML_BATCH_SIZE = 1000  # Change to 500 or 2000 depending on your needs
+```
+
+### Database Connection Pool Size
+
+Edit `config.py`:
+```python
+DB_POOL_SIZE = 5  # Increase for more concurrent users
+```
+
+## 📊 Database Schema
+
+### `words` Table
+| Column | Type | Description |
+|--------|------|-------------|
+| id | INT | Primary key (auto-increment) |
+| word | VARCHAR(255) | The English word or phrase |
+| translation | TEXT | Chinese translation |
+| category | VARCHAR(100) | Category tag (e.g., 文化, AI) |
+| sample_sentence | TEXT | User-added example sentence |
+| created_at | TIMESTAMP | Record creation time |
+| updated_at | TIMESTAMP | Last update time |
+
+**Constraints**:
+- UNIQUE (word, category) - Allows same word in different categories
+
+### `categories` Table
+| Column | Type | Description |
+|--------|------|-------------|
+| id | INT | Primary key |
+| name | VARCHAR(100) | Category name |
+| word_count | INT | Number of words in category |
+| last_updated | TIMESTAMP | Last modification time |
+
+## 🤝 Contributing
+
+This is a personal vocabulary learning project. However, if you'd like to suggest improvements:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+## 📝 License
+
+This project is licensed under the MIT License.
+
+## 🙏 Acknowledgments
+
+- Built for personal English vocabulary learning
+- Inspired by various vocabulary learning apps and spaced repetition systems
+- Uses Flask web framework and MySQL database
+
+## 📞 Support
+
+If you encounter any issues:
+
+1. Check the Troubleshooting section above
+2. Review the Flask and MySQL logs for error messages
+3. Ensure all prerequisites are properly installed
+
+## 🔮 Future Enhancements (Potential)
+
+- [ ] Spaced repetition algorithm (SRS)
+- [ ] Study statistics and progress tracking
+- [ ] Audio pronunciation support
+- [ ] Quiz and testing modes
+- [ ] Export vocabulary to Anki or other formats
+- [ ] Dark mode theme toggle
+- [ ] Mobile app version
+
+---
+
+**Enjoy learning vocabulary with BKDict!** 📚✨
