@@ -71,17 +71,23 @@
                 </div>
             </div>
 
-            <!-- Sample Sentence Section -->
+            <!-- Sample Sentence Section (Multiple Sentences Supported) -->
             <div class="sample-section">
                 <div class="section-header">
-                    <h3 class="section-title">Sample Sentence:</h3>
+                    <h3 class="section-title">Sample Sentences:</h3>
                     <button id="editSampleBtn" class="btn btn-edit">Edit</button>
                 </div>
-                <div id="sampleDisplay" class="content-display empty">No sample sentence yet. Click Edit to add one.</div>
+                <div id="sampleDisplay" class="content-display empty">
+                    <p class="empty-hint">No sample sentences yet. Click Edit to add some.</p>
+                </div>
                 <div id="sampleEdit" class="content-edit" style="display: none;">
-                    <textarea id="sampleInput" class="content-textarea" rows="3"></textarea>
+                    <div id="sentencesList" class="sentences-list"></div>
+                    <div class="add-sentence-area">
+                        <textarea id="newSentenceInput" class="content-textarea" rows="2" placeholder="Type a new sample sentence here..."></textarea>
+                        <button id="addSentenceBtn" class="btn btn-add">+ Add Sentence</button>
+                    </div>
                     <div class="edit-actions">
-                        <button id="saveSampleBtn" class="btn btn-save">Save</button>
+                        <button id="saveSampleBtn" class="btn btn-save">Save All</button>
                         <button id="cancelSampleBtn" class="btn btn-cancel">Cancel</button>
                     </div>
                 </div>

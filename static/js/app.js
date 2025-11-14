@@ -12,7 +12,8 @@ const AppState = {
     currentWord: null,
     totalInCategory: 0,
     isEditingTranslation: false,
-    isEditingSample: false
+    isEditingSample: false,
+    sampleSentences: []  // Array to store multiple sample sentences
 };
 
 // ============================================
@@ -36,10 +37,12 @@ const Elements = {
     saveTransBtn: null,
     cancelTransBtn: null,
 
-    // Sample sentence elements
+    // Sample sentence elements (multiple sentences support)
     sampleDisplay: null,
     sampleEdit: null,
-    sampleInput: null,
+    sentencesList: null,
+    newSentenceInput: null,
+    addSentenceBtn: null,
     editSampleBtn: null,
     saveSampleBtn: null,
     cancelSampleBtn: null,
@@ -102,10 +105,12 @@ function cacheDOMElements() {
     Elements.saveTransBtn = document.getElementById('saveTransBtn');
     Elements.cancelTransBtn = document.getElementById('cancelTransBtn');
 
-    // Sample
+    // Sample (multiple sentences support)
     Elements.sampleDisplay = document.getElementById('sampleDisplay');
     Elements.sampleEdit = document.getElementById('sampleEdit');
-    Elements.sampleInput = document.getElementById('sampleInput');
+    Elements.sentencesList = document.getElementById('sentencesList');
+    Elements.newSentenceInput = document.getElementById('newSentenceInput');
+    Elements.addSentenceBtn = document.getElementById('addSentenceBtn');
     Elements.editSampleBtn = document.getElementById('editSampleBtn');
     Elements.saveSampleBtn = document.getElementById('saveSampleBtn');
     Elements.cancelSampleBtn = document.getElementById('cancelSampleBtn');
@@ -141,8 +146,9 @@ function setupEventListeners() {
     Elements.saveTransBtn.addEventListener('click', () => saveTranslation());
     Elements.cancelTransBtn.addEventListener('click', () => toggleEditMode('translation', false));
 
-    // Sample sentence editing
+    // Sample sentence editing (multiple sentences)
     Elements.editSampleBtn.addEventListener('click', () => toggleEditMode('sample', true));
+    Elements.addSentenceBtn.addEventListener('click', () => addNewSentence());
     Elements.saveSampleBtn.addEventListener('click', () => saveSample());
     Elements.cancelSampleBtn.addEventListener('click', () => toggleEditMode('sample', false));
 
@@ -288,15 +294,21 @@ function displayWord(wordData) {
     Elements.translationDisplay.textContent = wordData.translation;
     Elements.translationInput.value = wordData.translation;
 
-    // Display sample sentence
+    // Display sample sentences (multiple sentences support)
+    // Parse sentences from newline-separated text
     if (wordData.sample_sentence && wordData.sample_sentence.trim()) {
-        Elements.sampleDisplay.textContent = wordData.sample_sentence;
+        AppState.sampleSentences = wordData.sample_sentence
+            .split('\n')
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+
+        displaySampleSentences();
         Elements.sampleDisplay.classList.remove('empty');
     } else {
-        Elements.sampleDisplay.textContent = 'No sample sentence yet. Click Edit to add one.';
+        AppState.sampleSentences = [];
+        Elements.sampleDisplay.innerHTML = '<p class="empty-hint">No sample sentences yet. Click Edit to add some.</p>';
         Elements.sampleDisplay.classList.add('empty');
     }
-    Elements.sampleInput.value = wordData.sample_sentence || '';
 
     // Update position info
     Elements.positionInfo.textContent =
@@ -334,7 +346,9 @@ function toggleEditMode(type, isEditing) {
         Elements.editSampleBtn.style.display = isEditing ? 'none' : 'inline-flex';
 
         if (isEditing) {
-            Elements.sampleInput.focus();
+            // Load current sentences into edit mode
+            displayEditableSentences();
+            Elements.newSentenceInput.focus();
         }
     }
 }
@@ -461,10 +475,11 @@ async function saveTranslation() {
 }
 
 /**
- * Save sample sentence changes
+ * Save sample sentence changes (multiple sentences)
  */
 async function saveSample() {
-    const newSample = Elements.sampleInput.value.trim();
+    // Join all sentences with newlines to store in database
+    const newSample = AppState.sampleSentences.join('\n');
 
     const success = await updateWord(AppState.currentWord.id, {
         sample_sentence: newSample
@@ -532,6 +547,94 @@ async function uploadXMLFile() {
     } finally {
         Elements.uploadBtn.disabled = false;
     }
+}
+
+// ============================================
+// Multiple Sample Sentences Functions
+// ============================================
+
+/**
+ * Display sample sentences in the display area
+ */
+function displaySampleSentences() {
+    if (AppState.sampleSentences.length === 0) {
+        Elements.sampleDisplay.innerHTML = '<p class="empty-hint">No sample sentences yet. Click Edit to add some.</p>';
+        return;
+    }
+
+    // Create numbered list of sentences
+    const ol = document.createElement('ol');
+    ol.className = 'sentences-display-list';
+
+    AppState.sampleSentences.forEach(sentence => {
+        const li = document.createElement('li');
+        li.textContent = sentence;
+        li.className = 'sentence-item';
+        ol.appendChild(li);
+    });
+
+    Elements.sampleDisplay.innerHTML = '';
+    Elements.sampleDisplay.appendChild(ol);
+}
+
+/**
+ * Display sample sentences in edit mode with remove buttons
+ */
+function displayEditableSentences() {
+    Elements.sentencesList.innerHTML = '';
+
+    if (AppState.sampleSentences.length === 0) {
+        Elements.sentencesList.innerHTML = '<p class="empty-hint-edit">No sentences yet. Add one below.</p>';
+        return;
+    }
+
+    AppState.sampleSentences.forEach((sentence, index) => {
+        const sentenceDiv = document.createElement('div');
+        sentenceDiv.className = 'sentence-edit-item';
+
+        const sentenceText = document.createElement('span');
+        sentenceText.className = 'sentence-text';
+        sentenceText.textContent = `${index + 1}. ${sentence}`;
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'btn btn-remove';
+        removeBtn.textContent = '✕';
+        removeBtn.title = 'Remove this sentence';
+        removeBtn.onclick = () => removeSentence(index);
+
+        sentenceDiv.appendChild(sentenceText);
+        sentenceDiv.appendChild(removeBtn);
+        Elements.sentencesList.appendChild(sentenceDiv);
+    });
+}
+
+/**
+ * Add a new sentence to the list
+ */
+function addNewSentence() {
+    const newSentence = Elements.newSentenceInput.value.trim();
+
+    if (!newSentence) {
+        showError('Please enter a sentence before adding');
+        return;
+    }
+
+    // Add to sentences array
+    AppState.sampleSentences.push(newSentence);
+
+    // Clear input
+    Elements.newSentenceInput.value = '';
+
+    // Refresh the editable list
+    displayEditableSentences();
+}
+
+/**
+ * Remove a sentence from the list
+ */
+function removeSentence(index) {
+    AppState.sampleSentences.splice(index, 1);
+    displayEditableSentences();
 }
 
 // ============================================

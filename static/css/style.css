@@ -67,7 +67,7 @@ body {
    Main Container
    ============================================ */
 .container {
-    max-width: 1200px;
+    max-width: 1600px;  /* Increased from 1200px for wider layout */
     margin: 0 auto;
     padding: var(--spacing-md);
     flex: 1;
@@ -485,6 +485,106 @@ body {
     font-size: 0.9rem;
     border-top: 2px solid var(--border-color);
     margin-top: auto;
+}
+
+/* ============================================
+   Multiple Sample Sentences Styles
+   ============================================ */
+
+/* Display mode - numbered list */
+.sentences-display-list {
+    margin: 0;
+    padding-left: var(--spacing-lg);
+    list-style-type: decimal;
+}
+
+.sentence-item {
+    padding: var(--spacing-xs) 0;
+    line-height: 1.8;
+    color: var(--text-primary);
+}
+
+.empty-hint {
+    color: var(--text-light);
+    font-style: italic;
+    margin: 0;
+}
+
+/* Edit mode styles */
+.sentences-list {
+    margin-bottom: var(--spacing-md);
+    min-height: 50px;
+}
+
+.sentence-edit-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-sm);
+    margin-bottom: var(--spacing-xs);
+    background: var(--bg-main);
+    border-radius: var(--radius-sm);
+    border-left: 4px solid var(--primary-blue);
+}
+
+.sentence-text {
+    flex: 1;
+    padding-right: var(--spacing-md);
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+.btn-remove {
+    background: var(--error);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.btn-remove:hover {
+    background: #C0392B;
+    transform: scale(1.1);
+}
+
+.empty-hint-edit {
+    color: var(--text-light);
+    font-style: italic;
+    padding: var(--spacing-md);
+    text-align: center;
+}
+
+/* Add sentence area */
+.add-sentence-area {
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: rgba(135, 206, 235, 0.05);
+    border-radius: var(--radius-sm);
+    border: 2px dashed var(--border-color);
+}
+
+.add-sentence-area textarea {
+    margin-bottom: var(--spacing-sm);
+}
+
+.btn-add {
+    background: var(--accent-blue);
+    color: white;
+    padding: 0.5rem 1rem;
+    font-size: 0.95rem;
+}
+
+.btn-add:hover {
+    background: var(--primary-dark);
 }
 
 /* ============================================
