@@ -44,15 +44,44 @@
         <!-- Word Display Card -->
         <div id="wordCard" class="word-card" style="display: none;">
 
-            <!-- Navigation Info -->
-            <div class="nav-info">
-                <span id="positionInfo" class="position-info">Word 1 of 100</span>
-                <span class="keyboard-hint">Use ← → arrow keys to navigate</span>
-            </div>
-
             <!-- Word Section -->
             <div class="word-section">
-                <h2 id="wordDisplay" class="word-display">Loading...</h2>
+                <!-- Position Info (top left) -->
+                <span id="positionInfo" class="position-info-inline">Word 1 of 100</span>
+
+                <!-- Word Display/Edit -->
+                <div class="word-content">
+                    <div id="wordDisplayContainer">
+                        <h2 id="wordDisplay" class="word-display">Loading...</h2>
+                        <button id="editWordBtn" class="btn btn-edit-word" title="Edit word">✏️</button>
+                    </div>
+                    <div id="wordEdit" class="word-edit" style="display: none;">
+                        <input type="text" id="wordInput" class="word-input" placeholder="Edit word..." />
+                        <div class="edit-actions-inline">
+                            <button id="saveWordBtn" class="btn btn-save btn-sm">Save</button>
+                            <button id="cancelWordBtn" class="btn btn-cancel btn-sm">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Review Counter Circle -->
+                <div id="reviewCounter" class="review-counter" title="Click to mark as reviewed">
+                    <span id="reviewCount">0</span>
+                </div>
+            </div>
+
+            <!-- Word Actions Section -->
+            <div class="word-actions">
+                <div class="action-group">
+                    <label for="changeCategorySelect" class="action-label">Move to Category:</label>
+                    <select id="changeCategorySelect" class="category-change-select">
+                        <option value="">-- Select Category --</option>
+                    </select>
+                    <button id="moveCategoryBtn" class="btn btn-secondary btn-sm">Move</button>
+                </div>
+                <div class="action-group">
+                    <button id="deleteWordBtn" class="btn btn-delete">🗑️ Delete Word</button>
+                </div>
             </div>
 
             <!-- Translation Section -->
@@ -81,13 +110,10 @@
                     <p class="empty-hint">No sample sentences yet. Click Edit to add some.</p>
                 </div>
                 <div id="sampleEdit" class="content-edit" style="display: none;">
-                    <div id="sentencesList" class="sentences-list"></div>
-                    <div class="add-sentence-area">
-                        <textarea id="newSentenceInput" class="content-textarea" rows="2" placeholder="Type a new sample sentence here..."></textarea>
-                        <button id="addSentenceBtn" class="btn btn-add">+ Add Sentence</button>
-                    </div>
+                    <p class="edit-hint">Type each sentence on a new line:</p>
+                    <textarea id="sampleInput" class="content-textarea" rows="6" placeholder="Enter sample sentences (one per line)..."></textarea>
                     <div class="edit-actions">
-                        <button id="saveSampleBtn" class="btn btn-save">Save All</button>
+                        <button id="saveSampleBtn" class="btn btn-save">Save</button>
                         <button id="cancelSampleBtn" class="btn btn-cancel">Cancel</button>
                     </div>
                 </div>

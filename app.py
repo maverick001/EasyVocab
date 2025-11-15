@@ -212,7 +212,8 @@ def get_word_by_category(category):
         # Get the word at the specified index
         # Using LIMIT with OFFSET for pagination
         cursor.execute("""
-            SELECT id, word, translation, category, sample_sentence
+            SELECT id, word, translation, category, sample_sentence,
+                   review_count, last_reviewed
             FROM words
             WHERE category = %s
             ORDER BY word
@@ -252,13 +253,14 @@ def get_word_by_category(category):
 @app.route('/api/words/<int:word_id>', methods=['PUT'])
 def update_word(word_id):
     """
-    Update translation or sample sentence for a word
+    Update word, translation, or sample sentence for a word
 
     Args:
         word_id: ID of the word to update (from URL path)
 
     Request Body (JSON):
         {
+            "word": "updated word",                // optional
             "translation": "updated translation",  // optional
             "sample_sentence": "updated sentence"  // optional
         }
@@ -282,6 +284,10 @@ def update_word(word_id):
         # Build dynamic UPDATE query based on provided fields
         update_fields = []
         params = []
+
+        if 'word' in data:
+            update_fields.append('word = %s')
+            params.append(data['word'])
 
         if 'translation' in data:
             update_fields.append('translation = %s')
@@ -321,6 +327,184 @@ def update_word(word_id):
             return jsonify({
                 'success': True,
                 'message': 'Word updated successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Word not found'
+            }), 404
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/words/<int:word_id>/category', methods=['PUT'])
+def change_word_category(word_id):
+    """
+    Change the category of a word
+
+    Args:
+        word_id: ID of the word to update (from URL path)
+
+    Request Body (JSON):
+        {
+            "new_category": "AI"
+        }
+
+    Returns:
+        JSON response with success status
+    """
+    try:
+        data = request.get_json()
+
+        if not data or 'new_category' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'new_category is required'
+            }), 400
+
+        new_category = data['new_category'].strip()
+
+        if not new_category:
+            return jsonify({
+                'success': False,
+                'error': 'Category cannot be empty'
+            }), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Update category
+        cursor.execute("""
+            UPDATE words
+            SET category = %s
+            WHERE id = %s
+        """, (new_category, word_id))
+
+        conn.commit()
+        rows_affected = cursor.rowcount
+
+        # Update category counts
+        try:
+            cursor.callproc('update_category_counts')
+            conn.commit()
+        except Exception:
+            pass  # Non-critical
+
+        cursor.close()
+        conn.close()
+
+        if rows_affected > 0:
+            return jsonify({
+                'success': True,
+                'message': f'Word moved to category "{new_category}"'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Word not found'
+            }), 404
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/words/<int:word_id>', methods=['DELETE'])
+def delete_word(word_id):
+    """
+    Delete a word from the database
+
+    Args:
+        word_id: ID of the word to delete (from URL path)
+
+    Returns:
+        JSON response with success status
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Delete the word
+        cursor.execute("DELETE FROM words WHERE id = %s", (word_id,))
+        conn.commit()
+        rows_affected = cursor.rowcount
+
+        # Update category counts
+        try:
+            cursor.callproc('update_category_counts')
+            conn.commit()
+        except Exception:
+            pass  # Non-critical
+
+        cursor.close()
+        conn.close()
+
+        if rows_affected > 0:
+            return jsonify({
+                'success': True,
+                'message': 'Word deleted successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Word not found'
+            }), 404
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/words/<int:word_id>/review', methods=['POST'])
+def increment_review_counter(word_id):
+    """
+    Increment the review counter for a word and update last_reviewed timestamp
+
+    Args:
+        word_id: ID of the word to update (from URL path)
+
+    Returns:
+        JSON response with updated review_count
+    """
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Increment review_count and update last_reviewed timestamp
+        cursor.execute("""
+            UPDATE words
+            SET review_count = review_count + 1,
+                last_reviewed = CURRENT_TIMESTAMP
+            WHERE id = %s
+        """, (word_id,))
+
+        conn.commit()
+
+        # Get updated count
+        cursor.execute("""
+            SELECT review_count, last_reviewed
+            FROM words
+            WHERE id = %s
+        """, (word_id,))
+
+        result = cursor.fetchone()
+
+        cursor.close()
+        conn.close()
+
+        if result:
+            return jsonify({
+                'success': True,
+                'review_count': result['review_count'],
+                'last_reviewed': str(result['last_reviewed']) if result['last_reviewed'] else None
             })
         else:
             return jsonify({

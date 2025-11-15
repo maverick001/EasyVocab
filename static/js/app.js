@@ -13,7 +13,7 @@ const AppState = {
     totalInCategory: 0,
     isEditingTranslation: false,
     isEditingSample: false,
-    sampleSentences: []  // Array to store multiple sample sentences
+    isEditingWord: false
 };
 
 // ============================================
@@ -27,7 +27,19 @@ const Elements = {
     // Word card
     wordCard: null,
     wordDisplay: null,
+    wordEdit: null,
+    wordInput: null,
+    editWordBtn: null,
+    saveWordBtn: null,
+    cancelWordBtn: null,
     positionInfo: null,
+    reviewCounter: null,
+    reviewCount: null,
+
+    // Word actions
+    changeCategorySelect: null,
+    moveCategoryBtn: null,
+    deleteWordBtn: null,
 
     // Translation elements
     translationDisplay: null,
@@ -37,12 +49,10 @@ const Elements = {
     saveTransBtn: null,
     cancelTransBtn: null,
 
-    // Sample sentence elements (multiple sentences support)
+    // Sample sentence elements (simplified)
     sampleDisplay: null,
     sampleEdit: null,
-    sentencesList: null,
-    newSentenceInput: null,
-    addSentenceBtn: null,
+    sampleInput: null,
     editSampleBtn: null,
     saveSampleBtn: null,
     cancelSampleBtn: null,
@@ -95,7 +105,19 @@ function cacheDOMElements() {
     // Word card
     Elements.wordCard = document.getElementById('wordCard');
     Elements.wordDisplay = document.getElementById('wordDisplay');
+    Elements.wordEdit = document.getElementById('wordEdit');
+    Elements.wordInput = document.getElementById('wordInput');
+    Elements.editWordBtn = document.getElementById('editWordBtn');
+    Elements.saveWordBtn = document.getElementById('saveWordBtn');
+    Elements.cancelWordBtn = document.getElementById('cancelWordBtn');
     Elements.positionInfo = document.getElementById('positionInfo');
+    Elements.reviewCounter = document.getElementById('reviewCounter');
+    Elements.reviewCount = document.getElementById('reviewCount');
+
+    // Word actions
+    Elements.changeCategorySelect = document.getElementById('changeCategorySelect');
+    Elements.moveCategoryBtn = document.getElementById('moveCategoryBtn');
+    Elements.deleteWordBtn = document.getElementById('deleteWordBtn');
 
     // Translation
     Elements.translationDisplay = document.getElementById('translationDisplay');
@@ -105,12 +127,10 @@ function cacheDOMElements() {
     Elements.saveTransBtn = document.getElementById('saveTransBtn');
     Elements.cancelTransBtn = document.getElementById('cancelTransBtn');
 
-    // Sample (multiple sentences support)
+    // Sample (simplified - single textarea)
     Elements.sampleDisplay = document.getElementById('sampleDisplay');
     Elements.sampleEdit = document.getElementById('sampleEdit');
-    Elements.sentencesList = document.getElementById('sentencesList');
-    Elements.newSentenceInput = document.getElementById('newSentenceInput');
-    Elements.addSentenceBtn = document.getElementById('addSentenceBtn');
+    Elements.sampleInput = document.getElementById('sampleInput');
     Elements.editSampleBtn = document.getElementById('editSampleBtn');
     Elements.saveSampleBtn = document.getElementById('saveSampleBtn');
     Elements.cancelSampleBtn = document.getElementById('cancelSampleBtn');
@@ -141,14 +161,18 @@ function setupEventListeners() {
     // Category selection
     Elements.categorySelect.addEventListener('change', handleCategoryChange);
 
+    // Word editing
+    Elements.editWordBtn.addEventListener('click', () => toggleEditMode('word', true));
+    Elements.saveWordBtn.addEventListener('click', () => saveWord());
+    Elements.cancelWordBtn.addEventListener('click', () => toggleEditMode('word', false));
+
     // Translation editing
     Elements.editTransBtn.addEventListener('click', () => toggleEditMode('translation', true));
     Elements.saveTransBtn.addEventListener('click', () => saveTranslation());
     Elements.cancelTransBtn.addEventListener('click', () => toggleEditMode('translation', false));
 
-    // Sample sentence editing (multiple sentences)
+    // Sample sentence editing (simplified)
     Elements.editSampleBtn.addEventListener('click', () => toggleEditMode('sample', true));
-    Elements.addSentenceBtn.addEventListener('click', () => addNewSentence());
     Elements.saveSampleBtn.addEventListener('click', () => saveSample());
     Elements.cancelSampleBtn.addEventListener('click', () => toggleEditMode('sample', false));
 
@@ -158,6 +182,11 @@ function setupEventListeners() {
 
     // Keyboard navigation (Arrow keys)
     document.addEventListener('keydown', handleKeyboardNavigation);
+
+    // Word actions
+    Elements.reviewCounter.addEventListener('click', () => incrementReviewCounter());
+    Elements.moveCategoryBtn.addEventListener('click', () => changeWordCategory());
+    Elements.deleteWordBtn.addEventListener('click', () => deleteCurrentWord());
 
     // Import functionality
     Elements.importBtn.addEventListener('click', toggleImportPanel);
@@ -264,6 +293,7 @@ async function updateWord(wordId, updates) {
  * Populate category dropdown with fetched categories
  */
 function populateCategoryDropdown(categories) {
+    // Populate main category selector
     Elements.categorySelect.innerHTML = '<option value="">-- Select a Category --</option>';
 
     categories.forEach(cat => {
@@ -271,6 +301,16 @@ function populateCategoryDropdown(categories) {
         option.value = cat.name;
         option.textContent = `${cat.name} (${cat.word_count} words)`;
         Elements.categorySelect.appendChild(option);
+    });
+
+    // Also populate the change category selector
+    Elements.changeCategorySelect.innerHTML = '<option value="">-- Select Category --</option>';
+
+    categories.forEach(cat => {
+        const option = document.createElement('option');
+        option.value = cat.name;
+        option.textContent = cat.name;
+        Elements.changeCategorySelect.appendChild(option);
     });
 }
 
@@ -290,25 +330,48 @@ function displayWord(wordData) {
     // Display word
     Elements.wordDisplay.textContent = wordData.word;
 
+    // Display review count
+    const reviewCount = wordData.review_count || 0;
+    Elements.reviewCount.textContent = reviewCount;
+
     // Display translation
     Elements.translationDisplay.textContent = wordData.translation;
     Elements.translationInput.value = wordData.translation;
 
-    // Display sample sentences (multiple sentences support)
-    // Parse sentences from newline-separated text
+    // Display sample sentences (simplified - just show text with line breaks)
     if (wordData.sample_sentence && wordData.sample_sentence.trim()) {
-        AppState.sampleSentences = wordData.sample_sentence
+        // Parse sentences and display as numbered list
+        const sentences = wordData.sample_sentence
             .split('\n')
             .map(s => s.trim())
             .filter(s => s.length > 0);
 
-        displaySampleSentences();
-        Elements.sampleDisplay.classList.remove('empty');
+        if (sentences.length > 0) {
+            const ol = document.createElement('ol');
+            ol.className = 'sentences-display-list';
+            sentences.forEach(sentence => {
+                const li = document.createElement('li');
+                li.textContent = sentence;
+                li.className = 'sentence-item';
+                ol.appendChild(li);
+            });
+            Elements.sampleDisplay.innerHTML = '';
+            Elements.sampleDisplay.appendChild(ol);
+            Elements.sampleDisplay.classList.remove('empty');
+        } else {
+            Elements.sampleDisplay.innerHTML = '<p class="empty-hint">No sample sentences yet. Click Edit to add some.</p>';
+            Elements.sampleDisplay.classList.add('empty');
+        }
     } else {
-        AppState.sampleSentences = [];
         Elements.sampleDisplay.innerHTML = '<p class="empty-hint">No sample sentences yet. Click Edit to add some.</p>';
         Elements.sampleDisplay.classList.add('empty');
     }
+
+    // Update sample input textarea
+    Elements.sampleInput.value = wordData.sample_sentence || '';
+
+    // Update word input
+    Elements.wordInput.value = wordData.word;
 
     // Update position info
     Elements.positionInfo.textContent =
@@ -327,10 +390,19 @@ function updateNavigationButtons() {
 }
 
 /**
- * Toggle edit mode for translation or sample sentence
+ * Toggle edit mode for word, translation, or sample sentence
  */
 function toggleEditMode(type, isEditing) {
-    if (type === 'translation') {
+    if (type === 'word') {
+        AppState.isEditingWord = isEditing;
+        document.getElementById('wordDisplayContainer').style.display = isEditing ? 'none' : 'flex';
+        Elements.wordEdit.style.display = isEditing ? 'flex' : 'none';
+
+        if (isEditing) {
+            Elements.wordInput.focus();
+            Elements.wordInput.select();
+        }
+    } else if (type === 'translation') {
         AppState.isEditingTranslation = isEditing;
         Elements.translationDisplay.style.display = isEditing ? 'none' : 'block';
         Elements.translationEdit.style.display = isEditing ? 'block' : 'none';
@@ -346,9 +418,7 @@ function toggleEditMode(type, isEditing) {
         Elements.editSampleBtn.style.display = isEditing ? 'none' : 'inline-flex';
 
         if (isEditing) {
-            // Load current sentences into edit mode
-            displayEditableSentences();
-            Elements.newSentenceInput.focus();
+            Elements.sampleInput.focus();
         }
     }
 }
@@ -455,6 +525,26 @@ function handleKeyboardNavigation(event) {
 }
 
 /**
+ * Save word changes
+ */
+async function saveWord() {
+    const newWord = Elements.wordInput.value.trim();
+
+    if (!newWord) {
+        showError('Word cannot be empty');
+        return;
+    }
+
+    const success = await updateWord(AppState.currentWord.id, {
+        word: newWord
+    });
+
+    if (success) {
+        toggleEditMode('word', false);
+    }
+}
+
+/**
  * Save translation changes
  */
 async function saveTranslation() {
@@ -475,11 +565,11 @@ async function saveTranslation() {
 }
 
 /**
- * Save sample sentence changes (multiple sentences)
+ * Save sample sentence changes (simplified - single textarea)
  */
 async function saveSample() {
-    // Join all sentences with newlines to store in database
-    const newSample = AppState.sampleSentences.join('\n');
+    // Get textarea value directly (each line is a separate sentence)
+    const newSample = Elements.sampleInput.value.trim();
 
     const success = await updateWord(AppState.currentWord.id, {
         sample_sentence: newSample
@@ -550,92 +640,147 @@ async function uploadXMLFile() {
 }
 
 // ============================================
-// Multiple Sample Sentences Functions
+// Word Actions Functions
 // ============================================
 
 /**
- * Display sample sentences in the display area
+ * Increment review counter for current word
  */
-function displaySampleSentences() {
-    if (AppState.sampleSentences.length === 0) {
-        Elements.sampleDisplay.innerHTML = '<p class="empty-hint">No sample sentences yet. Click Edit to add some.</p>';
-        return;
+async function incrementReviewCounter() {
+    if (!AppState.currentWord) return;
+
+    try {
+        const response = await fetch(`/api/words/${AppState.currentWord.id}/review`, {
+            method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Update the display with new count
+            Elements.reviewCount.textContent = data.review_count;
+
+            // Add visual feedback
+            Elements.reviewCounter.style.transform = 'translateY(-50%) scale(1.2)';
+            setTimeout(() => {
+                Elements.reviewCounter.style.transform = 'translateY(-50%) scale(1)';
+            }, 200);
+
+            console.log(`✅ Review count updated: ${data.review_count}`);
+        } else {
+            showError(data.error || 'Failed to update review count');
+        }
+
+    } catch (error) {
+        console.error('Error incrementing review counter:', error);
+        showError('Network error while updating review count');
     }
-
-    // Create numbered list of sentences
-    const ol = document.createElement('ol');
-    ol.className = 'sentences-display-list';
-
-    AppState.sampleSentences.forEach(sentence => {
-        const li = document.createElement('li');
-        li.textContent = sentence;
-        li.className = 'sentence-item';
-        ol.appendChild(li);
-    });
-
-    Elements.sampleDisplay.innerHTML = '';
-    Elements.sampleDisplay.appendChild(ol);
 }
 
 /**
- * Display sample sentences in edit mode with remove buttons
+ * Change category of current word
  */
-function displayEditableSentences() {
-    Elements.sentencesList.innerHTML = '';
+async function changeWordCategory() {
+    if (!AppState.currentWord) return;
 
-    if (AppState.sampleSentences.length === 0) {
-        Elements.sentencesList.innerHTML = '<p class="empty-hint-edit">No sentences yet. Add one below.</p>';
+    const newCategory = Elements.changeCategorySelect.value;
+
+    if (!newCategory) {
+        showError('Please select a category first');
         return;
     }
 
-    AppState.sampleSentences.forEach((sentence, index) => {
-        const sentenceDiv = document.createElement('div');
-        sentenceDiv.className = 'sentence-edit-item';
-
-        const sentenceText = document.createElement('span');
-        sentenceText.className = 'sentence-text';
-        sentenceText.textContent = `${index + 1}. ${sentence}`;
-
-        const removeBtn = document.createElement('button');
-        removeBtn.className = 'btn btn-remove';
-        removeBtn.textContent = '✕';
-        removeBtn.title = 'Remove this sentence';
-        removeBtn.onclick = () => removeSentence(index);
-
-        sentenceDiv.appendChild(sentenceText);
-        sentenceDiv.appendChild(removeBtn);
-        Elements.sentencesList.appendChild(sentenceDiv);
-    });
-}
-
-/**
- * Add a new sentence to the list
- */
-function addNewSentence() {
-    const newSentence = Elements.newSentenceInput.value.trim();
-
-    if (!newSentence) {
-        showError('Please enter a sentence before adding');
+    if (newCategory === AppState.currentWord.category) {
+        showError('Word is already in this category');
         return;
     }
 
-    // Add to sentences array
-    AppState.sampleSentences.push(newSentence);
+    // Confirm with user
+    if (!confirm(`Move "${AppState.currentWord.word}" from "${AppState.currentWord.category}" to "${newCategory}"?`)) {
+        return;
+    }
 
-    // Clear input
-    Elements.newSentenceInput.value = '';
+    try {
+        const response = await fetch(`/api/words/${AppState.currentWord.id}/category`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                new_category: newCategory
+            })
+        });
 
-    // Refresh the editable list
-    displayEditableSentences();
+        const data = await response.json();
+
+        if (data.success) {
+            console.log(`✅ ${data.message}`);
+
+            // Reload categories to update counts
+            await loadCategories();
+
+            // Navigate to next word in current category
+            navigateWord(1);
+
+        } else {
+            showError(data.error || 'Failed to change category');
+        }
+
+    } catch (error) {
+        console.error('Error changing category:', error);
+        showError('Network error while changing category');
+    }
 }
 
 /**
- * Remove a sentence from the list
+ * Delete current word
  */
-function removeSentence(index) {
-    AppState.sampleSentences.splice(index, 1);
-    displayEditableSentences();
+async function deleteCurrentWord() {
+    if (!AppState.currentWord) return;
+
+    // Confirm with user
+    if (!confirm(`Are you sure you want to delete "${AppState.currentWord.word}"?\n\nThis action cannot be undone.`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/words/${AppState.currentWord.id}`, {
+            method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            console.log(`✅ ${data.message}`);
+
+            // Reload categories to update counts
+            await loadCategories();
+
+            // Load the same index (which will now show the next word)
+            if (AppState.currentCategory && AppState.totalInCategory > 1) {
+                // If we deleted the last word, go to previous
+                if (AppState.currentIndex >= AppState.totalInCategory - 1) {
+                    AppState.currentIndex = Math.max(0, AppState.currentIndex - 1);
+                }
+                await loadWord(AppState.currentCategory, AppState.currentIndex);
+            } else {
+                // No more words in this category
+                Elements.wordCard.style.display = 'none';
+                Elements.welcomeMessage.style.display = 'block';
+                AppState.currentCategory = null;
+                Elements.categorySelect.value = '';
+            }
+
+        } else {
+            showError(data.error || 'Failed to delete word');
+        }
+
+    } catch (error) {
+        console.error('Error deleting word:', error);
+        showError('Network error while deleting word');
+    }
 }
+
 
 // ============================================
 // Utility Functions

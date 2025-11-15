@@ -289,34 +289,44 @@ body {
     margin-bottom: var(--spacing-lg);
 }
 
-/* Navigation Info */
-.nav-info {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: var(--spacing-md);
-    padding-bottom: var(--spacing-sm);
+/* Word Section with Position Info */
+.word-section {
+    padding: var(--spacing-md) var(--spacing-lg);
     border-bottom: 2px solid var(--border-color);
+    margin-bottom: var(--spacing-md);
+    min-height: 120px;  /* Fixed height to prevent resizing between words */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;  /* For absolute positioning of review counter */
 }
 
-.position-info {
+/* Position Info (top left inline) */
+.position-info-inline {
+    position: absolute;
+    top: var(--spacing-sm);
+    left: var(--spacing-md);
     font-weight: 600;
     color: var(--primary-dark);
-    font-size: 1rem;
+    font-size: 0.9rem;
+    background: rgba(135, 206, 235, 0.15);
+    padding: 0.3rem 0.6rem;
+    border-radius: var(--radius-sm);
 }
 
-.keyboard-hint {
-    font-size: 0.85rem;
-    color: var(--text-light);
-    font-style: italic;
+/* Word Content Area */
+.word-content {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
-/* Word Display */
-.word-section {
-    text-align: center;
-    padding: var(--spacing-lg) 0;
-    border-bottom: 2px solid var(--border-color);
-    margin-bottom: var(--spacing-md);
+#wordDisplayContainer {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
 }
 
 .word-display {
@@ -325,6 +335,145 @@ body {
     color: var(--primary-dark);
     margin: 0;
     text-shadow: 2px 2px 4px var(--shadow);
+    word-break: break-word;  /* Handle very long words */
+}
+
+/* Word Editing */
+.btn-edit-word {
+    background: transparent;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.3s ease;
+    padding: 0.3rem;
+}
+
+.btn-edit-word:hover {
+    opacity: 1;
+}
+
+.word-edit {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    align-items: center;
+    width: 100%;
+    max-width: 600px;
+}
+
+.word-input {
+    width: 100%;
+    padding: var(--spacing-sm);
+    font-size: 2rem;
+    font-weight: 700;
+    text-align: center;
+    border: 2px solid var(--primary-blue);
+    border-radius: var(--radius-sm);
+    color: var(--primary-dark);
+}
+
+.word-input:focus {
+    outline: none;
+    border-color: var(--primary-dark);
+    box-shadow: 0 0 0 3px rgba(135, 206, 235, 0.3);
+}
+
+.edit-actions-inline {
+    display: flex;
+    gap: var(--spacing-xs);
+}
+
+/* Review Counter Circle */
+.review-counter {
+    position: absolute;
+    right: var(--spacing-lg);
+    top: 50%;
+    transform: translateY(-50%);
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-blue), var(--primary-dark));
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 8px var(--shadow);
+    transition: all 0.3s ease;
+}
+
+.review-counter:hover {
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 6px 12px rgba(70, 130, 180, 0.3);
+}
+
+.review-counter:active {
+    transform: translateY(-50%) scale(0.95);
+}
+
+/* Word Actions Section */
+.word-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    background: rgba(135, 206, 235, 0.08);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+}
+
+.action-group {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.action-label {
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.category-change-select {
+    padding: 0.5rem;
+    font-size: 0.9rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: white;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.category-change-select:hover {
+    border-color: var(--primary-blue);
+}
+
+.category-change-select:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(135, 206, 235, 0.2);
+}
+
+.btn-sm {
+    padding: 0.5rem 0.9rem;
+    font-size: 0.9rem;
+}
+
+.btn-delete {
+    background: var(--error);
+    color: white;
+    padding: 0.5rem 1rem;
+}
+
+.btn-delete:hover {
+    background: #C0392B;
 }
 
 /* Content Sections */
@@ -355,6 +504,8 @@ body {
     line-height: 1.8;
     white-space: pre-wrap;
     min-height: 60px;
+    width: 100%;  /* 50% wider - using full container width */
+    max-width: none;  /* Remove any max-width restrictions */
 }
 
 .content-display.empty {
@@ -364,6 +515,14 @@ body {
 
 .content-edit {
     margin-top: var(--spacing-sm);
+    width: 100%;  /* Match the display width */
+}
+
+.edit-hint {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: var(--spacing-xs);
+    font-style: italic;
 }
 
 .content-textarea {
