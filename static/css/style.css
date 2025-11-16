@@ -55,7 +55,12 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, var(--bg-main) 0%, var(--primary-light) 100%);
+    background:
+        radial-gradient(circle at 20% 50%, rgba(176, 224, 230, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(135, 206, 235, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 40% 10%, rgba(70, 130, 180, 0.2) 0%, transparent 40%),
+        linear-gradient(135deg, #E6F3F9 0%, #D4E9F3 50%, #B0E0E6 100%);
+    background-attachment: fixed;
     color: var(--text-primary);
     line-height: 1.6;
     min-height: 100vh;
@@ -80,6 +85,10 @@ body {
     text-align: center;
     padding: var(--spacing-md) 0;
     margin-bottom: var(--spacing-lg);
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 4px 15px rgba(70, 130, 180, 0.1);
+    backdrop-filter: blur(10px);
 }
 
 .app-title {
@@ -152,6 +161,33 @@ body {
     color: var(--text-secondary);
     font-size: 0.9rem;
     font-style: italic;
+}
+
+/* Sort Selection */
+.sort-group {
+    margin-left: var(--spacing-md);
+}
+
+.sort-select {
+    padding: 0.6rem 1rem;
+    font-size: 0.95rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: white;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 220px;
+}
+
+.sort-select:hover {
+    border-color: var(--primary-dark);
+}
+
+.sort-select:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(135, 206, 235, 0.2);
 }
 
 /* Import Section */
@@ -285,8 +321,11 @@ body {
     background: var(--bg-card);
     padding: var(--spacing-lg);
     border-radius: var(--radius-lg);
-    box-shadow: 0 8px 16px var(--shadow);
+    box-shadow:
+        0 10px 30px rgba(70, 130, 180, 0.15),
+        0 1px 8px rgba(70, 130, 180, 0.1);
     margin-bottom: var(--spacing-lg);
+    border: 1px solid rgba(176, 224, 230, 0.3);
 }
 
 /* Word Section with Position Info */

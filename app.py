@@ -124,6 +124,7 @@ def get_categories():
             ]
         }
     """
+    conn = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
@@ -137,9 +138,6 @@ def get_categories():
 
         categories = cursor.fetchall()
 
-        cursor.close()
-        conn.close()
-
         return jsonify({
             'success': True,
             'categories': categories
@@ -150,6 +148,9 @@ def get_categories():
             'success': False,
             'error': str(e)
         }), 500
+    finally:
+        if conn:
+            conn.close()
 
 
 @app.route('/api/words/<category>', methods=['GET'])
@@ -162,6 +163,8 @@ def get_word_by_category(category):
 
     Query Parameters:
         index: Position of word in category (0-based, default=0)
+        sort_by: Sorting method - 'updated_at' (latest edits) or 'review_count' (most reviewed)
+                 Default: 'updated_at'
 
     Returns:
         JSON response:
@@ -174,13 +177,27 @@ def get_word_by_category(category):
                 "category": "文化",
                 "sample_sentence": "This is an example.",
                 "total_in_category": 120,
-                "current_index": 0
+                "current_index": 0,
+                "created_at": "2024-01-01 12:00:00",
+                "updated_at": "2024-01-15 14:30:00"
             }
         }
     """
+    conn = None
     try:
-        # Get index from query parameter (default to 0)
+        # Get parameters from query string
         index = int(request.args.get('index', 0))
+        sort_by = request.args.get('sort_by', 'updated_at')  # Default to latest edits
+
+        # Validate sort_by parameter
+        if sort_by not in ['updated_at', 'review_count']:
+            sort_by = 'updated_at'
+
+        # Determine ORDER BY clause based on sort_by
+        if sort_by == 'updated_at':
+            order_clause = "ORDER BY updated_at DESC, id DESC"
+        else:  # review_count
+            order_clause = "ORDER BY review_count DESC, updated_at DESC, id DESC"
 
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
@@ -196,8 +213,6 @@ def get_word_by_category(category):
         total_count = count_result['total'] if count_result else 0
 
         if total_count == 0:
-            cursor.close()
-            conn.close()
             return jsonify({
                 'success': False,
                 'error': 'No words found in this category'
@@ -210,20 +225,18 @@ def get_word_by_category(category):
             index = total_count - 1
 
         # Get the word at the specified index
-        # Using LIMIT with OFFSET for pagination
-        cursor.execute("""
+        # Using LIMIT with OFFSET for pagination with dynamic sorting
+        query = f"""
             SELECT id, word, translation, category, sample_sentence,
-                   review_count, last_reviewed
+                   review_count, last_reviewed, created_at, updated_at
             FROM words
             WHERE category = %s
-            ORDER BY word
+            {order_clause}
             LIMIT 1 OFFSET %s
-        """, (category, index))
+        """
+        cursor.execute(query, (category, index))
 
         word = cursor.fetchone()
-
-        cursor.close()
-        conn.close()
 
         if word:
             word['total_in_category'] = total_count
@@ -248,6 +261,9 @@ def get_word_by_category(category):
             'success': False,
             'error': str(e)
         }), 500
+    finally:
+        if conn:
+            conn.close()
 
 
 @app.route('/api/words/<int:word_id>', methods=['PUT'])
@@ -272,6 +288,7 @@ def update_word(word_id):
             "message": "Word updated successfully"
         }
     """
+    conn = None
     try:
         data = request.get_json()
 
@@ -320,9 +337,6 @@ def update_word(word_id):
 
         rows_affected = cursor.rowcount
 
-        cursor.close()
-        conn.close()
-
         if rows_affected > 0:
             return jsonify({
                 'success': True,
@@ -339,6 +353,9 @@ def update_word(word_id):
             'success': False,
             'error': str(e)
         }), 500
+    finally:
+        if conn:
+            conn.close()
 
 
 @app.route('/api/words/<int:word_id>/category', methods=['PUT'])
@@ -357,6 +374,7 @@ def change_word_category(word_id):
     Returns:
         JSON response with success status
     """
+    conn = None
     try:
         data = request.get_json()
 
@@ -394,9 +412,6 @@ def change_word_category(word_id):
         except Exception:
             pass  # Non-critical
 
-        cursor.close()
-        conn.close()
-
         if rows_affected > 0:
             return jsonify({
                 'success': True,
@@ -413,6 +428,9 @@ def change_word_category(word_id):
             'success': False,
             'error': str(e)
         }), 500
+    finally:
+        if conn:
+            conn.close()
 
 
 @app.route('/api/words/<int:word_id>', methods=['DELETE'])
@@ -426,6 +444,7 @@ def delete_word(word_id):
     Returns:
         JSON response with success status
     """
+    conn = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -441,9 +460,6 @@ def delete_word(word_id):
             conn.commit()
         except Exception:
             pass  # Non-critical
-
-        cursor.close()
-        conn.close()
 
         if rows_affected > 0:
             return jsonify({
@@ -461,12 +477,15 @@ def delete_word(word_id):
             'success': False,
             'error': str(e)
         }), 500
+    finally:
+        if conn:
+            conn.close()
 
 
 @app.route('/api/words/<int:word_id>/review', methods=['POST'])
 def increment_review_counter(word_id):
     """
-    Increment the review counter for a word and update last_reviewed timestamp
+    Increment the review counter for a word and update last_reviewed and edit time
 
     Args:
         word_id: ID of the word to update (from URL path)
@@ -474,15 +493,17 @@ def increment_review_counter(word_id):
     Returns:
         JSON response with updated review_count
     """
+    conn = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Increment review_count and update last_reviewed timestamp
+        # Increment review_count and update last_reviewed and updated_at timestamps
         cursor.execute("""
             UPDATE words
             SET review_count = review_count + 1,
-                last_reviewed = CURRENT_TIMESTAMP
+                last_reviewed = CURRENT_TIMESTAMP,
+                updated_at = CURRENT_TIMESTAMP
             WHERE id = %s
         """, (word_id,))
 
@@ -496,9 +517,6 @@ def increment_review_counter(word_id):
         """, (word_id,))
 
         result = cursor.fetchone()
-
-        cursor.close()
-        conn.close()
 
         if result:
             return jsonify({
@@ -517,6 +535,9 @@ def increment_review_counter(word_id):
             'success': False,
             'error': str(e)
         }), 500
+    finally:
+        if conn:
+            conn.close()
 
 
 @app.route('/api/category/<category>/count', methods=['GET'])
@@ -615,6 +636,7 @@ def upload_xml():
         file.save(filepath)
 
         # Parse and import XML
+        conn = None
         try:
             conn = get_db_connection()
             stats = parse_and_import_xml(
@@ -622,7 +644,6 @@ def upload_xml():
                 conn,
                 batch_size=app.config['XML_BATCH_SIZE']
             )
-            conn.close()
 
             # Clean up uploaded file
             os.remove(filepath)
@@ -648,6 +669,9 @@ def upload_xml():
                 'success': False,
                 'error': f'XML parsing error: {str(e)}'
             }), 400
+        finally:
+            if conn:
+                conn.close()
 
     except Exception as e:
         return jsonify({

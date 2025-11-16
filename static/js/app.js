@@ -11,6 +11,7 @@ const AppState = {
     currentIndex: 0,
     currentWord: null,
     totalInCategory: 0,
+    currentSortBy: 'updated_at',  // Default sort by recent edits
     isEditingTranslation: false,
     isEditingSample: false,
     isEditingWord: false
@@ -23,6 +24,7 @@ const Elements = {
     // Category selection
     categorySelect: null,
     categoryInfo: null,
+    sortSelect: null,
 
     // Word card
     wordCard: null,
@@ -101,6 +103,7 @@ function cacheDOMElements() {
     // Category
     Elements.categorySelect = document.getElementById('categorySelect');
     Elements.categoryInfo = document.getElementById('categoryInfo');
+    Elements.sortSelect = document.getElementById('sortSelect');
 
     // Word card
     Elements.wordCard = document.getElementById('wordCard');
@@ -160,6 +163,9 @@ function cacheDOMElements() {
 function setupEventListeners() {
     // Category selection
     Elements.categorySelect.addEventListener('change', handleCategoryChange);
+
+    // Sort selection
+    Elements.sortSelect.addEventListener('change', handleSortChange);
 
     // Word editing
     Elements.editWordBtn.addEventListener('click', () => toggleEditMode('word', true));
@@ -231,7 +237,7 @@ async function loadWord(category, index) {
         showLoading(true);
         hideError();
 
-        const response = await fetch(`/api/words/${encodeURIComponent(category)}?index=${index}`);
+        const response = await fetch(`/api/words/${encodeURIComponent(category)}?index=${index}&sort_by=${AppState.currentSortBy}`);
         const data = await response.json();
 
         if (data.success && data.word) {
@@ -250,7 +256,7 @@ async function loadWord(category, index) {
 }
 
 /**
- * Update word translation or sample sentence
+ * Update word, translation, or sample sentence
  */
 async function updateWord(wordId, updates) {
     try {
@@ -268,8 +274,23 @@ async function updateWord(wordId, updates) {
 
         if (data.success) {
             console.log('✅ Word updated successfully');
-            // Reload the word to get fresh data
-            await loadWord(AppState.currentCategory, AppState.currentIndex);
+
+            // Update local state instead of reloading to keep word on screen
+            // (reloading would change position due to updated_at timestamp change)
+            if ('word' in updates) {
+                AppState.currentWord.word = updates.word;
+                Elements.wordDisplay.textContent = updates.word;
+            }
+            if ('translation' in updates) {
+                AppState.currentWord.translation = updates.translation;
+                Elements.translationDisplay.textContent = updates.translation;
+            }
+            if ('sample_sentence' in updates) {
+                AppState.currentWord.sample_sentence = updates.sample_sentence;
+                // Redisplay samples with updated content
+                displaySampleSentences(updates.sample_sentence);
+            }
+
             return true;
         } else {
             showError(data.error || 'Failed to update word');
@@ -288,6 +309,42 @@ async function updateWord(wordId, updates) {
 // ============================================
 // UI Update Functions
 // ============================================
+
+/**
+ * Update sample sentence display
+ */
+function displaySampleSentences(sampleText) {
+    if (sampleText && sampleText.trim()) {
+        // Parse sentences and display as numbered list
+        const sentences = sampleText
+            .split('\n')
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+
+        if (sentences.length > 0) {
+            const ol = document.createElement('ol');
+            ol.className = 'sentences-display-list';
+            sentences.forEach(sentence => {
+                const li = document.createElement('li');
+                li.textContent = sentence;
+                li.className = 'sentence-item';
+                ol.appendChild(li);
+            });
+            Elements.sampleDisplay.innerHTML = '';
+            Elements.sampleDisplay.appendChild(ol);
+            Elements.sampleDisplay.classList.remove('empty');
+        } else {
+            Elements.sampleDisplay.innerHTML = '<p class="empty-hint">No sample sentences yet. Click Edit to add some.</p>';
+            Elements.sampleDisplay.classList.add('empty');
+        }
+    } else {
+        Elements.sampleDisplay.innerHTML = '<p class="empty-hint">No sample sentences yet. Click Edit to add some.</p>';
+        Elements.sampleDisplay.classList.add('empty');
+    }
+
+    // Update sample input textarea
+    Elements.sampleInput.value = sampleText || '';
+}
 
 /**
  * Populate category dropdown with fetched categories
@@ -338,37 +395,8 @@ function displayWord(wordData) {
     Elements.translationDisplay.textContent = wordData.translation;
     Elements.translationInput.value = wordData.translation;
 
-    // Display sample sentences (simplified - just show text with line breaks)
-    if (wordData.sample_sentence && wordData.sample_sentence.trim()) {
-        // Parse sentences and display as numbered list
-        const sentences = wordData.sample_sentence
-            .split('\n')
-            .map(s => s.trim())
-            .filter(s => s.length > 0);
-
-        if (sentences.length > 0) {
-            const ol = document.createElement('ol');
-            ol.className = 'sentences-display-list';
-            sentences.forEach(sentence => {
-                const li = document.createElement('li');
-                li.textContent = sentence;
-                li.className = 'sentence-item';
-                ol.appendChild(li);
-            });
-            Elements.sampleDisplay.innerHTML = '';
-            Elements.sampleDisplay.appendChild(ol);
-            Elements.sampleDisplay.classList.remove('empty');
-        } else {
-            Elements.sampleDisplay.innerHTML = '<p class="empty-hint">No sample sentences yet. Click Edit to add some.</p>';
-            Elements.sampleDisplay.classList.add('empty');
-        }
-    } else {
-        Elements.sampleDisplay.innerHTML = '<p class="empty-hint">No sample sentences yet. Click Edit to add some.</p>';
-        Elements.sampleDisplay.classList.add('empty');
-    }
-
-    // Update sample input textarea
-    Elements.sampleInput.value = wordData.sample_sentence || '';
+    // Display sample sentences using helper function
+    displaySampleSentences(wordData.sample_sentence);
 
     // Update word input
     Elements.wordInput.value = wordData.word;
@@ -485,6 +513,21 @@ function handleCategoryChange(event) {
         Elements.wordCard.style.display = 'none';
         Elements.welcomeMessage.style.display = 'block';
         AppState.currentCategory = null;
+    }
+}
+
+/**
+ * Handle sort method change
+ */
+function handleSortChange(event) {
+    const sortBy = event.target.value;
+
+    if (AppState.currentCategory) {
+        AppState.currentSortBy = sortBy;
+        AppState.currentIndex = 0;  // Reset to first word in new sort order
+        loadWord(AppState.currentCategory, 0);
+
+        console.log(`🔄 Sort changed to: ${sortBy}`);
     }
 }
 
@@ -692,11 +735,6 @@ async function changeWordCategory() {
 
     if (newCategory === AppState.currentWord.category) {
         showError('Word is already in this category');
-        return;
-    }
-
-    // Confirm with user
-    if (!confirm(`Move "${AppState.currentWord.word}" from "${AppState.currentWord.category}" to "${newCategory}"?`)) {
         return;
     }
 

@@ -13,7 +13,6 @@
         <!-- Header Section -->
         <header class="app-header">
             <h1 class="app-title">📚 BKDict Vocabulary</h1>
-            <p class="app-subtitle">Your Personal English Vocabulary Learning Tool</p>
         </header>
 
         <!-- Control Panel -->
@@ -26,6 +25,15 @@
                     <option value="">-- Loading categories... --</option>
                 </select>
                 <span id="categoryInfo" class="category-info"></span>
+            </div>
+
+            <!-- Sort Toggle -->
+            <div class="control-group sort-group">
+                <label for="sortSelect" class="control-label">Sort by:</label>
+                <select id="sortSelect" class="sort-select">
+                    <option value="updated_at">Recent Edits (Latest First)</option>
+                    <option value="review_count">Most Reviewed</option>
+                </select>
             </div>
 
             <!-- Import XML Section -->
@@ -148,11 +156,6 @@
         </div>
 
     </div>
-
-    <!-- Footer -->
-    <footer class="app-footer">
-        <p>Built with Flask + MySQL | Use arrow keys (← →) to navigate between words</p>
-    </footer>
 
     <!-- JavaScript -->
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
