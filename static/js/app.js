@@ -71,6 +71,26 @@ const Elements = {
     cancelUploadBtn: null,
     uploadStatus: null,
 
+    // Add Word Modal
+    addWordBtn: null,
+    addWordModal: null,
+    closeModalBtn: null,
+    cancelModalBtn: null,
+    submitWordBtn: null,
+    newWord: null,
+    newTranslation: null,
+    newCategory: null,
+    newSample: null,
+    addWordStatus: null,
+
+    // Search
+    searchInput: null,
+    searchBtn: null,
+    clearSearchBtn: null,
+    searchResults: null,
+    searchResultsCount: null,
+    searchResultsList: null,
+
     // Messages
     welcomeMessage: null,
     loadingIndicator: null,
@@ -150,6 +170,26 @@ function cacheDOMElements() {
     Elements.cancelUploadBtn = document.getElementById('cancelUploadBtn');
     Elements.uploadStatus = document.getElementById('uploadStatus');
 
+    // Add Word Modal
+    Elements.addWordBtn = document.getElementById('addWordBtn');
+    Elements.addWordModal = document.getElementById('addWordModal');
+    Elements.closeModalBtn = document.getElementById('closeModalBtn');
+    Elements.cancelModalBtn = document.getElementById('cancelModalBtn');
+    Elements.submitWordBtn = document.getElementById('submitWordBtn');
+    Elements.newWord = document.getElementById('newWord');
+    Elements.newTranslation = document.getElementById('newTranslation');
+    Elements.newCategory = document.getElementById('newCategory');
+    Elements.newSample = document.getElementById('newSample');
+    Elements.addWordStatus = document.getElementById('addWordStatus');
+
+    // Search
+    Elements.searchInput = document.getElementById('searchInput');
+    Elements.searchBtn = document.getElementById('searchBtn');
+    Elements.clearSearchBtn = document.getElementById('clearSearchBtn');
+    Elements.searchResults = document.getElementById('searchResults');
+    Elements.searchResultsCount = document.getElementById('searchResultsCount');
+    Elements.searchResultsList = document.getElementById('searchResultsList');
+
     // Messages
     Elements.welcomeMessage = document.getElementById('welcomeMessage');
     Elements.loadingIndicator = document.getElementById('loadingIndicator');
@@ -198,6 +238,21 @@ function setupEventListeners() {
     Elements.importBtn.addEventListener('click', toggleImportPanel);
     Elements.uploadBtn.addEventListener('click', uploadXMLFile);
     Elements.cancelUploadBtn.addEventListener('click', toggleImportPanel);
+
+    // Add Word Modal
+    Elements.addWordBtn.addEventListener('click', openAddWordModal);
+    Elements.closeModalBtn.addEventListener('click', closeAddWordModal);
+    Elements.cancelModalBtn.addEventListener('click', closeAddWordModal);
+    Elements.submitWordBtn.addEventListener('click', submitNewWord);
+
+    // Search functionality
+    Elements.searchBtn.addEventListener('click', performSearch);
+    Elements.clearSearchBtn.addEventListener('click', clearSearch);
+    Elements.searchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            performSearch();
+        }
+    });
 }
 
 // ============================================
@@ -679,6 +734,269 @@ async function uploadXMLFile() {
         Elements.uploadStatus.className = 'upload-status error';
     } finally {
         Elements.uploadBtn.disabled = false;
+    }
+}
+
+// ============================================
+// Add Word Modal Functions
+// ============================================
+
+/**
+ * Open the Add Word modal and populate category dropdown
+ */
+function openAddWordModal() {
+    // Clear previous values
+    Elements.newWord.value = '';
+    Elements.newTranslation.value = '';
+    Elements.newSample.value = '';
+    Elements.addWordStatus.textContent = '';
+    Elements.addWordStatus.className = 'form-status';
+
+    // Populate category dropdown
+    Elements.newCategory.innerHTML = '<option value="">-- Select Category --</option>';
+
+    // Get categories from the main category select
+    const mainSelect = Elements.categorySelect;
+    for (let i = 1; i < mainSelect.options.length; i++) {  // Skip first "-- Select --" option
+        const option = document.createElement('option');
+        option.value = mainSelect.options[i].value;
+        option.textContent = mainSelect.options[i].textContent;
+        Elements.newCategory.appendChild(option);
+    }
+
+    // Show modal
+    Elements.addWordModal.style.display = 'flex';
+}
+
+/**
+ * Close the Add Word modal
+ */
+function closeAddWordModal() {
+    Elements.addWordModal.style.display = 'none';
+}
+
+/**
+ * Submit new word to backend
+ */
+async function submitNewWord() {
+    // Get values
+    const word = Elements.newWord.value.trim();
+    const translation = Elements.newTranslation.value.trim();
+    const category = Elements.newCategory.value.trim();
+    const sample = Elements.newSample.value.trim();
+
+    // Validate required fields
+    if (!word) {
+        Elements.addWordStatus.textContent = '⚠️ Word is required';
+        Elements.addWordStatus.className = 'form-status error';
+        return;
+    }
+
+    if (!translation) {
+        Elements.addWordStatus.textContent = '⚠️ Translation is required';
+        Elements.addWordStatus.className = 'form-status error';
+        return;
+    }
+
+    if (!category) {
+        Elements.addWordStatus.textContent = '⚠️ Category is required';
+        Elements.addWordStatus.className = 'form-status error';
+        return;
+    }
+
+    try {
+        Elements.submitWordBtn.disabled = true;
+        Elements.addWordStatus.textContent = '⏳ Adding word...';
+        Elements.addWordStatus.className = 'form-status';
+
+        const response = await fetch('/api/words', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                word: word,
+                translation: translation,
+                category: category,
+                sample_sentence: sample
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            Elements.addWordStatus.textContent = `✅ ${data.message}`;
+            Elements.addWordStatus.className = 'form-status success';
+
+            // Reload categories to update counts
+            await loadCategories();
+
+            // Close modal after 1.5 seconds
+            setTimeout(() => {
+                closeAddWordModal();
+
+                // If the word was added to current category, reload it
+                if (AppState.currentCategory === category) {
+                    loadWord(category, 0);  // Load first word (the newly added one if sorted by recent edits)
+                }
+            }, 1500);
+
+            console.log(`✅ Word "${word}" added successfully`);
+        } else {
+            if (data.duplicate) {
+                Elements.addWordStatus.textContent = `⚠️ ${data.error}`;
+            } else {
+                Elements.addWordStatus.textContent = `❌ ${data.error}`;
+            }
+            Elements.addWordStatus.className = 'form-status error';
+        }
+
+    } catch (error) {
+        console.error('Error adding word:', error);
+        Elements.addWordStatus.textContent = '❌ Network error while adding word';
+        Elements.addWordStatus.className = 'form-status error';
+    } finally {
+        Elements.submitWordBtn.disabled = false;
+    }
+}
+
+// ============================================
+// Search Functions
+// ============================================
+
+/**
+ * Perform word search
+ */
+async function performSearch() {
+    const query = Elements.searchInput.value.trim();
+
+    if (!query) {
+        showError('Please enter a search query');
+        return;
+    }
+
+    if (query.length < 2) {
+        showError('Search query must be at least 2 characters');
+        return;
+    }
+
+    try {
+        hideError();
+        showLoading(true);
+
+        const response = await fetch(`/api/words/search?q=${encodeURIComponent(query)}`);
+        const data = await response.json();
+
+        if (data.success) {
+            displaySearchResults(data);
+            Elements.clearSearchBtn.style.display = 'inline-block';
+            console.log(`✅ Found ${data.count} results for "${query}"`);
+        } else {
+            showError(data.error || 'Search failed');
+        }
+
+    } catch (error) {
+        console.error('Error searching:', error);
+        showError('Network error during search');
+    } finally {
+        showLoading(false);
+    }
+}
+
+/**
+ * Display search results
+ */
+function displaySearchResults(data) {
+    // Show search results panel
+    Elements.searchResults.style.display = 'block';
+    Elements.wordCard.style.display = 'none';
+    Elements.welcomeMessage.style.display = 'none';
+
+    // Update header
+    Elements.searchResultsCount.textContent = `Found ${data.count} result${data.count !== 1 ? 's' : ''} for "${data.query}"`;
+
+    // Clear previous results
+    Elements.searchResultsList.innerHTML = '';
+
+    if (data.count === 0) {
+        Elements.searchResultsList.innerHTML = `
+            <div class="search-no-results">
+                <p>No words found containing "${data.query}"</p>
+                <p>Try a different search term</p>
+            </div>
+        `;
+        return;
+    }
+
+    // Display results
+    data.results.forEach(result => {
+        const item = document.createElement('div');
+        item.className = 'search-result-item';
+        item.innerHTML = `
+            <div class="search-result-word">${escapeHTML(result.word)}</div>
+            <div class="search-result-translation">${escapeHTML(result.translation)}</div>
+            <div class="search-result-meta">
+                <span class="search-result-category">${escapeHTML(result.category)}</span>
+                <span>Reviews: ${result.review_count}</span>
+            </div>
+        `;
+
+        // Click to view word details
+        item.addEventListener('click', () => {
+            viewSearchResult(result);
+        });
+
+        Elements.searchResultsList.appendChild(item);
+    });
+}
+
+/**
+ * View a search result (load the word in its category)
+ */
+async function viewSearchResult(result) {
+    try {
+        // Set category
+        AppState.currentCategory = result.category;
+        Elements.categorySelect.value = result.category;
+
+        // Hide search results
+        Elements.searchResults.style.display = 'none';
+        Elements.wordCard.style.display = 'block';
+
+        // Load words in the category and find this word's index
+        const response = await fetch(`/api/words/${encodeURIComponent(result.category)}?index=0&sort_by=${AppState.currentSortBy}`);
+        const data = await response.json();
+
+        if (data.success) {
+            // Find the index of the clicked word
+            const wordResponse = await fetch(`/api/words/${encodeURIComponent(result.category)}?sort_by=${AppState.currentSortBy}`);
+            const wordData = await wordResponse.json();
+
+            // Simple approach: just load the first word and let user navigate
+            // Or we could find the exact index, but that would require additional API support
+            displayWord(data.word);
+            console.log(`✅ Viewing "${result.word}" in category "${result.category}"`);
+        }
+
+    } catch (error) {
+        console.error('Error viewing search result:', error);
+        showError('Failed to load word details');
+    }
+}
+
+/**
+ * Clear search and return to category view
+ */
+function clearSearch() {
+    Elements.searchInput.value = '';
+    Elements.clearSearchBtn.style.display = 'none';
+    Elements.searchResults.style.display = 'none';
+
+    // Show welcome or current category
+    if (AppState.currentCategory) {
+        Elements.wordCard.style.display = 'block';
+    } else {
+        Elements.welcomeMessage.style.display = 'block';
     }
 }
 

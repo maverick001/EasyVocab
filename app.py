@@ -266,6 +266,166 @@ def get_word_by_category(category):
             conn.close()
 
 
+@app.route('/api/words', methods=['POST'])
+def add_word():
+    """
+    Add a new word to the database
+
+    Request Body (JSON):
+        {
+            "word": "example",
+            "translation": "示例",
+            "sample_sentence": "This is an example.\nAnother example.",  // optional
+            "category": "日常词汇"
+        }
+
+    Returns:
+        JSON response with success status and new word ID
+    """
+    conn = None
+    try:
+        data = request.get_json()
+
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'No data provided'
+            }), 400
+
+        # Validate required fields
+        word = data.get('word', '').strip()
+        translation = data.get('translation', '').strip()
+        category = data.get('category', '').strip()
+        sample_sentence = data.get('sample_sentence', '').strip()
+
+        if not word:
+            return jsonify({
+                'success': False,
+                'error': 'Word is required'
+            }), 400
+
+        if not translation:
+            return jsonify({
+                'success': False,
+                'error': 'Translation is required'
+            }), 400
+
+        if not category:
+            return jsonify({
+                'success': False,
+                'error': 'Category is required'
+            }), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Check if word already exists in this category
+        cursor.execute("""
+            SELECT id FROM words
+            WHERE word = %s AND category = %s
+        """, (word, category))
+
+        existing_word = cursor.fetchone()
+
+        if existing_word:
+            return jsonify({
+                'success': False,
+                'error': f'Word "{word}" already exists in category "{category}"',
+                'duplicate': True
+            }), 409
+
+        # Insert new word
+        cursor.execute("""
+            INSERT INTO words (word, translation, sample_sentence, category, review_count, last_reviewed)
+            VALUES (%s, %s, %s, %s, 0, NULL)
+        """, (word, translation, sample_sentence if sample_sentence else None, category))
+
+        new_word_id = cursor.lastrowid
+        conn.commit()
+
+        # Update category counts
+        try:
+            cursor.callproc('update_category_counts')
+            conn.commit()
+        except Exception:
+            pass  # Non-critical
+
+        return jsonify({
+            'success': True,
+            'message': f'Word "{word}" added to category "{category}"',
+            'word_id': new_word_id
+        })
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route('/api/words/search', methods=['GET'])
+def search_words():
+    """
+    Search for words containing a specific sequence
+
+    Query Parameters:
+        q: Search query string (required)
+
+    Returns:
+        JSON response with matching words
+    """
+    conn = None
+    try:
+        query = request.args.get('q', '').strip()
+
+        if not query:
+            return jsonify({
+                'success': False,
+                'error': 'Search query is required'
+            }), 400
+
+        if len(query) < 2:
+            return jsonify({
+                'success': False,
+                'error': 'Search query must be at least 2 characters'
+            }), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Search for words containing the query (case-insensitive)
+        cursor.execute("""
+            SELECT id, word, translation, category, review_count, sample_sentence
+            FROM words
+            WHERE word LIKE %s
+            ORDER BY word ASC
+            LIMIT 100
+        """, (f'%{query}%',))
+
+        results = cursor.fetchall()
+
+        return jsonify({
+            'success': True,
+            'query': query,
+            'count': len(results),
+            'results': results
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+    finally:
+        if conn:
+            conn.close()
+
+
 @app.route('/api/words/<int:word_id>', methods=['PUT'])
 def update_word(word_id):
     """
