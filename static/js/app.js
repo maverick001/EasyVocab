@@ -754,14 +754,28 @@ async function changeWordCategory() {
         if (data.success) {
             console.log(`✅ ${data.message}`);
 
+            // Save current category before reloading
+            const savedCategory = AppState.currentCategory;
+
             // Reload categories to update counts
             await loadCategories();
+
+            // Restore category selection in dropdown
+            if (savedCategory) {
+                Elements.categorySelect.value = savedCategory;
+            }
 
             // Navigate to next word in current category
             navigateWord(1);
 
         } else {
-            showError(data.error || 'Failed to change category');
+            // Check if this is a duplicate word error
+            if (data.duplicate) {
+                // Show popup warning for duplicate
+                alert(data.error || 'This word already exists in the target category');
+            } else {
+                showError(data.error || 'Failed to change category');
+            }
         }
 
     } catch (error) {
@@ -776,39 +790,65 @@ async function changeWordCategory() {
 async function deleteCurrentWord() {
     if (!AppState.currentWord) return;
 
-    // Confirm with user
-    if (!confirm(`Are you sure you want to delete "${AppState.currentWord.word}"?\n\nThis action cannot be undone.`)) {
+    // Basic confirmation first
+    if (!confirm(`Are you sure you want to delete "${AppState.currentWord.word}"?`)) {
         return;
     }
 
     try {
-        const response = await fetch(`/api/words/${AppState.currentWord.id}`, {
+        // Check if word exists in other categories
+        const checkResponse = await fetch(`/api/words/${AppState.currentWord.id}`, {
+            method: 'DELETE'
+        });
+
+        const checkData = await checkResponse.json();
+
+        // If word exists in other categories, ask user for scope choice
+        if (checkData.requires_confirmation) {
+            const otherCats = checkData.other_categories.join('\n   - ');
+
+            // Show prompt with three clear options
+            const promptMessage = `Word "${checkData.word}" also exists in other categories:\n   - ${otherCats}\n\nChoose deletion scope:\n  1 = Delete only from "${checkData.current_category}"\n  2 = Delete from ALL categories\n  3 = Cancel (do not delete)\n\nEnter your choice (1, 2, or 3):`;
+
+            const userChoice = prompt(promptMessage);
+
+            if (userChoice === '1') {
+                // Delete only from current category
+                await performDelete(AppState.currentWord.id, 'current_category');
+            } else if (userChoice === '2') {
+                // Delete from all categories
+                await performDelete(AppState.currentWord.id, 'all_categories');
+            } else {
+                // User chose 3 or cancelled - do nothing
+                console.log('Deletion cancelled by user');
+            }
+        } else if (checkData.success) {
+            // Word was deleted successfully (only existed in current category)
+            await handleDeleteSuccess(checkData.message);
+        } else {
+            // Some other error occurred
+            showError(checkData.error || 'Failed to delete word');
+        }
+
+    } catch (error) {
+        console.error('Error deleting word:', error);
+        showError('Network error while deleting word');
+    }
+}
+
+/**
+ * Perform actual deletion with specified scope
+ */
+async function performDelete(wordId, scope) {
+    try {
+        const response = await fetch(`/api/words/${wordId}?scope=${scope}`, {
             method: 'DELETE'
         });
 
         const data = await response.json();
 
         if (data.success) {
-            console.log(`✅ ${data.message}`);
-
-            // Reload categories to update counts
-            await loadCategories();
-
-            // Load the same index (which will now show the next word)
-            if (AppState.currentCategory && AppState.totalInCategory > 1) {
-                // If we deleted the last word, go to previous
-                if (AppState.currentIndex >= AppState.totalInCategory - 1) {
-                    AppState.currentIndex = Math.max(0, AppState.currentIndex - 1);
-                }
-                await loadWord(AppState.currentCategory, AppState.currentIndex);
-            } else {
-                // No more words in this category
-                Elements.wordCard.style.display = 'none';
-                Elements.welcomeMessage.style.display = 'block';
-                AppState.currentCategory = null;
-                Elements.categorySelect.value = '';
-            }
-
+            await handleDeleteSuccess(data.message);
         } else {
             showError(data.error || 'Failed to delete word');
         }
@@ -816,6 +856,39 @@ async function deleteCurrentWord() {
     } catch (error) {
         console.error('Error deleting word:', error);
         showError('Network error while deleting word');
+    }
+}
+
+/**
+ * Handle successful deletion - reload categories and navigate
+ */
+async function handleDeleteSuccess(message) {
+    console.log(`✅ ${message}`);
+
+    // Save current category before reloading
+    const savedCategory = AppState.currentCategory;
+
+    // Reload categories to update counts
+    await loadCategories();
+
+    // Restore category selection in dropdown
+    if (savedCategory) {
+        Elements.categorySelect.value = savedCategory;
+    }
+
+    // Load the same index (which will now show the next word)
+    if (savedCategory && AppState.totalInCategory > 1) {
+        // If we deleted the last word, go to previous
+        if (AppState.currentIndex >= AppState.totalInCategory - 1) {
+            AppState.currentIndex = Math.max(0, AppState.currentIndex - 1);
+        }
+        await loadWord(savedCategory, AppState.currentIndex);
+    } else {
+        // No more words in this category
+        Elements.wordCard.style.display = 'none';
+        Elements.welcomeMessage.style.display = 'block';
+        AppState.currentCategory = null;
+        Elements.categorySelect.value = '';
     }
 }
 

@@ -298,57 +298,62 @@ def update_word(word_id):
                 'error': 'No data provided'
             }), 400
 
-        # Build dynamic UPDATE query based on provided fields
-        update_fields = []
-        params = []
-
-        if 'word' in data:
-            update_fields.append('word = %s')
-            params.append(data['word'])
-
-        if 'translation' in data:
-            update_fields.append('translation = %s')
-            params.append(data['translation'])
-
-        if 'sample_sentence' in data:
-            update_fields.append('sample_sentence = %s')
-            params.append(data['sample_sentence'])
-
-        if not update_fields:
-            return jsonify({
-                'success': False,
-                'error': 'No valid fields to update'
-            }), 400
-
-        # Add word_id to params
-        params.append(word_id)
-
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
-        # Execute update
-        update_query = f"""
-            UPDATE words
-            SET {', '.join(update_fields)}
-            WHERE id = %s
-        """
-        cursor.execute(update_query, params)
-        conn.commit()
+        # First, get the current word text
+        cursor.execute("SELECT word FROM words WHERE id = %s", (word_id,))
+        current_word_data = cursor.fetchone()
 
-        rows_affected = cursor.rowcount
-
-        if rows_affected > 0:
-            return jsonify({
-                'success': True,
-                'message': 'Word updated successfully'
-            })
-        else:
+        if not current_word_data:
             return jsonify({
                 'success': False,
                 'error': 'Word not found'
             }), 404
 
+        current_word_text = current_word_data['word']
+
+        # Update translation and sample_sentence across ALL instances of this word
+        if 'translation' in data or 'sample_sentence' in data:
+            shared_update_fields = []
+            shared_params = []
+
+            if 'translation' in data:
+                shared_update_fields.append('translation = %s')
+                shared_params.append(data['translation'])
+
+            if 'sample_sentence' in data:
+                shared_update_fields.append('sample_sentence = %s')
+                shared_params.append(data['sample_sentence'])
+
+            if shared_update_fields:
+                # Update ALL rows with the same word text
+                shared_params.append(current_word_text)
+                shared_update_query = f"""
+                    UPDATE words
+                    SET {', '.join(shared_update_fields)}
+                    WHERE word = %s
+                """
+                cursor.execute(shared_update_query, shared_params)
+
+        # Update the word text itself only for this specific row
+        if 'word' in data:
+            cursor.execute("""
+                UPDATE words
+                SET word = %s
+                WHERE id = %s
+            """, (data['word'], word_id))
+
+        conn.commit()
+
+        return jsonify({
+            'success': True,
+            'message': 'Word updated successfully'
+        })
+
     except Exception as e:
+        if conn:
+            conn.rollback()
         return jsonify({
             'success': False,
             'error': str(e)
@@ -361,7 +366,10 @@ def update_word(word_id):
 @app.route('/api/words/<int:word_id>/category', methods=['PUT'])
 def change_word_category(word_id):
     """
-    Change the category of a word
+    Move a word to a different category (or add to additional category)
+
+    Note: Each word can exist in multiple categories, but shares one translation and sample sentence.
+    This endpoint moves the word by creating it in the new category and removing it from the current category.
 
     Args:
         word_id: ID of the word to update (from URL path)
@@ -393,17 +401,57 @@ def change_word_category(word_id):
             }), 400
 
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
-        # Update category
+        # Get current word information
         cursor.execute("""
-            UPDATE words
-            SET category = %s
+            SELECT word, translation, sample_sentence, category, review_count, last_reviewed
+            FROM words
             WHERE id = %s
-        """, (new_category, word_id))
+        """, (word_id,))
+
+        current_word = cursor.fetchone()
+
+        if not current_word:
+            return jsonify({
+                'success': False,
+                'error': 'Word not found'
+            }), 404
+
+        # Check if word already exists in target category
+        cursor.execute("""
+            SELECT id FROM words
+            WHERE word = %s AND category = %s
+        """, (current_word['word'], new_category))
+
+        existing_word = cursor.fetchone()
+
+        if existing_word:
+            # Word already exists in target category - return error with special flag
+            return jsonify({
+                'success': False,
+                'error': f'Word "{current_word["word"]}" already exists in category "{new_category}"',
+                'duplicate': True
+            }), 409
+
+        # Word doesn't exist in target category - perform the move
+        # Step 1: Insert word into new category
+        cursor.execute("""
+            INSERT INTO words (word, translation, sample_sentence, category, review_count, last_reviewed)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (
+            current_word['word'],
+            current_word['translation'],
+            current_word['sample_sentence'],
+            new_category,
+            current_word['review_count'],
+            current_word['last_reviewed']
+        ))
+
+        # Step 2: Delete word from current category
+        cursor.execute("DELETE FROM words WHERE id = %s", (word_id,))
 
         conn.commit()
-        rows_affected = cursor.rowcount
 
         # Update category counts
         try:
@@ -412,18 +460,14 @@ def change_word_category(word_id):
         except Exception:
             pass  # Non-critical
 
-        if rows_affected > 0:
-            return jsonify({
-                'success': True,
-                'message': f'Word moved to category "{new_category}"'
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'error': 'Word not found'
-            }), 404
+        return jsonify({
+            'success': True,
+            'message': f'Word moved to category "{new_category}"'
+        })
 
     except Exception as e:
+        if conn:
+            conn.rollback()
         return jsonify({
             'success': False,
             'error': str(e)
@@ -438,21 +482,75 @@ def delete_word(word_id):
     """
     Delete a word from the database
 
+    Query Parameters:
+        scope: 'current_category' (default) or 'all_categories'
+               - current_category: Delete only from current category
+               - all_categories: Delete from all categories
+
     Args:
         word_id: ID of the word to delete (from URL path)
 
     Returns:
         JSON response with success status
+        If word exists in multiple categories and scope is not specified,
+        returns a special response requesting user confirmation
     """
     conn = None
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
+        scope = request.args.get('scope', None)
 
-        # Delete the word
-        cursor.execute("DELETE FROM words WHERE id = %s", (word_id,))
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # First, get the current word information
+        cursor.execute("""
+            SELECT word, category
+            FROM words
+            WHERE id = %s
+        """, (word_id,))
+
+        current_word = cursor.fetchone()
+
+        if not current_word:
+            return jsonify({
+                'success': False,
+                'error': 'Word not found'
+            }), 404
+
+        # Check if this word exists in other categories
+        cursor.execute("""
+            SELECT category
+            FROM words
+            WHERE word = %s AND id != %s
+        """, (current_word['word'], word_id))
+
+        other_categories = cursor.fetchall()
+
+        # If word exists in other categories and no scope specified, ask user
+        if other_categories and scope is None:
+            category_list = [cat['category'] for cat in other_categories]
+            return jsonify({
+                'success': False,
+                'requires_confirmation': True,
+                'word': current_word['word'],
+                'current_category': current_word['category'],
+                'other_categories': category_list,
+                'message': f'Word "{current_word["word"]}" also exists in {len(category_list)} other categor{"y" if len(category_list) == 1 else "ies"}'
+            }), 200
+
+        # Perform deletion based on scope
+        if scope == 'all_categories':
+            # Delete all instances of this word across all categories
+            cursor.execute("DELETE FROM words WHERE word = %s", (current_word['word'],))
+            rows_affected = cursor.rowcount
+            message = f'Word "{current_word["word"]}" deleted from all categories'
+        else:
+            # Delete only from current category (default behavior)
+            cursor.execute("DELETE FROM words WHERE id = %s", (word_id,))
+            rows_affected = cursor.rowcount
+            message = f'Word "{current_word["word"]}" deleted from category "{current_word["category"]}"'
+
         conn.commit()
-        rows_affected = cursor.rowcount
 
         # Update category counts
         try:
@@ -464,7 +562,7 @@ def delete_word(word_id):
         if rows_affected > 0:
             return jsonify({
                 'success': True,
-                'message': 'Word deleted successfully'
+                'message': message
             })
         else:
             return jsonify({
@@ -473,6 +571,8 @@ def delete_word(word_id):
             }), 404
 
     except Exception as e:
+        if conn:
+            conn.rollback()
         return jsonify({
             'success': False,
             'error': str(e)
