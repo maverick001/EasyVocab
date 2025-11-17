@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BKDict - Vocabulary Learning App</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
@@ -154,9 +155,8 @@
             <div class="translation-section">
                 <div class="section-header">
                     <h3 class="section-title">Translation:</h3>
-                    <button id="editTransBtn" class="btn btn-edit">Edit</button>
                 </div>
-                <div id="translationDisplay" class="content-display"></div>
+                <div id="translationDisplay" class="content-display editable-field" title="Click to edit"></div>
                 <div id="translationEdit" class="content-edit" style="display: none;">
                     <textarea id="translationInput" class="content-textarea" rows="4"></textarea>
                     <div class="edit-actions">
@@ -170,10 +170,9 @@
             <div class="sample-section">
                 <div class="section-header">
                     <h3 class="section-title">Sample Sentences:</h3>
-                    <button id="editSampleBtn" class="btn btn-edit">Edit</button>
                 </div>
-                <div id="sampleDisplay" class="content-display empty">
-                    <p class="empty-hint">No sample sentences yet. Click Edit to add some.</p>
+                <div id="sampleDisplay" class="content-display empty editable-field" title="Click to edit">
+                    <p class="empty-hint">No sample sentences yet. Click here to add some.</p>
                 </div>
                 <div id="sampleEdit" class="content-edit" style="display: none;">
                     <p class="edit-hint">Type each sentence on a new line:</p>

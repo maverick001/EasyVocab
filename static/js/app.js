@@ -47,7 +47,6 @@ const Elements = {
     translationDisplay: null,
     translationEdit: null,
     translationInput: null,
-    editTransBtn: null,
     saveTransBtn: null,
     cancelTransBtn: null,
 
@@ -55,7 +54,6 @@ const Elements = {
     sampleDisplay: null,
     sampleEdit: null,
     sampleInput: null,
-    editSampleBtn: null,
     saveSampleBtn: null,
     cancelSampleBtn: null,
 
@@ -146,7 +144,6 @@ function cacheDOMElements() {
     Elements.translationDisplay = document.getElementById('translationDisplay');
     Elements.translationEdit = document.getElementById('translationEdit');
     Elements.translationInput = document.getElementById('translationInput');
-    Elements.editTransBtn = document.getElementById('editTransBtn');
     Elements.saveTransBtn = document.getElementById('saveTransBtn');
     Elements.cancelTransBtn = document.getElementById('cancelTransBtn');
 
@@ -154,7 +151,6 @@ function cacheDOMElements() {
     Elements.sampleDisplay = document.getElementById('sampleDisplay');
     Elements.sampleEdit = document.getElementById('sampleEdit');
     Elements.sampleInput = document.getElementById('sampleInput');
-    Elements.editSampleBtn = document.getElementById('editSampleBtn');
     Elements.saveSampleBtn = document.getElementById('saveSampleBtn');
     Elements.cancelSampleBtn = document.getElementById('cancelSampleBtn');
 
@@ -212,13 +208,13 @@ function setupEventListeners() {
     Elements.saveWordBtn.addEventListener('click', () => saveWord());
     Elements.cancelWordBtn.addEventListener('click', () => toggleEditMode('word', false));
 
-    // Translation editing
-    Elements.editTransBtn.addEventListener('click', () => toggleEditMode('translation', true));
+    // Translation editing - click on display to edit
+    Elements.translationDisplay.addEventListener('click', () => toggleEditMode('translation', true));
     Elements.saveTransBtn.addEventListener('click', () => saveTranslation());
     Elements.cancelTransBtn.addEventListener('click', () => toggleEditMode('translation', false));
 
-    // Sample sentence editing (simplified)
-    Elements.editSampleBtn.addEventListener('click', () => toggleEditMode('sample', true));
+    // Sample sentence editing - click on display to edit
+    Elements.sampleDisplay.addEventListener('click', () => toggleEditMode('sample', true));
     Elements.saveSampleBtn.addEventListener('click', () => saveSample());
     Elements.cancelSampleBtn.addEventListener('click', () => toggleEditMode('sample', false));
 
@@ -489,7 +485,6 @@ function toggleEditMode(type, isEditing) {
         AppState.isEditingTranslation = isEditing;
         Elements.translationDisplay.style.display = isEditing ? 'none' : 'block';
         Elements.translationEdit.style.display = isEditing ? 'block' : 'none';
-        Elements.editTransBtn.style.display = isEditing ? 'none' : 'inline-flex';
 
         if (isEditing) {
             Elements.translationInput.focus();
@@ -498,7 +493,6 @@ function toggleEditMode(type, isEditing) {
         AppState.isEditingSample = isEditing;
         Elements.sampleDisplay.style.display = isEditing ? 'none' : 'block';
         Elements.sampleEdit.style.display = isEditing ? 'block' : 'none';
-        Elements.editSampleBtn.style.display = isEditing ? 'none' : 'inline-flex';
 
         if (isEditing) {
             Elements.sampleInput.focus();
