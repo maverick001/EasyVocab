@@ -424,11 +424,11 @@ body {
 }
 
 /* Review Counter Circle */
+/* Review Counter Circle (top right) */
 .review-counter {
     position: absolute;
     right: var(--spacing-lg);
-    top: 50%;
-    transform: translateY(-50%);
+    top: -12px;
     width: 60px;
     height: 60px;
     border-radius: 50%;
@@ -441,16 +441,53 @@ body {
     font-weight: bold;
     cursor: pointer;
     box-shadow: 0 4px 8px var(--shadow);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* History Dropdown (right side, below counter) */
+.history-dropdown-container {
+    position: absolute;
+    bottom: var(--spacing-sm);
+    right: var(--spacing-lg);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+
+.history-label {
+    display: none;
+}
+
+.history-select {
+    padding: 0.4rem 0.5rem;
+    font-size: 0.86rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: white;
+    color: var(--text-primary);
+    cursor: pointer;
     transition: all 0.3s ease;
+    width: 150px;
+}
+
+.history-select:hover {
+    border-color: var(--primary-blue);
+}
+
+.history-select:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(135, 206, 235, 0.2);
 }
 
 .review-counter:hover {
-    transform: translateY(-50%) scale(1.1);
+    transform: scale(1.1);
     box-shadow: 0 6px 12px rgba(70, 130, 180, 0.3);
 }
 
 .review-counter:active {
-    transform: translateY(-50%) scale(0.95);
+    transform: scale(0.95);
 }
 
 /* Word Actions Section */

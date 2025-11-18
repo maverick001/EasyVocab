@@ -60,6 +60,84 @@ def get_db_connection():
     return db_pool.get_connection()
 
 
+def ensure_word_history_table():
+    """
+    Ensure word_history table exists, create if it doesn't
+    Also populates initial history from existing words
+    """
+    connection = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        # Create word_history table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS word_history (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                word_id INT NOT NULL COMMENT 'Reference to words.id',
+                word VARCHAR(255) NOT NULL COMMENT 'The word text at this point in time',
+                translation TEXT NOT NULL COMMENT 'Translation at this point in time',
+                sample_sentence TEXT DEFAULT NULL COMMENT 'Sample sentence at this point in time',
+                category VARCHAR(100) NOT NULL COMMENT 'Category at this point in time',
+                modified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'When this version was created',
+                modification_type ENUM('created', 'updated', 'moved') NOT NULL DEFAULT 'updated' COMMENT 'Type of modification',
+
+                INDEX idx_word_id (word_id),
+                INDEX idx_modified_at (modified_at),
+                INDEX idx_word_id_modified (word_id, modified_at DESC)
+            ) ENGINE=InnoDB
+            DEFAULT CHARSET=utf8mb4
+            COLLATE=utf8mb4_unicode_ci
+            COMMENT='Word modification history tracking'
+        """)
+
+        # Populate initial history from existing words (only if table was just created)
+        cursor.execute("SELECT COUNT(*) FROM word_history")
+        count = cursor.fetchone()[0]
+
+        if count == 0:
+            cursor.execute("""
+                INSERT INTO word_history (word_id, word, translation, sample_sentence, category, modified_at, modification_type)
+                SELECT
+                    id,
+                    word,
+                    translation,
+                    sample_sentence,
+                    category,
+                    created_at,
+                    'created'
+                FROM words
+            """)
+            connection.commit()
+            print("✓ Word history table initialized with existing words")
+
+        cursor.close()
+    except mysql.connector.Error as err:
+        print(f"✗ Error ensuring word_history table: {err}")
+    finally:
+        if connection:
+            connection.close()
+
+
+def create_history_record(cursor, word_id, word_text, translation, sample_sentence, category, modification_type='updated'):
+    """
+    Create a history record for a word modification
+
+    Args:
+        cursor: MySQL cursor object
+        word_id: ID of the word being modified
+        word_text: Current word text
+        translation: Current translation
+        sample_sentence: Current sample sentence
+        category: Current category
+        modification_type: Type of modification ('created', 'updated', 'moved')
+    """
+    cursor.execute("""
+        INSERT INTO word_history (word_id, word, translation, sample_sentence, category, modification_type)
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """, (word_id, word_text, translation, sample_sentence, category, modification_type))
+
+
 def allowed_file(filename):
     """
     Check if uploaded file has allowed extension
@@ -341,6 +419,18 @@ def add_word():
         """, (word, translation, sample_sentence if sample_sentence else None, category))
 
         new_word_id = cursor.lastrowid
+
+        # Create history record for new word
+        create_history_record(
+            cursor,
+            new_word_id,
+            word,
+            translation,
+            sample_sentence if sample_sentence else None,
+            category,
+            'created'
+        )
+
         conn.commit()
 
         # Update category counts
@@ -414,6 +504,61 @@ def search_words():
             'query': query,
             'count': len(results),
             'results': results
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route('/api/words/<int:word_id>/history', methods=['GET'])
+def get_word_history(word_id):
+    """
+    Get modification history for a word
+
+    Args:
+        word_id: ID of the word (from URL path)
+
+    Returns:
+        JSON response with history records sorted by date (latest first)
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Get all history records for this word_id
+        cursor.execute("""
+            SELECT
+                id,
+                word,
+                translation,
+                sample_sentence,
+                category,
+                modified_at,
+                modification_type
+            FROM word_history
+            WHERE word_id = %s
+            ORDER BY modified_at DESC
+        """, (word_id,))
+
+        history_records = cursor.fetchall()
+
+        # Convert datetime to string for JSON serialization
+        for record in history_records:
+            if record['modified_at']:
+                record['modified_at'] = record['modified_at'].strftime('%Y-%m-%d %H:%M:%S')
+
+        return jsonify({
+            'success': True,
+            'word_id': word_id,
+            'count': len(history_records),
+            'history': history_records
         })
 
     except Exception as e:
@@ -503,6 +648,25 @@ def update_word(word_id):
                 SET word = %s
                 WHERE id = %s
             """, (data['word'], word_id))
+
+        # Get the updated word data for history record
+        cursor.execute("""
+            SELECT word, translation, sample_sentence, category
+            FROM words
+            WHERE id = %s
+        """, (word_id,))
+        updated_word = cursor.fetchone()
+
+        # Create history record
+        create_history_record(
+            cursor,
+            word_id,
+            updated_word['word'],
+            updated_word['translation'],
+            updated_word['sample_sentence'],
+            updated_word['category'],
+            'updated'
+        )
 
         conn.commit()
 
@@ -607,6 +771,19 @@ def change_word_category(word_id):
             current_word['review_count'],
             current_word['last_reviewed']
         ))
+
+        new_word_id = cursor.lastrowid
+
+        # Create history record for the moved word
+        create_history_record(
+            cursor,
+            new_word_id,
+            current_word['word'],
+            current_word['translation'],
+            current_word['sample_sentence'],
+            new_category,
+            'moved'
+        )
 
         # Step 2: Delete word from current category
         cursor.execute("DELETE FROM words WHERE id = %s", (word_id,))
@@ -966,6 +1143,9 @@ if __name__ == '__main__':
 
     # Initialize database connection pool
     init_db_pool()
+
+    # Ensure word history table exists
+    ensure_word_history_table()
 
     # Run Flask development server
     print("\n" + "="*50)

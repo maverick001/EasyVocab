@@ -14,7 +14,8 @@ const AppState = {
     currentSortBy: 'updated_at',  // Default sort by recent edits
     isEditingTranslation: false,
     isEditingSample: false,
-    isEditingWord: false
+    isEditingWord: false,
+    wordHistory: []  // Store modification history for current word
 };
 
 // ============================================
@@ -88,6 +89,9 @@ const Elements = {
     searchResults: null,
     searchResultsCount: null,
     searchResultsList: null,
+
+    // History
+    historySelect: null,
 
     // Messages
     welcomeMessage: null,
@@ -186,6 +190,9 @@ function cacheDOMElements() {
     Elements.searchResultsCount = document.getElementById('searchResultsCount');
     Elements.searchResultsList = document.getElementById('searchResultsList');
 
+    // History
+    Elements.historySelect = document.getElementById('historySelect');
+
     // Messages
     Elements.welcomeMessage = document.getElementById('welcomeMessage');
     Elements.loadingIndicator = document.getElementById('loadingIndicator');
@@ -249,6 +256,9 @@ function setupEventListeners() {
             performSearch();
         }
     });
+
+    // History functionality
+    Elements.historySelect.addEventListener('change', handleHistoryChange);
 }
 
 // ============================================
@@ -342,6 +352,9 @@ async function updateWord(wordId, updates) {
                 displaySampleSentences(updates.sample_sentence);
             }
 
+            // Reload history after update
+            loadWordHistory(AppState.currentWord.id);
+
             return true;
         } else {
             showError(data.error || 'Failed to update word');
@@ -401,10 +414,13 @@ function displaySampleSentences(sampleText) {
  * Populate category dropdown with fetched categories
  */
 function populateCategoryDropdown(categories) {
+    // Sort categories by word count (descending - most words first)
+    const sortedCategories = [...categories].sort((a, b) => b.word_count - a.word_count);
+
     // Populate main category selector
     Elements.categorySelect.innerHTML = '<option value="">-- Select a Category --</option>';
 
-    categories.forEach(cat => {
+    sortedCategories.forEach(cat => {
         const option = document.createElement('option');
         option.value = cat.name;
         option.textContent = `${cat.name} (${cat.word_count} words)`;
@@ -414,7 +430,7 @@ function populateCategoryDropdown(categories) {
     // Also populate the change category selector
     Elements.changeCategorySelect.innerHTML = '<option value="">-- Select Category --</option>';
 
-    categories.forEach(cat => {
+    sortedCategories.forEach(cat => {
         const option = document.createElement('option');
         option.value = cat.name;
         option.textContent = cat.name;
@@ -458,6 +474,9 @@ function displayWord(wordData) {
 
     // Update navigation button states
     updateNavigationButtons();
+
+    // Load modification history for this word
+    loadWordHistory(wordData.id);
 }
 
 /**
@@ -995,6 +1014,98 @@ function clearSearch() {
 }
 
 // ============================================
+// Word History Functions
+// ============================================
+
+/**
+ * Load modification history for current word
+ */
+async function loadWordHistory(wordId) {
+    try {
+        const response = await fetch(`/api/words/${wordId}/history`);
+        const data = await response.json();
+
+        if (data.success && data.history && data.history.length > 0) {
+            // Clear existing options
+            Elements.historySelect.innerHTML = '';
+
+            // Add latest version option (using the first record's datetime since sorted DESC)
+            const latestRecord = data.history[0];
+            const latestOption = document.createElement('option');
+            latestOption.value = '';
+            latestOption.textContent = latestRecord.modified_at;
+            Elements.historySelect.appendChild(latestOption);
+
+            // Add remaining history options (skip first one since it's already shown as Latest)
+            data.history.slice(1).forEach((record) => {
+                const option = document.createElement('option');
+                option.value = record.id;
+                option.textContent = record.modified_at;
+                option.dataset.historyData = JSON.stringify(record);
+
+                Elements.historySelect.appendChild(option);
+            });
+
+            // Store history data in AppState for easy access
+            AppState.wordHistory = data.history;
+        }
+    } catch (error) {
+        console.error('Error loading word history:', error);
+    }
+}
+
+/**
+ * Handle history dropdown selection change
+ */
+function handleHistoryChange() {
+    const selectedOption = Elements.historySelect.options[Elements.historySelect.selectedIndex];
+
+    if (!selectedOption.value) {
+        // "Latest" selected - reload current word
+        if (AppState.currentWord) {
+            loadWord(AppState.currentCategory, AppState.currentIndex);
+        }
+    } else {
+        // Historical version selected
+        const historyData = JSON.parse(selectedOption.dataset.historyData);
+        displayHistoricalVersion(historyData);
+    }
+}
+
+/**
+ * Display a historical version of the word (read-only view)
+ */
+function displayHistoricalVersion(historyRecord) {
+    // Update display with historical data
+    Elements.wordDisplay.textContent = historyRecord.word;
+    Elements.translationDisplay.textContent = historyRecord.translation;
+
+    // Display sample sentence (handle multiple lines)
+    if (historyRecord.sample_sentence && historyRecord.sample_sentence.trim()) {
+        Elements.sampleDisplay.classList.remove('empty');
+        const sentences = historyRecord.sample_sentence.split('\n').filter(s => s.trim());
+
+        if (sentences.length > 0) {
+            Elements.sampleDisplay.innerHTML = '';
+            sentences.forEach(sentence => {
+                const p = document.createElement('p');
+                p.textContent = sentence;
+                Elements.sampleDisplay.appendChild(p);
+            });
+        } else {
+            Elements.sampleDisplay.innerHTML = '<p class="empty-hint">No sample sentences in this version.</p>';
+            Elements.sampleDisplay.classList.add('empty');
+        }
+    } else {
+        Elements.sampleDisplay.innerHTML = '<p class="empty-hint">No sample sentences in this version.</p>';
+        Elements.sampleDisplay.classList.add('empty');
+    }
+
+    // Note: Historical versions are read-only, so we don't update editable states
+    console.log(`📜 Viewing historical version from ${historyRecord.modified_at}`);
+}
+
+// ============================================
 // Word Actions Functions
 // ============================================
 
@@ -1016,9 +1127,9 @@ async function incrementReviewCounter() {
             Elements.reviewCount.textContent = data.review_count;
 
             // Add visual feedback
-            Elements.reviewCounter.style.transform = 'translateY(-50%) scale(1.2)';
+            Elements.reviewCounter.style.transform = 'scale(1.2)';
             setTimeout(() => {
-                Elements.reviewCounter.style.transform = 'translateY(-50%) scale(1)';
+                Elements.reviewCounter.style.transform = 'scale(1)';
             }, 200);
 
             console.log(`✅ Review count updated: ${data.review_count}`);
