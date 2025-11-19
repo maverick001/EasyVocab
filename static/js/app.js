@@ -15,7 +15,9 @@ const AppState = {
     isEditingTranslation: false,
     isEditingSample: false,
     isEditingWord: false,
-    wordHistory: []  // Store modification history for current word
+    wordHistory: [],  // Store modification history for current word
+    dailyProgress: 0,  // Daily activity counter (resets at midnight)
+    countedWordIds: new Set()  // Track which words were counted today (max 1 per word per day)
 };
 
 // ============================================
@@ -94,6 +96,9 @@ const Elements = {
     // History
     historySelect: null,
 
+    // Daily Counter
+    dailyCounter: null,
+
     // Messages
     welcomeMessage: null,
     loadingIndicator: null,
@@ -112,6 +117,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Setup event listeners
     setupEventListeners();
+
+    // Initialize daily progress counter
+    initializeDailyCounter();
 
     // Load categories
     loadCategories();
@@ -194,6 +202,9 @@ function cacheDOMElements() {
 
     // History
     Elements.historySelect = document.getElementById('historySelect');
+
+    // Daily Counter
+    Elements.dailyCounter = document.getElementById('dailyCounter');
 
     // Messages
     Elements.welcomeMessage = document.getElementById('welcomeMessage');
@@ -675,6 +686,8 @@ async function saveTranslation() {
 
     if (success) {
         toggleEditMode('translation', false);
+        // Increment daily progress counter (max once per word per day)
+        incrementDailyCounter(AppState.currentWord.id);
     }
 }
 
@@ -691,6 +704,8 @@ async function saveSample() {
 
     if (success) {
         toggleEditMode('sample', false);
+        // Increment daily progress counter (max once per word per day)
+        incrementDailyCounter(AppState.currentWord.id);
     }
 }
 
@@ -1162,7 +1177,113 @@ function displayHistoricalVersion(historyRecord) {
     }
 
     // Note: Historical versions are read-only, so we don't update editable states
-    console.log(`📜 Viewing historical version from ${historyRecord.modified_at}`);
+    console.log(`📜 Viewing historical version from ${historyRecord.modified_date}`);
+}
+
+// ============================================
+// Daily Progress Counter Functions
+// ============================================
+
+/**
+ * Initialize daily progress counter from localStorage
+ * Resets at midnight
+ */
+function initializeDailyCounter() {
+    const today = new Date().toDateString();
+    const savedData = localStorage.getItem('dailyProgress');
+
+    if (savedData) {
+        const data = JSON.parse(savedData);
+
+        // Check if the saved date is today
+        if (data.date === today) {
+            AppState.dailyProgress = data.count;
+            AppState.countedWordIds = new Set(data.wordIds || []);
+        } else {
+            // New day, reset counter
+            AppState.dailyProgress = 0;
+            AppState.countedWordIds = new Set();
+            saveDailyProgress();
+        }
+    } else {
+        AppState.dailyProgress = 0;
+        AppState.countedWordIds = new Set();
+        saveDailyProgress();
+    }
+
+    updateDailyCounterDisplay();
+    scheduleMidnightReset();
+}
+
+/**
+ * Increment daily progress counter (max once per word per day)
+ */
+function incrementDailyCounter(wordId) {
+    if (!wordId) return;
+
+    // Check if this word has already been counted today
+    if (AppState.countedWordIds.has(wordId)) {
+        console.log(`📊 Word ${wordId} already counted today`);
+        return;
+    }
+
+    // Add word to counted set and increment counter
+    AppState.countedWordIds.add(wordId);
+    AppState.dailyProgress++;
+    saveDailyProgress();
+    updateDailyCounterDisplay();
+    console.log(`📊 Daily progress: ${AppState.dailyProgress}/100 (word ${wordId})`);
+}
+
+/**
+ * Save daily progress to localStorage
+ */
+function saveDailyProgress() {
+    const today = new Date().toDateString();
+    localStorage.setItem('dailyProgress', JSON.stringify({
+        date: today,
+        count: AppState.dailyProgress,
+        wordIds: Array.from(AppState.countedWordIds)
+    }));
+}
+
+/**
+ * Update daily counter display in UI
+ */
+function updateDailyCounterDisplay() {
+    if (Elements.dailyCounter) {
+        Elements.dailyCounter.textContent = `${AppState.dailyProgress}/100`;
+
+        // Change color to green when >= 100
+        if (AppState.dailyProgress >= 100) {
+            Elements.dailyCounter.classList.add('completed');
+        } else {
+            Elements.dailyCounter.classList.remove('completed');
+        }
+    }
+}
+
+/**
+ * Schedule counter reset at midnight
+ */
+function scheduleMidnightReset() {
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 1, 0); // 00:00:01 AM
+
+    const timeUntilMidnight = tomorrow - now;
+
+    setTimeout(() => {
+        AppState.dailyProgress = 0;
+        AppState.countedWordIds = new Set();
+        saveDailyProgress();
+        updateDailyCounterDisplay();
+        console.log('🔄 Daily counter reset at midnight');
+
+        // Schedule next reset
+        scheduleMidnightReset();
+    }, timeUntilMidnight);
 }
 
 // ============================================
@@ -1191,6 +1312,9 @@ async function incrementReviewCounter() {
             setTimeout(() => {
                 Elements.reviewCounter.style.transform = 'scale(1)';
             }, 200);
+
+            // Increment daily progress counter (max once per word per day)
+            incrementDailyCounter(AppState.currentWord.id);
 
             console.log(`✅ Review count updated: ${data.review_count}`);
         } else {
@@ -1236,6 +1360,9 @@ async function changeWordCategory() {
 
         if (data.success) {
             console.log(`✅ ${data.message}`);
+
+            // Increment daily progress counter (max once per word per day)
+            incrementDailyCounter(AppState.currentWord.id);
 
             // Save current category before reloading
             const savedCategory = AppState.currentCategory;
@@ -1347,6 +1474,9 @@ async function performDelete(wordId, scope) {
  */
 async function handleDeleteSuccess(message) {
     console.log(`✅ ${message}`);
+
+    // Increment daily progress counter (max once per word per day)
+    incrementDailyCounter(AppState.currentWord.id);
 
     // Save current category before reloading
     const savedCategory = AppState.currentCategory;

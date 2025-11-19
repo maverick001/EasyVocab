@@ -371,6 +371,26 @@ body {
     border-radius: var(--radius-sm);
 }
 
+/* Daily Progress Counter (next to position info) */
+.daily-counter-badge {
+    position: absolute;
+    top: var(--spacing-sm);
+    left: 180px;
+    font-weight: 600;
+    color: #333;
+    font-size: 0.9rem;
+    background: #FFE54C;  /* Bright yellow */
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    border: 2px solid #FFD700;  /* Gold border */
+    transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+.daily-counter-badge.completed {
+    background: #90EE90;
+    border-color: #32CD32;
+}
+
 /* Word Content Area */
 .word-content {
     width: 100%;
