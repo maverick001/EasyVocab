@@ -168,6 +168,17 @@ def index():
     return render_template('index.html')
 
 
+@app.route('/quiz')
+def quiz():
+    """
+    Serve the quiz page
+
+    Returns:
+        Rendered HTML template
+    """
+    return render_template('quiz.html')
+
+
 @app.route('/favicon.ico')
 def favicon():
     """
@@ -1107,6 +1118,199 @@ def get_category_count(category):
             'count': count
         })
 
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/quiz/random-words', methods=['GET'])
+def get_random_quiz_words():
+    """
+    Get random words for quiz (only words with review_count > 0)
+
+    Query Parameters:
+        limit: Number of words to return (default=10)
+
+    Returns:
+        JSON response:
+        {
+            "success": true,
+            "count": 10,
+            "words": [
+                {"id": 1, "word": "example", "translation": "例子"},
+                ...
+            ]
+        }
+    """
+    conn = None
+    try:
+        limit = int(request.args.get('limit', 10))
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Get random words with review_count > 0
+        cursor.execute("""
+            SELECT id, word, translation
+            FROM words
+            WHERE review_count > 0
+            ORDER BY RAND()
+            LIMIT %s
+        """, (limit,))
+
+        words = cursor.fetchall()
+
+        if not words:
+            return jsonify({
+                'success': False,
+                'error': 'No reviewed words found. Please review some words first by clicking the counter badge.',
+                'count': 0
+            }), 404
+
+        return jsonify({
+            'success': True,
+            'count': len(words),
+            'words': words
+        })
+
+    except ValueError:
+        return jsonify({
+            'success': False,
+            'error': 'Invalid limit parameter'
+        }), 400
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route('/api/quiz/generate', methods=['POST'])
+def generate_quiz():
+    """
+    Generate quiz questions using Ollama AI
+
+    Request Body (JSON):
+        {
+            "words": [
+                {"id": 1, "word": "example", "translation": "例子"},
+                ...
+            ]
+        }
+
+    Returns:
+        JSON response with quiz questions:
+        {
+            "success": true,
+            "questions": [
+                {
+                    "word_id": 1,
+                    "word": "example",
+                    "options": ["例子", "错误1", "错误2", "错误3"],
+                    "correct_answer": 0
+                },
+                ...
+            ]
+        }
+    """
+    try:
+        data = request.get_json()
+
+        if not data or 'words' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Words array is required'
+            }), 400
+
+        words = data['words']
+
+        if not words or len(words) == 0:
+            return jsonify({
+                'success': False,
+                'error': 'At least one word is required'
+            }), 400
+
+        questions = []
+
+        # Generate questions for each word using Ollama
+        for word_data in words:
+            correct_word = word_data.get('word', '')
+            translation = word_data.get('translation', '')
+            word_id = word_data.get('id')
+
+            # Prepare prompt for Ollama to generate 2 plausible wrong English words
+            prompt = f'''For the Chinese translation "{translation}" (correct English word: {correct_word}), generate 2 plausible but INCORRECT English words that could mislead someone.
+
+Requirements:
+- Each wrong answer should be a realistic English word that sounds plausible for this Chinese meaning
+- They should be different from the correct answer: {correct_word}
+- Output ONLY 2 English words, one per line, nothing else
+- No numbering, no explanations, just the words'''
+
+            # Call Ollama API
+            ollama_url = "http://localhost:11434/api/generate"
+            ollama_payload = {
+                "model": "gemma3n:e2b",
+                "prompt": prompt,
+                "stream": False
+            }
+
+            response = requests.post(ollama_url, json=ollama_payload, timeout=30)
+
+            if response.status_code == 200:
+                result = response.json()
+                generated_text = result.get('response', '').strip()
+
+                # Parse the 2 wrong answers
+                wrong_answers = [line.strip() for line in generated_text.split('\n') if line.strip()][:2]
+
+                # Ensure we have exactly 2 wrong answers
+                while len(wrong_answers) < 2:
+                    wrong_answers.append(f"option{len(wrong_answers) + 1}")
+
+                # Create options array with correct answer and 2 wrong answers (3 total)
+                options = [correct_word] + wrong_answers[:2]
+
+                # Shuffle options but remember correct answer position
+                import random
+                correct_index = 0
+                indices = list(range(3))
+                random.shuffle(indices)
+                shuffled_options = [options[i] for i in indices]
+                correct_answer_index = indices.index(correct_index)
+
+                questions.append({
+                    'word_id': word_id,
+                    'translation': translation,
+                    'options': shuffled_options,
+                    'correct_answer': correct_answer_index
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': f'Ollama API error: {response.status_code}'
+                }), 500
+
+        return jsonify({
+            'success': True,
+            'questions': questions
+        })
+
+    except requests.exceptions.Timeout:
+        return jsonify({
+            'success': False,
+            'error': 'Ollama request timed out. Please try again.'
+        }), 500
+    except requests.exceptions.ConnectionError:
+        return jsonify({
+            'success': False,
+            'error': 'Cannot connect to Ollama server. Please ensure Ollama is running on port 11434.'
+        }), 500
     except Exception as e:
         return jsonify({
             'success': False,

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz - BKDict</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Main Container -->
+    <div class="container">
+
+        <!-- Header Section -->
+        <header class="app-header">
+            <h1 class="app-title">🎯 Vocabulary Quiz</h1>
+            <a href="/" class="btn btn-secondary btn-sm back-link">← Back to Vocabulary</a>
+        </header>
+
+        <!-- Quiz Container -->
+        <div id="quizContainer" class="quiz-container">
+
+            <!-- Loading State -->
+            <div id="quizLoading" class="quiz-loading">
+                <div class="spinner"></div>
+                <p>Loading quiz questions...</p>
+                <p class="loading-hint">Generating questions using AI...</p>
+            </div>
+
+            <!-- Error State -->
+            <div id="quizError" class="quiz-error" style="display: none;">
+                <span class="error-icon">⚠️</span>
+                <p id="quizErrorText"></p>
+                <a href="/" class="btn btn-primary">Back to Vocabulary</a>
+            </div>
+
+            <!-- Quiz Questions -->
+            <div id="quizQuestions" class="quiz-questions" style="display: none;">
+                <!-- Questions will be dynamically inserted here -->
+            </div>
+
+            <!-- Submit Button -->
+            <div id="quizSubmitContainer" class="quiz-submit-container" style="display: none;">
+                <button id="submitQuizBtn" class="btn btn-primary btn-large">Submit Quiz</button>
+            </div>
+
+            <!-- Results Section -->
+            <div id="quizResults" class="quiz-results" style="display: none;">
+                <div class="results-header">
+                    <h2>Quiz Results</h2>
+                    <div class="score-display">
+                        <span class="score-label">Your Score:</span>
+                        <span id="scoreValue" class="score-value">0/10</span>
+                    </div>
+                </div>
+
+                <div id="resultsBreakdown" class="results-breakdown">
+                    <!-- Results breakdown will be inserted here -->
+                </div>
+
+                <div class="results-actions">
+                    <button id="retakeQuizBtn" class="btn btn-primary">🔄 Retake Quiz</button>
+                    <a href="/" class="btn btn-secondary">← Back to Vocabulary</a>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', filename='js/quiz.js') }}"></script>
+</body>
+</html>
