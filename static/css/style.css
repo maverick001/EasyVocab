@@ -297,6 +297,23 @@ body {
     background: var(--text-secondary);
 }
 
+.btn-generate {
+    background: var(--primary-blue);
+    color: white;
+    padding: 0.8rem 1.5rem;
+    font-size: 1.1rem;
+    border: none;
+}
+
+.btn-generate:hover {
+    background: var(--primary-dark);
+}
+
+.btn-generate:disabled {
+    background: var(--border-color);
+    cursor: not-allowed;
+}
+
 .btn-nav {
     background: var(--primary-blue);
     color: white;
@@ -423,25 +440,23 @@ body {
     gap: var(--spacing-xs);
 }
 
-/* Review Counter Circle */
-/* Review Counter Circle (top right) */
-.review-counter {
-    position: absolute;
-    right: var(--spacing-lg);
-    top: -12px;
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary-blue), var(--primary-dark));
-    color: white;
-    display: flex;
+/* Review Counter Badge (inline next to edit button) */
+.review-counter-badge {
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
+    height: 36px;
+    min-width: 36px;
+    padding: 0 8px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, var(--primary-blue), var(--primary-dark));
+    color: white;
+    font-size: 1rem;
     font-weight: bold;
     cursor: pointer;
-    box-shadow: 0 4px 8px var(--shadow);
+    box-shadow: 0 2px 4px var(--shadow);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
+    margin-left: 8px;
 }
 
 /* History Dropdown (right side, below counter) */
@@ -481,12 +496,12 @@ body {
     box-shadow: 0 0 0 3px rgba(135, 206, 235, 0.2);
 }
 
-.review-counter:hover {
+.review-counter-badge:hover {
     transform: scale(1.1);
-    box-shadow: 0 6px 12px rgba(70, 130, 180, 0.3);
+    box-shadow: 0 4px 8px rgba(70, 130, 180, 0.4);
 }
 
-.review-counter:active {
+.review-counter-badge:active {
     transform: scale(0.95);
 }
 

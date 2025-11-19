@@ -8,6 +8,7 @@ from flask import Flask, render_template, request, jsonify, send_from_directory
 import mysql.connector
 from mysql.connector import pooling
 import os
+import requests
 from werkzeug.utils import secure_filename
 from config import Config
 from utils import parse_and_import_xml, XMLParserError
@@ -532,7 +533,7 @@ def get_word_history(word_id):
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Get all history records for this word_id
+        # Get history records grouped by date (one record per day, latest from each day)
         cursor.execute("""
             SELECT
                 id,
@@ -540,19 +541,25 @@ def get_word_history(word_id):
                 translation,
                 sample_sentence,
                 category,
-                modified_at,
+                DATE(modified_at) as modified_date,
                 modification_type
             FROM word_history
             WHERE word_id = %s
-            ORDER BY modified_at DESC
-        """, (word_id,))
+            AND id IN (
+                SELECT MAX(id)
+                FROM word_history
+                WHERE word_id = %s
+                GROUP BY DATE(modified_at)
+            )
+            ORDER BY modified_date DESC
+        """, (word_id, word_id))
 
         history_records = cursor.fetchall()
 
-        # Convert datetime to string for JSON serialization
+        # Convert date to string for JSON serialization
         for record in history_records:
-            if record['modified_at']:
-                record['modified_at'] = record['modified_at'].strftime('%Y-%m-%d %H:%M:%S')
+            if record['modified_date']:
+                record['modified_date'] = record['modified_date'].strftime('%Y-%m-%d')
 
         return jsonify({
             'success': True,
@@ -944,11 +951,9 @@ def increment_review_counter(word_id):
             WHERE id = %s
         """, (word_id,))
 
-        conn.commit()
-
-        # Get updated count
+        # Get updated word data for history
         cursor.execute("""
-            SELECT review_count, last_reviewed
+            SELECT word, translation, sample_sentence, category, review_count, last_reviewed
             FROM words
             WHERE id = %s
         """, (word_id,))
@@ -956,6 +961,19 @@ def increment_review_counter(word_id):
         result = cursor.fetchone()
 
         if result:
+            # Create history record for review
+            create_history_record(
+                cursor,
+                word_id,
+                result['word'],
+                result['translation'],
+                result['sample_sentence'],
+                result['category'],
+                'updated'
+            )
+
+            conn.commit()
+
             return jsonify({
                 'success': True,
                 'review_count': result['review_count'],
@@ -975,6 +993,80 @@ def increment_review_counter(word_id):
     finally:
         if conn:
             conn.close()
+
+
+@app.route('/api/generate-sample', methods=['POST'])
+def generate_sample_sentence():
+    """
+    Generate a sample sentence using Ollama AI
+
+    Request Body (JSON):
+        {
+            "word": "example"
+        }
+
+    Returns:
+        JSON response with generated sentence
+    """
+    try:
+        data = request.get_json()
+
+        if not data or 'word' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Word is required'
+            }), 400
+
+        word = data['word'].strip()
+
+        if not word:
+            return jsonify({
+                'success': False,
+                'error': 'Word cannot be empty'
+            }), 400
+
+        # Prepare prompt for Ollama
+        prompt = f'Create a natural English sentence that uses the EXACT word or phrase "{word}" (including all words as shown). You must use "{word}" exactly as written, not variations or partial matches. Only output the sentence, nothing else.'
+
+        # Call Ollama API
+        ollama_url = "http://localhost:11434/api/generate"
+        ollama_payload = {
+            "model": "gemma3n:e2b",
+            "prompt": prompt,
+            "stream": False
+        }
+
+        response = requests.post(ollama_url, json=ollama_payload, timeout=30)
+
+        if response.status_code == 200:
+            result = response.json()
+            generated_sentence = result.get('response', '').strip()
+
+            return jsonify({
+                'success': True,
+                'sentence': generated_sentence
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': f'Ollama API error: {response.status_code}'
+            }), 500
+
+    except requests.exceptions.Timeout:
+        return jsonify({
+            'success': False,
+            'error': 'Ollama request timed out. Please try again.'
+        }), 500
+    except requests.exceptions.ConnectionError:
+        return jsonify({
+            'success': False,
+            'error': 'Cannot connect to Ollama server. Please ensure Ollama is running on port 11434.'
+        }), 500
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 
 @app.route('/api/category/<category>/count', methods=['GET'])

@@ -121,6 +121,10 @@
                     <div id="wordDisplayContainer">
                         <h2 id="wordDisplay" class="word-display">Loading...</h2>
                         <button id="editWordBtn" class="btn btn-edit-word" title="Edit word">✏️</button>
+                        <!-- Review Counter Badge -->
+                        <div id="reviewCounter" class="review-counter-badge" title="Click to mark as reviewed">
+                            <span id="reviewCount">0</span>
+                        </div>
                     </div>
                     <div id="wordEdit" class="word-edit" style="display: none;">
                         <input type="text" id="wordInput" class="word-input" placeholder="Edit word..." />
@@ -137,11 +141,6 @@
                     <select id="historySelect" class="history-select">
                         <option value="">Latest</option>
                     </select>
-                </div>
-
-                <!-- Review Counter Circle -->
-                <div id="reviewCounter" class="review-counter" title="Click to mark as reviewed">
-                    <span id="reviewCount">0</span>
                 </div>
             </div>
 
@@ -178,6 +177,7 @@
             <div class="sample-section">
                 <div class="section-header">
                     <h3 class="section-title">Sample Sentences:</h3>
+                    <button id="generateSampleBtn" class="btn btn-generate">Generate</button>
                 </div>
                 <div id="sampleDisplay" class="content-display empty editable-field" title="Click to edit">
                     <p class="empty-hint">No sample sentences yet. Click here to add some.</p>

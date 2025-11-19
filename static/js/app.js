@@ -57,6 +57,7 @@ const Elements = {
     sampleInput: null,
     saveSampleBtn: null,
     cancelSampleBtn: null,
+    generateSampleBtn: null,
 
     // Navigation
     prevBtn: null,
@@ -157,6 +158,7 @@ function cacheDOMElements() {
     Elements.sampleInput = document.getElementById('sampleInput');
     Elements.saveSampleBtn = document.getElementById('saveSampleBtn');
     Elements.cancelSampleBtn = document.getElementById('cancelSampleBtn');
+    Elements.generateSampleBtn = document.getElementById('generateSampleBtn');
 
     // Navigation
     Elements.prevBtn = document.getElementById('prevBtn');
@@ -224,6 +226,7 @@ function setupEventListeners() {
     Elements.sampleDisplay.addEventListener('click', () => toggleEditMode('sample', true));
     Elements.saveSampleBtn.addEventListener('click', () => saveSample());
     Elements.cancelSampleBtn.addEventListener('click', () => toggleEditMode('sample', false));
+    Elements.generateSampleBtn.addEventListener('click', () => generateSampleSentence());
 
     // Navigation buttons
     Elements.prevBtn.addEventListener('click', () => navigateWord(-1));
@@ -692,6 +695,63 @@ async function saveSample() {
 }
 
 /**
+ * Generate sample sentence using Ollama AI
+ */
+async function generateSampleSentence() {
+    if (!AppState.currentWord) return;
+
+    try {
+        // Disable button during generation
+        Elements.generateSampleBtn.disabled = true;
+        Elements.generateSampleBtn.textContent = 'Generating...';
+
+        const response = await fetch('/api/generate-sample', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                word: AppState.currentWord.word
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.sentence) {
+            // Get current sample sentences
+            const currentSample = AppState.currentWord.sample_sentence || '';
+
+            // Add new sentence to existing ones (on new line if there are existing sentences)
+            let updatedSample;
+            if (currentSample.trim()) {
+                updatedSample = currentSample + '\n' + data.sentence;
+            } else {
+                updatedSample = data.sentence;
+            }
+
+            // Update the word with new sample sentence
+            const success = await updateWord(AppState.currentWord.id, {
+                sample_sentence: updatedSample
+            });
+
+            if (success) {
+                console.log('✅ Sample sentence generated and saved');
+            }
+        } else {
+            showError(data.error || 'Failed to generate sample sentence');
+        }
+
+    } catch (error) {
+        console.error('Error generating sample sentence:', error);
+        showError('Network error while generating sample sentence');
+    } finally {
+        // Re-enable button
+        Elements.generateSampleBtn.disabled = false;
+        Elements.generateSampleBtn.textContent = 'Generate';
+    }
+}
+
+/**
  * Upload XML file
  */
 async function uploadXMLFile() {
@@ -1029,18 +1089,18 @@ async function loadWordHistory(wordId) {
             // Clear existing options
             Elements.historySelect.innerHTML = '';
 
-            // Add latest version option (using the first record's datetime since sorted DESC)
+            // Add latest version option (using the first record's date since sorted DESC)
             const latestRecord = data.history[0];
             const latestOption = document.createElement('option');
             latestOption.value = '';
-            latestOption.textContent = latestRecord.modified_at;
+            latestOption.textContent = latestRecord.modified_date;
             Elements.historySelect.appendChild(latestOption);
 
             // Add remaining history options (skip first one since it's already shown as Latest)
             data.history.slice(1).forEach((record) => {
                 const option = document.createElement('option');
                 option.value = record.id;
-                option.textContent = record.modified_at;
+                option.textContent = record.modified_date;
                 option.dataset.historyData = JSON.stringify(record);
 
                 Elements.historySelect.appendChild(option);
