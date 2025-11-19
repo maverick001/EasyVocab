@@ -1037,12 +1037,12 @@ def generate_sample_sentence():
             }), 400
 
         # Prepare prompt for Ollama
-        prompt = f'Create a natural English sentence that uses the EXACT word or phrase "{word}" (including all words as shown). You must use "{word}" exactly as written, not variations or partial matches. Only output the sentence, nothing else.'
+        prompt = f'Create a simple, natural English sentence that uses the EXACT word or phrase "{word}" (including all words as shown). You must use "{word}" exactly as written, not variations or partial matches. Use simple language and vocabulary suitable for a high school student. Keep the sentence short and easy to understand. Only output the sentence, nothing else.'
 
         # Call Ollama API
         ollama_url = "http://localhost:11434/api/generate"
         ollama_payload = {
-            "model": "gemma3n:e2b",
+            "model": "gemma3n",
             "prompt": prompt,
             "stream": False
         }
@@ -1255,7 +1255,7 @@ Requirements:
             # Call Ollama API
             ollama_url = "http://localhost:11434/api/generate"
             ollama_payload = {
-                "model": "gemma3n:e2b",
+                "model": "gemma3n",
                 "prompt": prompt,
                 "stream": False
             }
