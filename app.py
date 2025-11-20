@@ -12,6 +12,7 @@ import requests
 from werkzeug.utils import secure_filename
 from config import Config
 from utils import parse_and_import_xml, XMLParserError
+from datetime import datetime, date, timedelta
 
 # Initialize Flask application
 app = Flask(__name__)
@@ -983,6 +984,14 @@ def increment_review_counter(word_id):
                 'updated'
             )
 
+            # Log daily review activity
+            # Using ON DUPLICATE KEY UPDATE to increment count for today
+            cursor.execute("""
+                INSERT INTO daily_study_log (date, review_count)
+                VALUES (CURDATE(), 1)
+                ON DUPLICATE KEY UPDATE review_count = review_count + 1
+            """)
+
             conn.commit()
 
             return jsonify({
@@ -995,6 +1004,79 @@ def increment_review_counter(word_id):
                 'success': False,
                 'error': 'Word not found'
             }), 404
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route('/api/debt', methods=['GET'])
+def get_word_debt():
+    """
+    Calculate and return total word debt and daily breakdown
+    Debt = 100 - review_count for each day (if review_count < 100)
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Get all daily logs
+        cursor.execute("""
+            SELECT date, review_count
+            FROM daily_study_log
+            ORDER BY date DESC
+        """)
+        
+        logs = cursor.fetchall()
+        
+        total_debt = 0
+        debt_breakdown = []
+        
+        # We only calculate debt for days that exist in the log
+        # (since we agreed to start tracking from "today")
+        
+        # Also check if today is in the logs, if not, debt is 100 (or 0 if we don't count today as debt yet)
+        # Usually "debt" implies past due. But the user request implies accumulating debt.
+        # "If the user has only reviewed 80 words on Day1, she has a word debt of 20."
+        # This implies we sum up (100 - count) for all days where count < 100.
+        # If count > 100, we should subtract the surplus from total debt?
+        # User said: "If for a day, the user finishes his daily quota (100 words) and keeps reviewing, 
+        # for every additinal word he reviews, the displayed total word debt shall decrement 1 spontaneously."
+        # This implies surplus reduces TOTAL debt.
+        
+        for log in logs:
+            count = log['review_count']
+            # Calculate debt/surplus for this day
+            # If count < 100, debt increases by (100 - count)
+            # If count > 100, debt decreases by (count - 100)
+            # So contribution = 100 - count
+            # If contribution is positive, it's debt. If negative, it's surplus (reduces debt).
+            
+            contribution = 100 - count
+            total_debt += contribution
+            
+            # For the breakdown list: "For the days where user has achieved the 100 words quota, there shall be no record displayed in the list."
+            if count < 100:
+                debt_breakdown.append({
+                    'date': log['date'].strftime('%Y-%m-%d'),
+                    'debt': 100 - count
+                })
+                
+        # Ensure total debt doesn't go below 0 (optional, but makes sense)
+        if total_debt < 0:
+            total_debt = 0
+            
+        return jsonify({
+            'success': True,
+            'total_debt': total_debt,
+            'breakdown': debt_breakdown
+        })
 
     except Exception as e:
         return jsonify({

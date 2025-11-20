@@ -114,11 +114,17 @@
 
             <!-- Word Section -->
             <div class="word-section">
-                <!-- Position Info (top left) -->
-                <span id="positionInfo" class="position-info-inline">Word 1 of 100</span>
-
-                <!-- Daily Progress Counter (top left, next to position) -->
-                <span id="dailyCounter" class="daily-counter-badge">0/100</span>
+                <!-- Status Bar (Top Left) -->
+                <div class="status-bar">
+                    <span id="positionInfo" class="status-badge position-badge">Word 1 of 100</span>
+                    <span id="dailyCounter" class="status-badge daily-badge">0/100</span>
+                    <div class="debt-wrapper">
+                        <button id="wordDebtBtn" class="status-badge debt-badge">Word Debt: 0</button>
+                        <div id="wordDebtDropdown" class="debt-dropdown">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Word Display/Edit -->
                 <div class="word-content">

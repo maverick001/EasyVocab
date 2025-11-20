@@ -358,37 +358,130 @@ body {
     position: relative;  /* For absolute positioning of review counter */
 }
 
-/* Position Info (top left inline) */
-.position-info-inline {
+/* Status Bar Container */
+.status-bar {
     position: absolute;
     top: var(--spacing-sm);
     left: var(--spacing-md);
-    font-weight: 600;
-    color: var(--primary-dark);
-    font-size: 0.9rem;
-    background: rgba(135, 206, 235, 0.15);
-    padding: 0.3rem 0.6rem;
-    border-radius: var(--radius-sm);
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: center;
+    z-index: 10;
 }
 
-/* Daily Progress Counter (next to position info) */
-.daily-counter-badge {
-    position: absolute;
-    top: var(--spacing-sm);
-    left: 180px;
+/* Common Badge Styles */
+.status-badge {
     font-weight: 600;
-    color: #333;
     font-size: 0.9rem;
-    background: #FFE54C;  /* Bright yellow */
-    padding: 0.3rem 0.8rem;
+    padding: 0.4rem 1rem;
     border-radius: 20px;
-    border: 2px solid #FFD700;  /* Gold border */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+/* Position Badge */
+.position-badge {
+    color: var(--primary-dark);
+    background: rgba(135, 206, 235, 0.15);
+    border: 1px solid transparent;
+}
+
+/* Daily Progress Badge */
+.daily-badge {
+    color: #333;
+    background: #FFE54C;
+    border: 1px solid #FFD700;
     transition: background 0.3s ease, border-color 0.3s ease;
 }
 
-.daily-counter-badge.completed {
+.daily-badge.completed {
     background: #90EE90;
     border-color: #32CD32;
+}
+
+/* Word Debt Badge */
+.debt-wrapper {
+    position: relative;
+}
+
+.debt-badge {
+    background: #B0E0E6;
+    color: #333;
+    border: 1px solid #87CEEB;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+
+.debt-badge:hover {
+    background: #87CEEB;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Word Debt Dropdown */
+.debt-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 8px;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    min-width: 220px;
+    z-index: 100;
+    display: none;
+    max-height: 300px;
+    overflow-y: auto;
+    animation: fadeIn 0.2s ease;
+}
+
+.debt-dropdown.show {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.debt-item {
+    padding: 10px 15px;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    transition: background 0.2s;
+}
+
+.debt-item:last-child {
+    border-bottom: none;
+}
+
+.debt-item:hover {
+    background: #f9f9f9;
+}
+
+.debt-date {
+    color: var(--text-secondary);
+    font-family: monospace;
+}
+
+.debt-amount {
+    font-weight: bold;
+    color: var(--error);
+}
+
+.debt-empty {
+    padding: 15px;
+    text-align: center;
+    color: var(--success);
+    font-style: italic;
 }
 
 /* Word Content Area */

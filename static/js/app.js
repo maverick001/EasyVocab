@@ -17,7 +17,9 @@ const AppState = {
     isEditingWord: false,
     wordHistory: [],  // Store modification history for current word
     dailyProgress: 0,  // Daily activity counter (resets at midnight)
-    countedWordIds: new Set()  // Track which words were counted today (max 1 per word per day)
+    countedWordIds: new Set(),  // Track which words were counted today (max 1 per word per day)
+    totalDebt: 0,
+    debtBreakdown: []
 };
 
 // ============================================
@@ -99,6 +101,10 @@ const Elements = {
     // Daily Counter
     dailyCounter: null,
 
+    // Word Debt
+    wordDebtBtn: null,
+    wordDebtDropdown: null,
+
     // Messages
     welcomeMessage: null,
     loadingIndicator: null,
@@ -109,7 +115,7 @@ const Elements = {
 // ============================================
 // Initialization
 // ============================================
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     console.log('🚀 BKDict Application Initializing...');
 
     // Cache DOM elements
@@ -120,6 +126,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize daily progress counter
     initializeDailyCounter();
+
+    // Load debt data
+    loadDebtData();
 
     // Load categories
     loadCategories();
@@ -206,6 +215,10 @@ function cacheDOMElements() {
     // Daily Counter
     Elements.dailyCounter = document.getElementById('dailyCounter');
 
+    // Word Debt
+    Elements.wordDebtBtn = document.getElementById('wordDebtBtn');
+    Elements.wordDebtDropdown = document.getElementById('wordDebtDropdown');
+
     // Messages
     Elements.welcomeMessage = document.getElementById('welcomeMessage');
     Elements.loadingIndicator = document.getElementById('loadingIndicator');
@@ -273,6 +286,23 @@ function setupEventListeners() {
 
     // History functionality
     Elements.historySelect.addEventListener('change', handleHistoryChange);
+
+    // Word Debt functionality
+    Elements.wordDebtBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleDebtDropdown();
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (Elements.wordDebtDropdown &&
+            Elements.wordDebtDropdown.style.display === 'block' &&
+            !Elements.wordDebtBtn.contains(e.target) &&
+            !Elements.wordDebtDropdown.contains(e.target)) {
+            Elements.wordDebtDropdown.style.display = 'none';
+            Elements.wordDebtDropdown.classList.remove('show');
+        }
+    });
 }
 
 // ============================================
@@ -1230,6 +1260,14 @@ function incrementDailyCounter(wordId) {
     // Add word to counted set and increment counter
     AppState.countedWordIds.add(wordId);
     AppState.dailyProgress++;
+
+    // If user has exceeded daily quota (100), decrement total debt
+    if (AppState.dailyProgress > 100 && AppState.totalDebt > 0) {
+        AppState.totalDebt--;
+        updateDebtDisplay();
+        console.log('📉 Debt reduced by 1 due to extra review!');
+    }
+
     saveDailyProgress();
     updateDailyCounterDisplay();
     console.log(`📊 Daily progress: ${AppState.dailyProgress}/100 (word ${wordId})`);
@@ -1284,6 +1322,73 @@ function scheduleMidnightReset() {
         // Schedule next reset
         scheduleMidnightReset();
     }, timeUntilMidnight);
+}
+
+/**
+ * Load word debt data from server
+ */
+async function loadDebtData() {
+    try {
+        const response = await fetch('/api/debt');
+        const data = await response.json();
+
+        if (data.success) {
+            AppState.totalDebt = data.total_debt;
+            AppState.debtBreakdown = data.breakdown;
+            updateDebtDisplay();
+            console.log(`📉 Total Word Debt: ${AppState.totalDebt}`);
+        }
+    } catch (error) {
+        console.error('Error loading debt data:', error);
+    }
+}
+
+/**
+ * Update Word Debt display
+ */
+function updateDebtDisplay() {
+    if (!Elements.wordDebtBtn) return;
+
+    Elements.wordDebtBtn.textContent = `Word Debt: ${AppState.totalDebt}`;
+
+    // Populate dropdown
+    if (Elements.wordDebtDropdown) {
+        Elements.wordDebtDropdown.innerHTML = '';
+
+        if (AppState.debtBreakdown.length === 0) {
+            Elements.wordDebtDropdown.innerHTML = '<div class="debt-empty">No debt records! 🎉</div>';
+        } else {
+            AppState.debtBreakdown.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'debt-item';
+                div.innerHTML = `
+                    <span class="debt-date">${item.date}</span>
+                    <span class="debt-amount">${item.debt}</span>
+                `;
+                Elements.wordDebtDropdown.appendChild(div);
+            });
+        }
+    }
+}
+
+/**
+ * Toggle Debt Dropdown
+ */
+function toggleDebtDropdown() {
+    const isVisible = Elements.wordDebtDropdown.classList.contains('show');
+
+    if (isVisible) {
+        Elements.wordDebtDropdown.classList.remove('show');
+        setTimeout(() => {
+            Elements.wordDebtDropdown.style.display = 'none';
+        }, 200); // Wait for animation
+    } else {
+        Elements.wordDebtDropdown.style.display = 'block';
+        // Small delay to allow display:block to apply before adding class for animation
+        setTimeout(() => {
+            Elements.wordDebtDropdown.classList.add('show');
+        }, 10);
+    }
 }
 
 // ============================================
