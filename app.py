@@ -1050,23 +1050,31 @@ def get_word_debt():
         # for every additinal word he reviews, the displayed total word debt shall decrement 1 spontaneously."
         # This implies surplus reduces TOTAL debt.
         
+        today = date.today()
+        
         for log in logs:
             count = log['review_count']
-            # Calculate debt/surplus for this day
-            # If count < 100, debt increases by (100 - count)
-            # If count > 100, debt decreases by (count - 100)
-            # So contribution = 100 - count
-            # If contribution is positive, it's debt. If negative, it's surplus (reduces debt).
+            log_date = log['date']
             
-            contribution = 100 - count
-            total_debt += contribution
+            # Convert log_date to date object if it's not already (mysql connector might return date or datetime)
+            if isinstance(log_date, datetime):
+                log_date = log_date.date()
             
-            # For the breakdown list: "For the days where user has achieved the 100 words quota, there shall be no record displayed in the list."
-            if count < 100:
-                debt_breakdown.append({
-                    'date': log['date'].strftime('%Y-%m-%d'),
-                    'debt': 100 - count
-                })
+            if log_date == today:
+                # Today: Only surplus counts (reduces debt). Deficit is ignored.
+                if count > 100:
+                    total_debt -= (count - 100)
+            else:
+                # Past days: Deficit adds to debt, Surplus reduces debt
+                contribution = 100 - count
+                total_debt += contribution
+                
+                # Add to breakdown if there is a debt for this past day
+                if count < 100:
+                    debt_breakdown.append({
+                        'date': log_date.strftime('%Y-%m-%d'),
+                        'debt': 100 - count
+                    })
                 
         # Ensure total debt doesn't go below 0 (optional, but makes sense)
         if total_debt < 0:
