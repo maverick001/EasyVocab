@@ -449,6 +449,15 @@ def add_word():
         # Update category counts
         try:
             cursor.callproc('update_category_counts')
+            
+            # Increment daily review counter for the new word
+            # We treat adding a new word as a "review" activity for today
+            cursor.execute("""
+                INSERT INTO daily_study_log (date, review_count)
+                VALUES (CURDATE(), 1)
+                ON DUPLICATE KEY UPDATE review_count = review_count + 1
+            """)
+            
             conn.commit()
         except Exception:
             pass  # Non-critical
