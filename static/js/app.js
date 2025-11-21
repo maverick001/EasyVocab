@@ -646,8 +646,13 @@ function handleSortChange(event) {
 /**
  * Handle word navigation (prev/next)
  */
-function navigateWord(direction) {
+async function navigateWord(direction) {
     if (!AppState.currentCategory) return;
+
+    // Auto-save translation if editing
+    if (AppState.isEditingTranslation) {
+        await saveTranslation();
+    }
 
     const newIndex = AppState.currentIndex + direction;
 
@@ -1437,6 +1442,11 @@ async function incrementReviewCounter() {
  */
 async function changeWordCategory() {
     if (!AppState.currentWord) return;
+
+    // Auto-save translation if editing
+    if (AppState.isEditingTranslation) {
+        await saveTranslation();
+    }
 
     const newCategory = Elements.changeCategorySelect.value;
 
