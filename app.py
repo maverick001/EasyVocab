@@ -985,13 +985,9 @@ def increment_review_counter(word_id):
             )
 
             # Log daily review activity
-            # Using ON DUPLICATE KEY UPDATE to increment count for today
-            cursor.execute("""
-                INSERT INTO daily_study_log (date, review_count)
-                VALUES (CURDATE(), 1)
-                ON DUPLICATE KEY UPDATE review_count = review_count + 1
-            """)
-
+            # NOTE: This is now handled by the 'after_review_increment' MySQL trigger
+            # to ensure persistence across git branches/versions.
+            
             conn.commit()
 
             return jsonify({
