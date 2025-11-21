@@ -635,7 +635,7 @@ def update_word(word_id):
         cursor = conn.cursor(dictionary=True)
 
         # First, get the current word text and sample_sentence
-        cursor.execute("SELECT word, sample_sentence FROM words WHERE id = %s", (word_id,))
+        cursor.execute("SELECT word, sample_sentence, last_sample_review_date FROM words WHERE id = %s", (word_id,))
         current_word_data = cursor.fetchone()
 
         if not current_word_data:
@@ -646,6 +646,7 @@ def update_word(word_id):
 
         current_word_text = current_word_data['word']
         current_sample = current_word_data.get('sample_sentence') or ''
+        last_sample_date = current_word_data.get('last_sample_review_date')
 
         # Update translation and sample_sentence across ALL instances of this word
         if 'translation' in data or 'sample_sentence' in data:
@@ -658,20 +659,19 @@ def update_word(word_id):
 
             if 'sample_sentence' in data:
                 new_sample = data['sample_sentence'] or ''
-                # Only update if it's actually different (though we update anyway for consistency, 
-                # the review increment depends on it being different or just present?)
-                # User said: "whenever the sample sentence changes... review_counter should increment"
-                # User also said: "If user just updates the word's trasnlation, not need to increment"
-                # So we strictly check if sample_sentence is being updated.
                 
                 shared_update_fields.append('sample_sentence = %s')
                 shared_params.append(data['sample_sentence'])
                 
                 # Check if sample sentence actually changed to trigger review increment
-                # Normalizing None to '' for comparison
                 if new_sample.strip() != current_sample.strip():
-                    shared_update_fields.append('review_count = review_count + 1')
-                    shared_update_fields.append('last_reviewed = NOW()')
+                    # Check daily cap
+                    today = date.today()
+                    
+                    if last_sample_date != today:
+                        shared_update_fields.append('review_count = review_count + 1')
+                        shared_update_fields.append('last_reviewed = NOW()')
+                        shared_update_fields.append('last_sample_review_date = CURDATE()')
 
             if shared_update_fields:
                 # Update ALL rows with the same word text
