@@ -13,6 +13,7 @@ from werkzeug.utils import secure_filename
 from config import Config
 from utils import parse_and_import_xml, XMLParserError
 from datetime import datetime, date, timedelta
+import google.generativeai as genai
 
 # Initialize Flask application
 app = Flask(__name__)
@@ -1145,23 +1146,24 @@ def generate_sample_sentence():
                 'error': 'Word cannot be empty'
             }), 400
 
-        # Prepare prompt for Ollama
+        # Configure Gemini
+        if not app.config['GOOGLE_API_KEY']:
+            return jsonify({
+                'success': False,
+                'error': 'Google API Key not configured'
+            }), 500
+
+        genai.configure(api_key=app.config['GOOGLE_API_KEY'])
+        model = genai.GenerativeModel(app.config['GEMINI_MODEL'])
+
+        # Prepare prompt for Gemini
         prompt = f'Create a simple, natural English sentence that uses the EXACT word or phrase "{word}" (including all words as shown). You must use "{word}" exactly as written, not variations or partial matches. Use simple language and vocabulary suitable for a high school student. Keep the sentence short and easy to understand. Only output the sentence, nothing else.'
 
-        # Call Ollama API
-        ollama_url = "http://localhost:11434/api/generate"
-        ollama_payload = {
-            "model": "gemma3n",
-            "prompt": prompt,
-            "stream": False
-        }
-
-        response = requests.post(ollama_url, json=ollama_payload, timeout=30)
-
-        if response.status_code == 200:
-            result = response.json()
-            generated_sentence = result.get('response', '').strip()
-
+        # Call Gemini API
+        response = model.generate_content(prompt)
+        
+        if response.text:
+            generated_sentence = response.text.strip()
             return jsonify({
                 'success': True,
                 'sentence': generated_sentence
@@ -1169,19 +1171,9 @@ def generate_sample_sentence():
         else:
             return jsonify({
                 'success': False,
-                'error': f'Ollama API error: {response.status_code}'
+                'error': 'Gemini returned empty response'
             }), 500
 
-    except requests.exceptions.Timeout:
-        return jsonify({
-            'success': False,
-            'error': 'Ollama request timed out. Please try again.'
-        }), 500
-    except requests.exceptions.ConnectionError:
-        return jsonify({
-            'success': False,
-            'error': 'Cannot connect to Ollama server. Please ensure Ollama is running on port 11434.'
-        }), 500
     except Exception as e:
         return jsonify({
             'success': False,

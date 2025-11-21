@@ -27,6 +27,10 @@ class Config:
     DB_PASSWORD = os.environ.get('DB_PASSWORD', '')  # Set this in .env file
     DB_NAME = os.environ.get('DB_NAME', 'bkdict_db')
 
+    # Gemini Configuration
+    GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
+    GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash')
+
     # Database connection pool settings (for performance with large dataset)
     DB_POOL_SIZE = int(os.environ.get('DB_POOL_SIZE', 5))
     DB_POOL_RECYCLE = int(os.environ.get('DB_POOL_RECYCLE', 3600))
