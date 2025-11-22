@@ -1,74 +1,195 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quiz - BKDict</title>
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-    <!-- Main Container -->
-    <div class="container">
+    <style>
+        /* Quiz specific styles */
+        .quiz-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            text-align: center;
+        }
 
-        <!-- Header Section -->
-        <header class="app-header">
-            <h1 class="app-title">🎯 Vocabulary Quiz</h1>
-            <a href="/" class="btn btn-secondary btn-sm back-link">← Back to Vocabulary</a>
+        .quiz-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .quiz-card {
+            background: white;
+            border-radius: 12px;
+            padding: 3rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .quiz-word {
+            font-size: 3.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 2rem;
+        }
+
+        .quiz-sentences {
+            text-align: left;
+            width: 100%;
+            margin-bottom: 2rem;
+            font-size: 1.2rem;
+            color: #4b5563;
+            line-height: 1.6;
+        }
+
+        .quiz-translation {
+            font-size: 2rem;
+            color: #1f2937;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid #e5e7eb;
+            width: 100%;
+            display: none;
+            /* Hidden initially */
+        }
+
+        .quiz-actions {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+
+        .btn-remember {
+            background-color: #10b981;
+            /* Green */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            min-width: 150px;
+        }
+
+        .btn-remember:hover {
+            background-color: #059669;
+        }
+
+        .btn-not-remember {
+            background-color: #ef4444;
+            /* Red */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            min-width: 150px;
+        }
+
+        .btn-not-remember:hover {
+            background-color: #dc2626;
+        }
+
+        .btn-next {
+            background-color: #3b82f6;
+            /* Blue */
+            color: white;
+            padding: 1rem 3rem;
+            font-size: 1.2rem;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            display: none;
+            /* Hidden initially */
+            margin-top: 35px;
+            /* Moved down */
+            transition: background-color 0.2s;
+        }
+
+        .btn-next:hover {
+            background-color: #2563eb;
+        }
+
+        .quiz-loading,
+        .quiz-error,
+        .quiz-empty {
+            text-align: center;
+            padding: 4rem;
+        }
+
+        .quiz-empty-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="quiz-header">
+            <h1 class="app-title">🎯 Vocabulary Review</h1>
+            <a href="/" class="btn btn-secondary">Quit Quiz</a>
         </header>
 
-        <!-- Quiz Container -->
+        <!-- Main Quiz Area -->
         <div id="quizContainer" class="quiz-container">
 
             <!-- Loading State -->
             <div id="quizLoading" class="quiz-loading">
                 <div class="spinner"></div>
-                <p>Loading quiz questions...</p>
-                <p class="loading-hint">Generating questions using AI...</p>
+                <p>Loading next word...</p>
             </div>
 
             <!-- Error State -->
             <div id="quizError" class="quiz-error" style="display: none;">
-                <span class="error-icon">⚠️</span>
-                <p id="quizErrorText"></p>
-                <a href="/" class="btn btn-primary">Back to Vocabulary</a>
+                <p id="quizErrorText" class="error-text"></p>
+                <button id="retryBtn" class="btn btn-primary">Retry</button>
             </div>
 
-            <!-- Quiz Questions -->
-            <div id="quizQuestions" class="quiz-questions" style="display: none;">
-                <!-- Questions will be dynamically inserted here -->
+            <!-- Empty State (No words to review) -->
+            <div id="quizEmpty" class="quiz-empty" style="display: none;">
+                <div class="quiz-empty-icon">🎉</div>
+                <h2>All caught up!</h2>
+                <p>No words found for review (Review Count >= 1).</p>
+                <p>Go back and review some words in the main list first.</p>
+                <a href="/" class="btn btn-primary" style="margin-top: 1rem;">Back to Vocabulary</a>
             </div>
 
-            <!-- Submit Button -->
-            <div id="quizSubmitContainer" class="quiz-submit-container" style="display: none;">
-                <button id="submitQuizBtn" class="btn btn-primary btn-large">Submit Quiz</button>
-            </div>
+            <!-- Quiz Card -->
+            <div id="quizCard" class="quiz-card" style="display: none;">
+                <div id="wordDisplay" class="quiz-word"></div>
 
-            <!-- Results Section -->
-            <div id="quizResults" class="quiz-results" style="display: none;">
-                <div class="results-header">
-                    <h2>Quiz Results</h2>
-                    <div class="score-display">
-                        <span class="score-label">Your Score:</span>
-                        <span id="scoreValue" class="score-value">0/10</span>
-                    </div>
+                <div id="sentencesDisplay" class="quiz-sentences"></div>
+
+                <div id="translationDisplay" class="quiz-translation"></div>
+
+                <div id="actionButtons" class="quiz-actions">
+                    <button id="rememberBtn" class="btn btn-remember">Remember</button>
+                    <button id="notRememberBtn" class="btn btn-not-remember">Not Remember</button>
                 </div>
 
-                <div id="resultsBreakdown" class="results-breakdown">
-                    <!-- Results breakdown will be inserted here -->
-                </div>
-
-                <div class="results-actions">
-                    <button id="retakeQuizBtn" class="btn btn-primary">🔄 Retake Quiz</button>
-                    <a href="/" class="btn btn-secondary">← Back to Vocabulary</a>
-                </div>
+                <button id="nextBtn" class="btn btn-next">Next Word →</button>
             </div>
 
         </div>
-
     </div>
 
-    <!-- JavaScript -->
     <script src="{{ url_for('static', filename='js/quiz.js') }}"></script>
 </body>
+
 </html>

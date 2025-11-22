@@ -1226,61 +1226,42 @@ def get_category_count(category):
         }), 500
 
 
-@app.route('/api/quiz/random-words', methods=['GET'])
-def get_random_quiz_words():
+@app.route('/api/quiz/next-word', methods=['GET'])
+def get_next_quiz_word():
     """
-    Get random words for quiz (only words with review_count > 0)
-
-    Query Parameters:
-        limit: Number of words to return (default=10)
-
+    Get the next word for quiz (oldest updated word with review_count >= 1)
+    
     Returns:
-        JSON response:
-        {
-            "success": true,
-            "count": 10,
-            "words": [
-                {"id": 1, "word": "example", "translation": "例子"},
-                ...
-            ]
-        }
+        JSON response with word data
     """
     conn = None
     try:
-        limit = int(request.args.get('limit', 10))
-
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Get random words with review_count > 0
+        # Get oldest updated word with review_count >= 1
         cursor.execute("""
-            SELECT id, word, translation
+            SELECT id, word, translation, sample_sentence, review_count
             FROM words
-            WHERE review_count > 0
-            ORDER BY RAND()
-            LIMIT %s
-        """, (limit,))
+            WHERE review_count >= 1
+            ORDER BY updated_at ASC
+            LIMIT 1
+        """)
 
-        words = cursor.fetchall()
+        word = cursor.fetchone()
 
-        if not words:
+        if not word:
             return jsonify({
                 'success': False,
-                'error': 'No reviewed words found. Please review some words first by clicking the counter badge.',
-                'count': 0
+                'error': 'No words found for review. Please review some words first.',
+                'word': None
             }), 404
 
         return jsonify({
             'success': True,
-            'count': len(words),
-            'words': words
+            'word': word
         })
 
-    except ValueError:
-        return jsonify({
-            'success': False,
-            'error': 'Invalid limit parameter'
-        }), 400
     except Exception as e:
         return jsonify({
             'success': False,
@@ -1291,132 +1272,86 @@ def get_random_quiz_words():
             conn.close()
 
 
-@app.route('/api/quiz/generate', methods=['POST'])
-def generate_quiz():
+@app.route('/api/quiz/result', methods=['POST'])
+def submit_quiz_result():
     """
-    Generate quiz questions using Ollama AI
-
-    Request Body (JSON):
+    Submit quiz result for a word
+    
+    Request Body:
         {
-            "words": [
-                {"id": 1, "word": "example", "translation": "例子"},
-                ...
-            ]
-        }
-
-    Returns:
-        JSON response with quiz questions:
-        {
-            "success": true,
-            "questions": [
-                {
-                    "word_id": 1,
-                    "word": "example",
-                    "options": ["例子", "错误1", "错误2", "错误3"],
-                    "correct_answer": 0
-                },
-                ...
-            ]
+            "word_id": 123,
+            "result": "remember" | "not_remember"
         }
     """
+    conn = None
     try:
         data = request.get_json()
-
-        if not data or 'words' not in data:
+        
+        if not data or 'word_id' not in data or 'result' not in data:
             return jsonify({
                 'success': False,
-                'error': 'Words array is required'
+                'error': 'Missing word_id or result'
             }), 400
-
-        words = data['words']
-
-        if not words or len(words) == 0:
+            
+        word_id = data['word_id']
+        result = data['result']
+        
+        if result not in ['remember', 'not_remember']:
             return jsonify({
                 'success': False,
-                'error': 'At least one word is required'
+                'error': 'Invalid result value'
             }), 400
-
-        questions = []
-
-        # Generate questions for each word using Ollama
-        for word_data in words:
-            correct_word = word_data.get('word', '')
-            translation = word_data.get('translation', '')
-            word_id = word_data.get('id')
-
-            # Prepare prompt for Ollama to generate 2 plausible wrong English words
-            prompt = f'''For the Chinese translation "{translation}" (correct English word: {correct_word}), generate 2 plausible but INCORRECT English words that could mislead someone.
-
-Requirements:
-- Each wrong answer should be a realistic English word that sounds plausible for this Chinese meaning
-- They should be different from the correct answer: {correct_word}
-- Output ONLY 2 English words, one per line, nothing else
-- No numbering, no explanations, just the words'''
-
-            # Call Ollama API
-            ollama_url = "http://localhost:11434/api/generate"
-            ollama_payload = {
-                "model": "gemma3n",
-                "prompt": prompt,
-                "stream": False
-            }
-
-            response = requests.post(ollama_url, json=ollama_payload, timeout=30)
-
-            if response.status_code == 200:
-                result = response.json()
-                generated_text = result.get('response', '').strip()
-
-                # Parse the 2 wrong answers
-                wrong_answers = [line.strip() for line in generated_text.split('\n') if line.strip()][:2]
-
-                # Ensure we have exactly 2 wrong answers
-                while len(wrong_answers) < 2:
-                    wrong_answers.append(f"option{len(wrong_answers) + 1}")
-
-                # Create options array with correct answer and 2 wrong answers (3 total)
-                options = [correct_word] + wrong_answers[:2]
-
-                # Shuffle options but remember correct answer position
-                import random
-                correct_index = 0
-                indices = list(range(3))
-                random.shuffle(indices)
-                shuffled_options = [options[i] for i in indices]
-                correct_answer_index = indices.index(correct_index)
-
-                questions.append({
-                    'word_id': word_id,
-                    'translation': translation,
-                    'options': shuffled_options,
-                    'correct_answer': correct_answer_index
-                })
-            else:
-                return jsonify({
-                    'success': False,
-                    'error': f'Ollama API error: {response.status_code}'
-                }), 500
-
+            
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Get current review count
+        cursor.execute("SELECT review_count FROM words WHERE id = %s", (word_id,))
+        word = cursor.fetchone()
+        
+        if not word:
+            return jsonify({
+                'success': False,
+                'error': 'Word not found'
+            }), 404
+            
+        current_count = word['review_count']
+        new_count = current_count
+        
+        if result == 'remember':
+            # Decrement, but min 1
+            if current_count > 1:
+                new_count = current_count - 1
+        else:
+            # Increment
+            new_count = current_count + 1
+            
+        # Update review_count and updated_at (to rotate the word in the queue)
+        # But do NOT update last_reviewed
+        cursor.execute("""
+            UPDATE words 
+            SET review_count = %s,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = %s
+        """, (new_count, word_id))
+        
+        conn.commit()
+        
         return jsonify({
             'success': True,
-            'questions': questions
+            'word_id': word_id,
+            'old_count': current_count,
+            'new_count': new_count
         })
 
-    except requests.exceptions.Timeout:
-        return jsonify({
-            'success': False,
-            'error': 'Ollama request timed out. Please try again.'
-        }), 500
-    except requests.exceptions.ConnectionError:
-        return jsonify({
-            'success': False,
-            'error': 'Cannot connect to Ollama server. Please ensure Ollama is running on port 11434.'
-        }), 500
     except Exception as e:
         return jsonify({
             'success': False,
             'error': str(e)
         }), 500
+    finally:
+        if conn:
+            conn.close()
 
 
 @app.route('/api/upload', methods=['POST'])
