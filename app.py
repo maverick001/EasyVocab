@@ -429,7 +429,7 @@ def add_word():
         # Insert new word
         cursor.execute("""
             INSERT INTO words (word, translation, sample_sentence, category, review_count, last_reviewed)
-            VALUES (%s, %s, %s, %s, 0, NULL)
+            VALUES (%s, %s, %s, %s, 1, NULL)
         """, (word, translation, sample_sentence if sample_sentence else None, category))
 
         new_word_id = cursor.lastrowid
