@@ -183,8 +183,8 @@ class VocabularyXMLParser:
         # SQL for inserting words (ignore duplicates based on unique constraint)
         # On duplicate: update timestamp to mark it was seen, but keep existing data
         insert_sql = """
-            INSERT INTO words (word, translation, category, sample_sentence)
-            VALUES (%s, %s, %s, NULL)
+            INSERT INTO words (word, translation, category, sample_sentence, review_count)
+            VALUES (%s, %s, %s, NULL, 1)
             ON DUPLICATE KEY UPDATE updated_at=updated_at
         """
 
