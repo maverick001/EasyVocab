@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
+
 <body>
     <!-- Main Container -->
     <div class="container">
@@ -51,7 +53,8 @@
             <div class="control-group import-section">
                 <button id="importBtn" class="btn btn-secondary">Import XML File</button>
                 <button id="addWordBtn" class="btn btn-primary">+ Add New Word</button>
-                <a href="/quiz" class="btn btn-primary" style="background: linear-gradient(135deg, #3ba764, #5B21B6); text-decoration: none;">Quiz Me</a>
+                <a href="/quiz" class="btn btn-primary"
+                    style="background: linear-gradient(135deg, #3ba764, #5B21B6); text-decoration: none;">Quiz Me</a>
                 <div id="importPanel" class="import-panel" style="display: none;">
                     <input type="file" id="fileInput" accept=".xml" class="file-input">
                     <button id="uploadBtn" class="btn btn-primary">Upload</button>
@@ -76,7 +79,8 @@
                     </div>
                     <div class="form-group">
                         <label for="newTranslation">Translation (Chinese) *</label>
-                        <input type="text" id="newTranslation" class="form-input" placeholder="Enter translation..." required>
+                        <input type="text" id="newTranslation" class="form-input" placeholder="Enter translation..."
+                            required>
                     </div>
                     <div class="form-group">
                         <label for="newCategory">Category *</label>
@@ -86,7 +90,8 @@
                     </div>
                     <div class="form-group">
                         <label for="newSample">Sample Sentences (optional)</label>
-                        <textarea id="newSample" class="form-textarea" placeholder="Enter sample sentences (one per line)..." rows="4"></textarea>
+                        <textarea id="newSample" class="form-textarea"
+                            placeholder="Enter sample sentences (one per line)..." rows="4"></textarea>
                         <small class="form-hint">Enter one sentence per line</small>
                     </div>
                     <div id="addWordStatus" class="form-status"></div>
@@ -102,7 +107,10 @@
         <div id="searchResults" class="search-results" style="display: none;">
             <div class="search-results-header">
                 <h3>Search Results</h3>
-                <span id="searchResultsCount" class="search-count"></span>
+                <div class="search-header-controls">
+                    <span id="searchResultsCount" class="search-count"></span>
+                    <button id="closeSearchResultsBtn" class="btn-close-results" title="Close results">&times;</button>
+                </div>
             </div>
             <div id="searchResultsList" class="search-results-list">
                 <!-- Results will be populated here -->
@@ -194,7 +202,8 @@
                 </div>
                 <div id="sampleEdit" class="content-edit" style="display: none;">
                     <p class="edit-hint">Type each sentence on a new line:</p>
-                    <textarea id="sampleInput" class="content-textarea" rows="6" placeholder="Enter sample sentences (one per line)..."></textarea>
+                    <textarea id="sampleInput" class="content-textarea" rows="6"
+                        placeholder="Enter sample sentences (one per line)..."></textarea>
                     <div class="edit-actions">
                         <button id="saveSampleBtn" class="btn btn-save">Save</button>
                         <button id="cancelSampleBtn" class="btn btn-cancel">Cancel</button>
@@ -235,4 +244,5 @@
     <!-- JavaScript -->
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
+
 </html>

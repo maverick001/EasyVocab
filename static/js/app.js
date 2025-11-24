@@ -208,6 +208,7 @@ function cacheDOMElements() {
     Elements.searchResults = document.getElementById('searchResults');
     Elements.searchResultsCount = document.getElementById('searchResultsCount');
     Elements.searchResultsList = document.getElementById('searchResultsList');
+    Elements.closeSearchResultsBtn = document.getElementById('closeSearchResultsBtn');
 
     // History
     Elements.historySelect = document.getElementById('historySelect');
@@ -278,6 +279,7 @@ function setupEventListeners() {
     // Search functionality
     Elements.searchBtn.addEventListener('click', performSearch);
     Elements.clearSearchBtn.addEventListener('click', clearSearch);
+    Elements.closeSearchResultsBtn.addEventListener('click', closeSearchResults);
     Elements.searchInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             performSearch();
@@ -1024,6 +1026,16 @@ async function performSearch() {
     } finally {
         showLoading(false);
     }
+}
+
+/**
+ * Close search results and return to word view
+ */
+function closeSearchResults() {
+    Elements.searchResults.style.display = 'none';
+    Elements.wordCard.style.display = 'block';
+    // Optional: Clear search input if desired, but keeping it might be better for context
+    // clearSearch(); 
 }
 
 /**
