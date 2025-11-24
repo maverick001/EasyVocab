@@ -1160,7 +1160,10 @@ def generate_sample_sentence():
         prompt = f'Create a simple, natural English sentence that uses the EXACT word or phrase "{word}" (including all words as shown). You must use "{word}" exactly as written, not variations or partial matches. Use simple language and vocabulary suitable for a high school student. Keep the sentence short and easy to understand. Only output the sentence, nothing else.'
 
         # Call Gemini API
-        response = model.generate_content(prompt)
+        generation_config = genai.types.GenerationConfig(
+            temperature=app.config.get('GEMINI_TEMPERATURE', 0.7)
+        )
+        response = model.generate_content(prompt, generation_config=generation_config)
         
         if response.text:
             generated_sentence = response.text.strip()

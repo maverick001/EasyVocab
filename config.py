@@ -30,6 +30,7 @@ class Config:
     # Gemini Configuration
     GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
     GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash')
+    GEMINI_TEMPERATURE = float(os.environ.get('GEMINI_TEMPERATURE', 0.7))
 
     # Database connection pool settings (for performance with large dataset)
     DB_POOL_SIZE = int(os.environ.get('DB_POOL_SIZE', 5))
