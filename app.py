@@ -1456,6 +1456,83 @@ def upload_xml():
 # Application Initialization
 # ============================================
 
+
+@app.route('/api/words/<int:word_id>/position', methods=['GET'])
+def get_word_position(word_id):
+    """
+    Get the index/position of a word within its category based on sort order
+    
+    Query Parameters:
+        sort_by: Sort criteria (default: 'updated_at')
+        
+    Returns:
+        JSON response with index, total_count, and category
+    """
+    conn = None
+    try:
+        sort_by = request.args.get('sort_by', 'updated_at')
+        
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # First get the word's category
+        cursor.execute("SELECT category FROM words WHERE id = %s", (word_id,))
+        word_data = cursor.fetchone()
+        
+        if not word_data:
+            return jsonify({
+                'success': False,
+                'error': 'Word not found'
+            }), 404
+            
+        category = word_data['category']
+        
+        # Determine sort order
+        order_clause = "updated_at DESC, id DESC"
+        if sort_by == 'review_count':
+            order_clause = "review_count DESC, updated_at DESC, id DESC"
+            
+        # Get all IDs in this category with the same sort order
+        query = f"""
+            SELECT id 
+            FROM words 
+            WHERE category = %s 
+            ORDER BY {order_clause}
+        """
+        
+        cursor.execute(query, (category,))
+        all_words = cursor.fetchall()
+        
+        # Find index
+        index = -1
+        for i, w in enumerate(all_words):
+            if w['id'] == word_id:
+                index = i
+                break
+                
+        if index == -1:
+            return jsonify({
+                'success': False,
+                'error': 'Word not found in category list'
+            }), 500
+            
+        return jsonify({
+            'success': True,
+            'index': index,
+            'total_count': len(all_words),
+            'category': category
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+    finally:
+        if conn:
+            conn.close()
+
+
 def create_app():
     """
     Application factory function

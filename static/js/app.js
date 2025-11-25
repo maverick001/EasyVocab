@@ -1098,19 +1098,26 @@ async function viewSearchResult(result) {
         Elements.searchResults.style.display = 'none';
         Elements.wordCard.style.display = 'block';
 
-        // Load words in the category and find this word's index
-        const response = await fetch(`/api/words/${encodeURIComponent(result.category)}?index=0&sort_by=${AppState.currentSortBy}`);
+        // Fetch the position of this word in its category based on current sort
+        const response = await fetch(`/api/words/${result.id}/position?sort_by=${AppState.currentSortBy}`);
         const data = await response.json();
 
         if (data.success) {
-            // Find the index of the clicked word
-            const wordResponse = await fetch(`/api/words/${encodeURIComponent(result.category)}?sort_by=${AppState.currentSortBy}`);
-            const wordData = await wordResponse.json();
+            // Set category
+            AppState.currentCategory = data.category;
+            Elements.categorySelect.value = data.category;
 
-            // Simple approach: just load the first word and let user navigate
-            // Or we could find the exact index, but that would require additional API support
-            displayWord(data.word);
-            console.log(`✅ Viewing "${result.word}" in category "${result.category}"`);
+            // Hide search results
+            Elements.searchResults.style.display = 'none';
+            Elements.wordCard.style.display = 'block';
+
+            // Load the specific word by index
+            // This ensures navigation (Next/Prev) works correctly
+            await loadWord(data.category, data.index);
+
+            console.log(`✅ Viewing "${result.word}" at index ${data.index} in category "${data.category}"`);
+        } else {
+            showError(data.error || 'Failed to find word position');
         }
 
     } catch (error) {
