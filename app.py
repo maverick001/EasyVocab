@@ -1058,38 +1058,35 @@ def get_word_debt():
         total_debt = 0
         debt_breakdown = []
         
-        # We only calculate debt for days that exist in the log
-        # (since we agreed to start tracking from "today")
-        
-        # Also check if today is in the logs, if not, debt is 100 (or 0 if we don't count today as debt yet)
-        # Usually "debt" implies past due. But the user request implies accumulating debt.
-        # "If the user has only reviewed 80 words on Day1, she has a word debt of 20."
-        # This implies we sum up (100 - count) for all days where count < 100.
-        # If count > 100, we should subtract the surplus from total debt?
-        # User said: "If for a day, the user finishes his daily quota (100 words) and keeps reviewing, 
-        # for every additinal word he reviews, the displayed total word debt shall decrement 1 spontaneously."
-        # This implies surplus reduces TOTAL debt.
-        
         today = date.today()
         
         for log in logs:
             count = log['review_count']
             log_date = log['date']
             
-            # Convert log_date to date object if it's not already (mysql connector might return date or datetime)
+            # Convert log_date to date object if it's datetime
             if isinstance(log_date, datetime):
                 log_date = log_date.date()
             
+            # Skip future dates (safety check)
+            if log_date > today:
+                continue
+            
+            # For TODAY: Skip deficit, only apply surplus if > 100
+            # This means today's incomplete quota doesn't add to debt yet
             if log_date == today:
-                # Today: Only surplus counts (reduces debt). Deficit is ignored.
                 if count > 100:
+                    # Surplus reduces total debt
                     total_debt -= (count - 100)
-            else:
-                # Past days: Deficit adds to debt, Surplus reduces debt
-                contribution = 100 - count
-                total_debt += contribution
+                # If count < 100, we ignore it (don't add to debt until day ends)
                 
-                # Add to breakdown if there is a debt for this past day
+            # For PAST days (completed days): Apply full calculation
+            else:
+                # Deficit increases debt, surplus decreases debt
+                daily_difference = 100 - count
+                total_debt += daily_difference
+                
+                # Record in breakdown only if there's a deficit
                 if count < 100:
                     debt_breakdown.append({
                         'date': log_date.strftime('%Y-%m-%d'),
