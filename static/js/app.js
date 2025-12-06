@@ -1385,9 +1385,28 @@ function updateDebtDisplay() {
             AppState.debtBreakdown.forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'debt-item';
+
+                // Determine color class based on debt value
+                // Positive debt (missed quota) = red
+                // Negative debt (exceeded quota) = green
+                // Zero = neutral
+                let debtClass = 'debt-amount';
+                let displayDebt = item.debt;
+
+                if (item.debt < 0) {
+                    debtClass = 'debt-amount debt-surplus';  // Green - exceeded quota
+                } else if (item.debt > 0) {
+                    debtClass = 'debt-amount debt-deficit';  // Red - missed quota
+                } else {
+                    debtClass = 'debt-amount debt-neutral';  // Neutral - exactly 100
+                }
+
+                // Format date label
+                const dateLabel = item.date;
+
                 div.innerHTML = `
-                    <span class="debt-date">${item.date}</span>
-                    <span class="debt-amount">${item.debt}</span>
+                    <span class="debt-date">${dateLabel}</span>
+                    <span class="${debtClass}">${displayDebt}</span>
                 `;
                 Elements.wordDebtDropdown.appendChild(div);
             });

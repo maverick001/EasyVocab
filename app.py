@@ -1039,63 +1039,89 @@ def increment_review_counter(word_id):
 def get_word_debt():
     """
     Calculate and return total word debt and daily breakdown
-    Debt = 100 - review_count for each day (if review_count < 100)
+    Debt = 100 - review_count for each day
+    - Days with no activity get +100 debt
+    - Days exceeding 100 get negative debt (surplus)
+    - Today's deficit is not counted until the day ends
     """
     conn = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Get all daily logs
+        # Get the earliest date from the database
+        cursor.execute("""
+            SELECT MIN(date) as earliest_date
+            FROM daily_study_log
+        """)
+        result = cursor.fetchone()
+        
+        if not result or not result['earliest_date']:
+            # No records at all
+            return jsonify({
+                'success': True,
+                'total_debt': 0,
+                'breakdown': []
+            })
+        
+        earliest_date = result['earliest_date']
+        if isinstance(earliest_date, datetime):
+            earliest_date = earliest_date.date()
+        
+        # Get all daily logs as a dictionary for fast lookup
         cursor.execute("""
             SELECT date, review_count
             FROM daily_study_log
-            ORDER BY date DESC
         """)
-        
         logs = cursor.fetchall()
         
+        # Create a lookup dictionary: date -> review_count
+        daily_counts = {}
+        for log in logs:
+            log_date = log['date']
+            if isinstance(log_date, datetime):
+                log_date = log_date.date()
+            daily_counts[log_date] = log['review_count']
+        
+        today = date.today()
         total_debt = 0
         debt_breakdown = []
         
-        today = date.today()
+        # Iterate through every day from earliest_date to yesterday
+        current_date = earliest_date
+        while current_date < today:  # Exclude today
+            count = daily_counts.get(current_date, 0)  # Default to 0 if no record
+            
+            # Deficit increases debt, surplus decreases debt
+            daily_debt = 100 - count
+            total_debt += daily_debt
+            
+            current_date += timedelta(days=1)
         
-        for log in logs:
-            count = log['review_count']
-            log_date = log['date']
-            
-            # Convert log_date to date object if it's datetime
-            if isinstance(log_date, datetime):
-                log_date = log_date.date()
-            
-            # Skip future dates (safety check)
-            if log_date > today:
-                continue
-            
-            # For TODAY: Skip deficit, only apply surplus if > 100
-            # This means today's incomplete quota doesn't add to debt yet
-            if log_date == today:
-                if count > 100:
-                    # Surplus reduces total debt
-                    total_debt -= (count - 100)
-                # If count < 100, we ignore it (don't add to debt until day ends)
-                
-            # For PAST days (completed days): Apply full calculation
-            else:
-                # Deficit increases debt, surplus decreases debt
-                daily_difference = 100 - count
-                total_debt += daily_difference
-                
-                # Record in breakdown only if there's a deficit
-                if count < 100:
-                    debt_breakdown.append({
-                        'date': log_date.strftime('%Y-%m-%d'),
-                        'debt': 100 - count
-                    })
-                
-        # Ensure total debt doesn't go below 0 (optional, but makes sense)
+        # Handle today separately: only apply surplus if > 100
+        today_count = daily_counts.get(today, 0)
+        if today_count > 100:
+            total_debt -= (today_count - 100)
+        
+        # Ensure total debt doesn't go below 0
         if total_debt < 0:
             total_debt = 0
+        
+        # Build breakdown for the past 20 days (starting from YESTERDAY, not today)
+        # Today is excluded since user is still reviewing
+        breakdown_date = today - timedelta(days=1)  # Start from yesterday
+        for i in range(20):
+            if breakdown_date < earliest_date:
+                break
+                
+            count = daily_counts.get(breakdown_date, 0)
+            daily_debt = 100 - count
+            debt_breakdown.append({
+                'date': breakdown_date.strftime('%Y-%m-%d'),
+                'debt': daily_debt
+            })
+            
+            breakdown_date -= timedelta(days=1)
             
         return jsonify({
             'success': True,
@@ -1560,13 +1586,13 @@ if __name__ == '__main__':
     print("\n" + "="*50)
     print("  BKDict Vocabulary Web Application")
     print("="*50)
-    print(f"  🌐 Server running on: http://localhost:5000")
+    print(f"  🌐 Server running on: http://localhost:5001")
     print(f"  📚 Database: {app.config['DB_NAME']}")
     print(f"  🔧 Debug mode: {app.config['DEBUG']}")
     print("="*50 + "\n")
 
     app.run(
         host='0.0.0.0',
-        port=5000,
+        port=5001,
         debug=app.config['DEBUG']
     )

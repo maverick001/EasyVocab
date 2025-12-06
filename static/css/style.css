@@ -474,7 +474,23 @@ body {
 
 .debt-amount {
     font-weight: bold;
+    min-width: 40px;
+    text-align: right;
+}
+
+/* Positive debt (missed quota) - Red */
+.debt-amount.debt-deficit {
     color: var(--error);
+}
+
+/* Negative debt (exceeded quota) - Green */
+.debt-amount.debt-surplus {
+    color: var(--success);
+}
+
+/* Zero debt (exactly met quota) - Neutral */
+.debt-amount.debt-neutral {
+    color: var(--text-secondary);
 }
 
 .debt-empty {
