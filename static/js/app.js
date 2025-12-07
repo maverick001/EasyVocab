@@ -953,6 +953,11 @@ async function submitNewWord() {
             Elements.addWordStatus.textContent = `✅ ${data.message}`;
             Elements.addWordStatus.className = 'form-status success';
 
+            // Increment daily counter for the new word
+            if (data.word_id) {
+                incrementDailyCounter(data.word_id);
+            }
+
             // Reload categories to update counts
             await loadCategories();
 
