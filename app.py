@@ -13,7 +13,7 @@ from werkzeug.utils import secure_filename
 from config import Config
 from utils import parse_and_import_xml, XMLParserError
 from datetime import datetime, date, timedelta
-import google.generativeai as genai
+from openai import OpenAI
 
 # Initialize Flask application
 app = Flask(__name__)
@@ -1142,7 +1142,7 @@ def get_word_debt():
 @app.route('/api/generate-sample', methods=['POST'])
 def generate_sample_sentence():
     """
-    Generate a sample sentence using Ollama AI
+    Generate a sample sentence using Poe API (OpenAI-compatible)
 
     Request Body (JSON):
         {
@@ -1169,27 +1169,31 @@ def generate_sample_sentence():
                 'error': 'Word cannot be empty'
             }), 400
 
-        # Configure Gemini
-        if not app.config['GOOGLE_API_KEY']:
+        # Check Poe API Key
+        if not app.config['POE_API_KEY']:
             return jsonify({
                 'success': False,
-                'error': 'Google API Key not configured'
+                'error': 'Poe API Key not configured. Please set POE_API_KEY in .env file.'
             }), 500
 
-        genai.configure(api_key=app.config['GOOGLE_API_KEY'])
-        model = genai.GenerativeModel(app.config['GEMINI_MODEL'])
+        # Initialize OpenAI client with Poe API endpoint
+        client = OpenAI(
+            api_key=app.config['POE_API_KEY'],
+            base_url="https://api.poe.com/v1/"
+        )
 
-        # Prepare prompt for Gemini
+        # Prepare prompt
         prompt = f'Create a simple, natural English sentence that uses the EXACT word or phrase "{word}" (including all words as shown). You must use "{word}" exactly as written, not variations or partial matches. Use simple language and vocabulary suitable for a high school student. Keep the sentence short and easy to understand. Only output the sentence, nothing else.'
 
-        # Call Gemini API
-        generation_config = genai.types.GenerationConfig(
-            temperature=app.config.get('GEMINI_TEMPERATURE', 0.7)
+        # Call Poe API via OpenAI SDK
+        response = client.chat.completions.create(
+            model=app.config['POE_MODEL'],
+            messages=[{"role": "user", "content": prompt}],
+            temperature=app.config.get('POE_TEMPERATURE', 0.7)
         )
-        response = model.generate_content(prompt, generation_config=generation_config)
         
-        if response.text:
-            generated_sentence = response.text.strip()
+        if response.choices and response.choices[0].message.content:
+            generated_sentence = response.choices[0].message.content.strip()
             return jsonify({
                 'success': True,
                 'sentence': generated_sentence
@@ -1197,7 +1201,7 @@ def generate_sample_sentence():
         else:
             return jsonify({
                 'success': False,
-                'error': 'Gemini returned empty response'
+                'error': 'Poe returned empty response'
             }), 500
 
     except Exception as e:
