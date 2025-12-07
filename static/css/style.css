@@ -9,27 +9,42 @@
    ============================================ */
 :root {
     /* Primary Colors - Light Blue Palette */
-    --primary-blue: #87CEEB;        /* Sky blue */
-    --primary-light: #B0E0E6;       /* Powder blue */
-    --primary-dark: #4682B4;        /* Steel blue */
-    --accent-blue: #5F9EA0;         /* Cadet blue */
+    --primary-blue: #87CEEB;
+    /* Sky blue */
+    --primary-light: #B0E0E6;
+    /* Powder blue */
+    --primary-dark: #4682B4;
+    /* Steel blue */
+    --accent-blue: #5F9EA0;
+    /* Cadet blue */
 
     /* Background Colors */
-    --bg-main: #E6F3F9;             /* Very light blue background */
-    --bg-card: #FFFFFF;             /* White for cards */
-    --bg-hover: #D4E9F3;            /* Slightly darker blue for hover */
+    --bg-main: #E6F3F9;
+    /* Very light blue background */
+    --bg-card: #FFFFFF;
+    /* White for cards */
+    --bg-hover: #D4E9F3;
+    /* Slightly darker blue for hover */
 
     /* Text Colors */
-    --text-primary: #2C3E50;        /* Dark blue-gray for main text */
-    --text-secondary: #5D6D7E;      /* Medium gray for secondary text */
-    --text-light: #7F8C8D;          /* Light gray for hints */
+    --text-primary: #2C3E50;
+    /* Dark blue-gray for main text */
+    --text-secondary: #5D6D7E;
+    /* Medium gray for secondary text */
+    --text-light: #7F8C8D;
+    /* Light gray for hints */
 
     /* UI Colors */
-    --border-color: #B8D4E3;        /* Light blue border */
-    --shadow: rgba(70, 130, 180, 0.15);  /* Subtle blue shadow */
-    --success: #52C65D;             /* Green for success messages */
-    --warning: #F39C12;             /* Orange for warnings */
-    --error: #E74C3C;               /* Red for errors */
+    --border-color: #B8D4E3;
+    /* Light blue border */
+    --shadow: rgba(70, 130, 180, 0.15);
+    /* Subtle blue shadow */
+    --success: #52C65D;
+    /* Green for success messages */
+    --warning: #F39C12;
+    /* Orange for warnings */
+    --error: #E74C3C;
+    /* Red for errors */
 
     /* Spacing */
     --spacing-xs: 0.5rem;
@@ -72,7 +87,8 @@ body {
    Main Container
    ============================================ */
 .container {
-    max-width: 1600px;  /* Increased from 1200px for wider layout */
+    max-width: 1600px;
+    /* Increased from 1200px for wider layout */
     margin: 0 auto;
     padding: var(--spacing-md);
     flex: 1;
@@ -350,19 +366,21 @@ body {
     padding: var(--spacing-md) var(--spacing-lg);
     border-bottom: 2px solid var(--border-color);
     margin-bottom: var(--spacing-md);
-    min-height: 120px;  /* Fixed height to prevent resizing between words */
+    min-height: 120px;
+    /* Fixed height to prevent resizing between words */
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    position: relative;  /* For absolute positioning of review counter */
+    position: relative;
+    /* For absolute positioning of review counter */
 }
 
 /* Status Bar Container */
 .status-bar {
     position: absolute;
     top: var(--spacing-sm);
-    left: var(--spacing-md);
+    left: 0;
     display: flex;
     gap: var(--spacing-sm);
     align-items: center;
@@ -379,7 +397,7 @@ body {
     align-items: center;
     justify-content: center;
     white-space: nowrap;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 /* Position Badge */
@@ -419,7 +437,7 @@ body {
 .debt-badge:hover {
     background: #87CEEB;
     transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 /* Word Debt Dropdown */
@@ -431,7 +449,7 @@ body {
     background: white;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     min-width: 220px;
     z-index: 100;
     display: none;
@@ -445,8 +463,15 @@ body {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .debt-item {
@@ -520,7 +545,8 @@ body {
     color: var(--primary-dark);
     margin: 0;
     text-shadow: 2px 2px 4px var(--shadow);
-    word-break: break-word;  /* Handle very long words */
+    word-break: break-word;
+    /* Handle very long words */
 }
 
 /* Word Editing */
@@ -724,8 +750,10 @@ body {
     line-height: 1.8;
     white-space: pre-wrap;
     min-height: 60px;
-    width: 100%;  /* 50% wider - using full container width */
-    max-width: none;  /* Remove any max-width restrictions */
+    width: 100%;
+    /* 50% wider - using full container width */
+    max-width: none;
+    /* Remove any max-width restrictions */
 }
 
 .content-display.empty {
@@ -746,7 +774,8 @@ body {
 
 .content-edit {
     margin-top: var(--spacing-sm);
-    width: 100%;  /* Match the display width */
+    width: 100%;
+    /* Match the display width */
 }
 
 .edit-hint {
@@ -842,7 +871,9 @@ body {
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* ============================================
@@ -1062,6 +1093,7 @@ body {
         opacity: 0;
         transform: translateY(-50px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -1610,4 +1642,3 @@ body {
 .btn-close-results:hover {
     color: var(--error);
 }
-

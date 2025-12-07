@@ -514,9 +514,7 @@ function displayWord(wordData) {
     // Update word input
     Elements.wordInput.value = wordData.word;
 
-    // Update position info
-    Elements.positionInfo.textContent =
-        `Word ${wordData.current_index + 1} of ${wordData.total_in_category}`;
+
 
     // Update navigation button states
     updateNavigationButtons();
@@ -1319,7 +1317,7 @@ function saveDailyProgress() {
  */
 function updateDailyCounterDisplay() {
     if (Elements.dailyCounter) {
-        Elements.dailyCounter.textContent = `${AppState.dailyProgress}/100`;
+        Elements.dailyCounter.textContent = `Word Today: ${AppState.dailyProgress}/100`;
 
         // Change color to green when >= 100
         if (AppState.dailyProgress >= 100) {
