@@ -1,0 +1,260 @@
+<wordbook><item>    <word>IPC</word>
+    <trans><![CDATA[abbr.信息处理中心（information processing center）；工业过程控制（industrial process control）；国际残疾人奥林匹克委员会（International Paralympic Committee）；进程间通信（interprocess communication）；印制电路协会（Institute of Printed Circuits）；国际专利分类（International Patent Classification）；每周期完成的指令数（instruction per cycle/clock）]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>accuracy loss</word>
+    <trans><![CDATA[精度损失：在数据处理、计算或传输过程中，由于各种原因导致的数据精度降低或失真现象。]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>MFA</word>
+    <trans><![CDATA[Multi-factor authentication (MFA) is a method requiring users to provide more than just a password to access a website or application. MFA is also known as two-step verification.]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>linear algebra</word>
+    <trans><![CDATA[线性代数：数学的一个分支，研究的是在加法和标量乘法下封闭的数学结构，并包括线性方程组、矩阵、行列式、向量空间和线性变换的理论。]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>corpus</word>
+    <trans><![CDATA[n. 文集，全集；语料库；体，身体；]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>y prime</word>
+    <trans><![CDATA[y ']]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>generative adversarial network</word>
+    <trans><![CDATA[生成对抗网络]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>image enhancement</word>
+    <trans><![CDATA[图像增强：通过使用各种算法和技术来改善图像的质量、清晰度和可视化效果的过程。]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>pair programming</word>
+    <trans><![CDATA[结对编程：一种软件开发方法，两个程序员共同在一个工作站上编写代码，一个人负责编写代码，另一个人负责审查代码，两人不断交换角色。]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>TPF</word>
+    <trans><![CDATA[产品技术契合度]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>technology product fit</word>
+    <trans><![CDATA[技术产品契合度（TPF）]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>multi-layer perceptron</word>
+    <trans><![CDATA[多层感知机（MLP）]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>hyperscale</word>
+    <trans><![CDATA[adj. 超大规模的：指在计算、存储和网络方面具有极大规模和高度自动化的数据中心。]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>code interpreter</word>
+    <trans><![CDATA[代码翻译器。用于把高级语言代码翻译成机器语言代码。]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>scripting language</word>
+    <trans><![CDATA[脚本语言：一种专门设计用于创建短程序以自动化简单任务的高级编程语言。]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>data denoising</word>
+    <trans><![CDATA[数据去噪]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>security credentials</word>
+    <trans><![CDATA[安全凭证：指用于验证身份和授权访问系统、网络或应用程序的一组信息，如用户名、密码、数字证书等。]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>model customiztion</word>
+    <trans><![CDATA[模型客制化]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>abstract algebra</word>
+    <trans><![CDATA[抽象代数：数学的一个分支，通过使用符号来表示基本的算术运算，将代数概念进行了泛化。]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>convolutional code</word>
+    <trans><![CDATA[[计] 卷积码]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>data ingestion</word>
+    <trans><![CDATA[数据摄取]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>distributed training</word>
+    <trans><![CDATA[分布式训练]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>distributed inference</word>
+    <trans><![CDATA[分布式推理]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>relational data</word>
+    <trans><![CDATA[关系型数据：指在关系型数据库中以表格形式存储的数据，其中数据之间通过键值关系进行连接和查询。]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>heterogeneous computing</word>
+    <trans><![CDATA[异构计算，异构运算]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>negative prompt</word>
+    <trans><![CDATA[负面的提示]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>Euclidean distance</word>
+    <trans><![CDATA[欧几里得距离]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>semantic similarity</word>
+    <trans><![CDATA[语义相似性]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>dot product</word>
+    <trans><![CDATA[点乘、点积：两个向量之间的一种运算，结果是一个标量。]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>cross product</word>
+    <trans><![CDATA[叉乘、向量积：在向量代数中，两个向量的乘积。结果是一个大小为两向量围住的四边形面积的新向量。]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>arccos</word>
+    <trans><![CDATA[abbr. 反余弦函数（arccosine）]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>arcsine</word>
+    <trans><![CDATA[n. 反正弦]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>arctan</word>
+    <trans><![CDATA[n. 反正切]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>speculative decoding</word>
+    <trans><![CDATA[投机解码]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>one-hot encoding</word>
+    <trans><![CDATA[独热编码]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>video thumbnail</word>
+    <trans><![CDATA[视频缩略图]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item><item>    <word>visual question answering</word>
+    <trans><![CDATA[视觉问答]]></trans>
+    <phonetic><![CDATA[]]></phonetic>
+    <lanfrom><![CDATA[en]]></lanfrom>
+    <lanto><![CDATA[zh-CHS]]></lanto>
+    <tags>AI_CS</tags>
+    <progress>-1</progress>
+</item></wordbook>
