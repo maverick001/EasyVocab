@@ -77,10 +77,10 @@ function displayWord(word) {
     wordDisplay.textContent = word.word;
 
     // Format sample sentences (handle newlines)
-    if (word.sample_sentence) {
-        sentencesDisplay.innerHTML = word.sample_sentence.split('\n').map(s => `<p>${s}</p>`).join('');
+    if (word.example_sentence) {
+        sentencesDisplay.innerHTML = word.example_sentence.split('\n').map(s => `<p>${s}</p>`).join('');
     } else {
-        sentencesDisplay.innerHTML = '<p><em>No sample sentence available.</em></p>';
+        sentencesDisplay.innerHTML = '<p><em>No example sentence available.</em></p>';
     }
 
     translationDisplay.textContent = word.translation;

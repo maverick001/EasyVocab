@@ -392,10 +392,10 @@ async function updateWord(wordId, updates) {
                 AppState.currentWord.translation = updates.translation;
                 Elements.translationDisplay.textContent = updates.translation;
             }
-            if ('sample_sentence' in updates) {
-                AppState.currentWord.sample_sentence = updates.sample_sentence;
+            if ('example_sentence' in updates) {
+                AppState.currentWord.example_sentence = updates.example_sentence;
                 // Redisplay samples with updated content
-                displaySampleSentences(updates.sample_sentence);
+                displaySampleSentences(updates.example_sentence);
             }
 
             // Reload history after update
@@ -509,7 +509,7 @@ function displayWord(wordData) {
     Elements.translationInput.value = wordData.translation;
 
     // Display sample sentences using helper function
-    displaySampleSentences(wordData.sample_sentence);
+    displaySampleSentences(wordData.example_sentence);
 
     // Update word input
     Elements.wordInput.value = wordData.word;
@@ -734,7 +734,7 @@ async function saveSample() {
     const newSample = Elements.sampleInput.value.trim();
 
     const success = await updateWord(AppState.currentWord.id, {
-        sample_sentence: newSample
+        example_sentence: newSample
     });
 
     if (success) {
@@ -769,7 +769,7 @@ async function generateSampleSentence() {
 
         if (data.success && data.sentence) {
             // Get current sample sentences
-            const currentSample = AppState.currentWord.sample_sentence || '';
+            const currentSample = AppState.currentWord.example_sentence || '';
 
             // Add new sentence to existing ones (on new line if there are existing sentences)
             let updatedSample;
@@ -781,7 +781,7 @@ async function generateSampleSentence() {
 
             // Update the word with new sample sentence
             const success = await updateWord(AppState.currentWord.id, {
-                sample_sentence: updatedSample
+                example_sentence: updatedSample
             });
 
             if (success) {

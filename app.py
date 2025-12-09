@@ -80,7 +80,7 @@ def ensure_word_history_table():
                 word_id INT NOT NULL COMMENT 'Reference to words.id',
                 word VARCHAR(255) NOT NULL COMMENT 'The word text at this point in time',
                 translation TEXT NOT NULL COMMENT 'Translation at this point in time',
-                sample_sentence TEXT DEFAULT NULL COMMENT 'Sample sentence at this point in time',
+                example_sentence TEXT DEFAULT NULL COMMENT 'Example sentence at this point in time',
                 category VARCHAR(100) NOT NULL COMMENT 'Category at this point in time',
                 modified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'When this version was created',
                 modification_type ENUM('created', 'updated', 'moved') NOT NULL DEFAULT 'updated' COMMENT 'Type of modification',
@@ -100,12 +100,12 @@ def ensure_word_history_table():
 
         if count == 0:
             cursor.execute("""
-                INSERT INTO word_history (word_id, word, translation, sample_sentence, category, modified_at, modification_type)
+                INSERT INTO word_history (word_id, word, translation, example_sentence, category, modified_at, modification_type)
                 SELECT
                     id,
                     word,
                     translation,
-                    sample_sentence,
+                    example_sentence,
                     category,
                     created_at,
                     'created'
@@ -122,7 +122,7 @@ def ensure_word_history_table():
             connection.close()
 
 
-def create_history_record(cursor, word_id, word_text, translation, sample_sentence, category, modification_type='updated'):
+def create_history_record(cursor, word_id, word_text, translation, example_sentence, category, modification_type='updated'):
     """
     Create a history record for a word modification
 
@@ -131,14 +131,14 @@ def create_history_record(cursor, word_id, word_text, translation, sample_senten
         word_id: ID of the word being modified
         word_text: Current word text
         translation: Current translation
-        sample_sentence: Current sample sentence
+        example_sentence: Current example sentence
         category: Current category
         modification_type: Type of modification ('created', 'updated', 'moved')
     """
     cursor.execute("""
-        INSERT INTO word_history (word_id, word, translation, sample_sentence, category, modification_type)
+        INSERT INTO word_history (word_id, word, translation, example_sentence, category, modification_type)
         VALUES (%s, %s, %s, %s, %s, %s)
-    """, (word_id, word_text, translation, sample_sentence, category, modification_type))
+    """, (word_id, word_text, translation, example_sentence, category, modification_type))
 
 
 def allowed_file(filename):
@@ -319,7 +319,7 @@ def get_word_by_category(category):
         # Get the word at the specified index
         # Using LIMIT with OFFSET for pagination with dynamic sorting
         query = f"""
-            SELECT id, word, translation, category, sample_sentence,
+            SELECT id, word, translation, category, example_sentence,
                    review_count, last_reviewed, created_at, updated_at
             FROM words
             WHERE category = %s
@@ -367,7 +367,7 @@ def add_word():
         {
             "word": "example",
             "translation": "示例",
-            "sample_sentence": "This is an example.\nAnother example.",  // optional
+            "example_sentence": "This is an example.\nAnother example.",  // optional
             "category": "日常词汇"
         }
 
@@ -388,7 +388,7 @@ def add_word():
         word = data.get('word', '').strip()
         translation = data.get('translation', '').strip()
         category = data.get('category', '').strip()
-        sample_sentence = data.get('sample_sentence', '').strip()
+        example_sentence = data.get('example_sentence', '').strip()
 
         if not word:
             return jsonify({
@@ -428,9 +428,9 @@ def add_word():
 
         # Insert new word
         cursor.execute("""
-            INSERT INTO words (word, translation, sample_sentence, category, review_count, last_reviewed)
+            INSERT INTO words (word, translation, example_sentence, category, review_count, last_reviewed)
             VALUES (%s, %s, %s, %s, 1, NULL)
-        """, (word, translation, sample_sentence if sample_sentence else None, category))
+        """, (word, translation, example_sentence if example_sentence else None, category))
 
         new_word_id = cursor.lastrowid
 
@@ -440,7 +440,7 @@ def add_word():
             new_word_id,
             word,
             translation,
-            sample_sentence if sample_sentence else None,
+            example_sentence if example_sentence else None,
             category,
             'created'
         )
@@ -513,7 +513,7 @@ def search_words():
 
         # Search for words containing the query (case-insensitive)
         cursor.execute("""
-            SELECT id, word, translation, category, review_count, sample_sentence
+            SELECT id, word, translation, category, review_count, example_sentence
             FROM words
             WHERE word LIKE %s
             ORDER BY word ASC
@@ -561,7 +561,7 @@ def get_word_history(word_id):
                 id,
                 word,
                 translation,
-                sample_sentence,
+                example_sentence,
                 category,
                 DATE(modified_at) as modified_date,
                 modification_type
@@ -603,7 +603,7 @@ def get_word_history(word_id):
 @app.route('/api/words/<int:word_id>', methods=['PUT'])
 def update_word(word_id):
     """
-    Update word, translation, or sample sentence for a word
+    Update word, translation, or example_sentence for a word
 
     Args:
         word_id: ID of the word to update (from URL path)
@@ -636,7 +636,7 @@ def update_word(word_id):
         cursor = conn.cursor(dictionary=True)
 
         # First, get the current word text and sample_sentence
-        cursor.execute("SELECT word, sample_sentence, last_sample_review_date FROM words WHERE id = %s", (word_id,))
+        cursor.execute("SELECT word, example_sentence, last_sample_review_date FROM words WHERE id = %s", (word_id,))
         current_word_data = cursor.fetchone()
 
         if not current_word_data:
@@ -646,11 +646,11 @@ def update_word(word_id):
             }), 404
 
         current_word_text = current_word_data['word']
-        current_sample = current_word_data.get('sample_sentence') or ''
+        current_sample = current_word_data.get('example_sentence') or ''
         last_sample_date = current_word_data.get('last_sample_review_date')
 
-        # Update translation and sample_sentence across ALL instances of this word
-        if 'translation' in data or 'sample_sentence' in data:
+        # Update translation and example_sentence across ALL instances of this word
+        if 'translation' in data or 'example_sentence' in data:
             shared_update_fields = []
             shared_params = []
 
@@ -658,11 +658,11 @@ def update_word(word_id):
                 shared_update_fields.append('translation = %s')
                 shared_params.append(data['translation'])
 
-            if 'sample_sentence' in data:
-                new_sample = data['sample_sentence'] or ''
+            if 'example_sentence' in data:
+                new_sample = data['example_sentence'] or ''
                 
-                shared_update_fields.append('sample_sentence = %s')
-                shared_params.append(data['sample_sentence'])
+                shared_update_fields.append('example_sentence = %s')
+                shared_params.append(data['example_sentence'])
                 
                 # Check if sample sentence actually changed to trigger review increment
                 if new_sample.strip() != current_sample.strip():
@@ -694,7 +694,7 @@ def update_word(word_id):
 
         # Get the updated word data for history record
         cursor.execute("""
-            SELECT word, translation, sample_sentence, category
+            SELECT word, translation, example_sentence, category
             FROM words
             WHERE id = %s
         """, (word_id,))
@@ -706,7 +706,7 @@ def update_word(word_id):
             word_id,
             updated_word['word'],
             updated_word['translation'],
-            updated_word['sample_sentence'],
+            updated_word['example_sentence'],
             updated_word['category'],
             'updated'
         )
@@ -772,7 +772,7 @@ def change_word_category(word_id):
 
         # Get current word information
         cursor.execute("""
-            SELECT word, translation, sample_sentence, category, review_count, last_reviewed
+            SELECT word, translation, example_sentence, category, review_count, last_reviewed
             FROM words
             WHERE id = %s
         """, (word_id,))
@@ -802,34 +802,19 @@ def change_word_category(word_id):
             }), 409
 
         # Word doesn't exist in target category - perform the move
-        # Step 1: Insert word into new category
-        cursor.execute("""
-            INSERT INTO words (word, translation, sample_sentence, category, review_count, last_reviewed)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """, (
-            current_word['word'],
-            current_word['translation'],
-            current_word['sample_sentence'],
-            new_category,
-            current_word['review_count'],
-            current_word['last_reviewed']
-        ))
-
-        new_word_id = cursor.lastrowid
-
+        # Update category directly to preserve ID and last_daily_activity_date
+        cursor.execute("UPDATE words SET category = %s WHERE id = %s", (new_category, word_id))
+        
         # Create history record for the moved word
         create_history_record(
             cursor,
-            new_word_id,
+            word_id,
             current_word['word'],
             current_word['translation'],
-            current_word['sample_sentence'],
+            current_word['example_sentence'],
             new_category,
             'moved'
         )
-
-        # Step 2: Delete word from current category
-        cursor.execute("DELETE FROM words WHERE id = %s", (word_id,))
 
         conn.commit()
 
@@ -989,7 +974,7 @@ def increment_review_counter(word_id):
 
         # Get updated word data for history
         cursor.execute("""
-            SELECT word, translation, sample_sentence, category, review_count, last_reviewed
+            SELECT word, translation, example_sentence, category, review_count, last_reviewed
             FROM words
             WHERE id = %s
         """, (word_id,))
@@ -1003,7 +988,7 @@ def increment_review_counter(word_id):
                 word_id,
                 result['word'],
                 result['translation'],
-                result['sample_sentence'],
+                result['example_sentence'],
                 result['category'],
                 'updated'
             )
@@ -1142,7 +1127,7 @@ def get_word_debt():
 @app.route('/api/generate-sample', methods=['POST'])
 def generate_sample_sentence():
     """
-    Generate a sample sentence using Poe API (OpenAI-compatible)
+    Generate a example sentence using Poe API (OpenAI-compatible)
 
     Request Body (JSON):
         {
@@ -1271,7 +1256,7 @@ def get_next_quiz_word():
 
         # Get oldest updated word with review_count >= 1
         cursor.execute("""
-            SELECT id, word, translation, sample_sentence, review_count
+            SELECT id, word, translation, example_sentence, review_count
             FROM words
             WHERE review_count >= 1
             ORDER BY updated_at ASC

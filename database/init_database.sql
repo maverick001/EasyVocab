@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS words (
     word VARCHAR(255) NOT NULL COMMENT 'The English word or phrase',
     translation TEXT NOT NULL COMMENT 'Chinese translation with CDATA content',
     category VARCHAR(100) NOT NULL COMMENT 'Category/tag for the word (e.g., 文化, AI)',
-    sample_sentence TEXT DEFAULT NULL COMMENT 'Example sentence using the word (user-added)',
+    example_sentence TEXT DEFAULT NULL COMMENT 'Example sentence using the word (user-added)',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Record creation timestamp',
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last update timestamp',
 
