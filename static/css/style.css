@@ -127,27 +127,50 @@ body {
 .control-panel {
     background: var(--bg-card);
     padding: var(--spacing-md);
-    border-radius: var(--radius-md);
-    box-shadow: 0 4px 6px var(--shadow);
+    border-radius: var(--radius-lg);
+    box-shadow:
+        0 4px 20px rgba(70, 130, 180, 0.12),
+        0 1px 6px rgba(70, 130, 180, 0.08);
     margin-bottom: var(--spacing-lg);
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    border: 1px solid rgba(176, 224, 230, 0.4);
+}
+
+/* Control Rows */
+.control-row {
+    display: flex;
+    align-items: center;
     flex-wrap: wrap;
     gap: var(--spacing-md);
+}
+
+.primary-controls {
+    padding-bottom: var(--spacing-md);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.action-controls {
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: center;
+    flex-wrap: wrap;
 }
 
 .control-group {
     display: flex;
     align-items: center;
-    gap: var(--spacing-sm);
+    gap: var(--spacing-xs);
     flex-wrap: wrap;
 }
 
 .control-label {
     font-weight: 600;
-    color: var(--text-primary);
-    font-size: 1rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 /* Category Selection */
@@ -165,6 +188,7 @@ body {
 
 .category-select:hover {
     border-color: var(--primary-dark);
+    box-shadow: 0 2px 8px rgba(70, 130, 180, 0.15);
 }
 
 .category-select:focus {
@@ -255,21 +279,44 @@ body {
     border: none;
     border-radius: var(--radius-sm);
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.btn:hover::before {
+    left: 100%;
 }
 
 .btn-primary {
-    background: var(--primary-blue);
+    background: linear-gradient(135deg, var(--primary-blue), var(--primary-dark));
     color: white;
+    box-shadow: 0 2px 8px rgba(70, 130, 180, 0.25);
 }
 
 .btn-primary:hover {
-    background: var(--primary-dark);
+    background: linear-gradient(135deg, var(--primary-dark), #3a6d99);
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px var(--shadow);
+    box-shadow: 0 4px 12px rgba(70, 130, 180, 0.35);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(70, 130, 180, 0.2);
 }
 
 .btn-secondary {
@@ -280,6 +327,44 @@ body {
 .btn-secondary:hover {
     background: var(--primary-dark);
     transform: translateY(-2px);
+}
+
+/* Action Button Styles */
+.btn-import {
+    background: linear-gradient(135deg, #6ab0de, #4a8fc2);
+    color: white;
+    box-shadow: 0 2px 8px rgba(74, 143, 194, 0.3);
+}
+
+.btn-import:hover {
+    background: linear-gradient(135deg, #4a8fc2, #3a7db0);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(74, 143, 194, 0.4);
+}
+
+.btn-add-word {
+    background: linear-gradient(135deg, #4ade80, #22c55e);
+    color: white;
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+}
+
+.btn-add-word:hover {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+}
+
+.btn-quiz {
+    background: linear-gradient(135deg, #a78bfa, #8b5cf6);
+    color: white;
+    text-decoration: none;
+    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+}
+
+.btn-quiz:hover {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
 }
 
 .btn-edit {
@@ -296,12 +381,14 @@ body {
 }
 
 .btn-save {
-    background: var(--success);
+    background: linear-gradient(135deg, var(--success), #46B356);
     color: white;
+    box-shadow: 0 2px 6px rgba(82, 198, 93, 0.25);
 }
 
 .btn-save:hover {
-    background: #46B356;
+    background: linear-gradient(135deg, #46B356, #3a9a4a);
+    transform: translateY(-1px);
 }
 
 .btn-cancel {
@@ -314,37 +401,49 @@ body {
 }
 
 .btn-generate {
-    background: var(--primary-blue);
+    background: linear-gradient(135deg, var(--primary-blue), var(--accent-blue));
     color: white;
     padding: 0.8rem 1.5rem;
     font-size: 1.1rem;
     border: none;
+    box-shadow: 0 2px 8px rgba(70, 130, 180, 0.25);
 }
 
 .btn-generate:hover {
-    background: var(--primary-dark);
+    background: linear-gradient(135deg, var(--primary-dark), var(--accent-blue));
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(70, 130, 180, 0.35);
 }
 
 .btn-generate:disabled {
     background: var(--border-color);
     cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
 }
 
 .btn-nav {
-    background: var(--primary-blue);
+    background: linear-gradient(135deg, var(--primary-blue), var(--primary-dark));
     color: white;
-    padding: 0.8rem 1.5rem;
+    padding: 0.9rem 1.8rem;
     font-size: 1.1rem;
+    box-shadow: 0 2px 8px rgba(70, 130, 180, 0.25);
+    min-width: 140px;
+    justify-content: center;
 }
 
 .btn-nav:hover {
-    background: var(--primary-dark);
+    background: linear-gradient(135deg, var(--primary-dark), #3a6d99);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(70, 130, 180, 0.35);
 }
 
 .btn-nav:disabled {
     background: var(--border-color);
     cursor: not-allowed;
     opacity: 0.6;
+    transform: none;
+    box-shadow: none;
 }
 
 /* ============================================
@@ -355,10 +454,18 @@ body {
     padding: var(--spacing-lg);
     border-radius: var(--radius-lg);
     box-shadow:
-        0 10px 30px rgba(70, 130, 180, 0.15),
-        0 1px 8px rgba(70, 130, 180, 0.1);
+        0 10px 40px rgba(70, 130, 180, 0.12),
+        0 4px 12px rgba(70, 130, 180, 0.08);
     margin-bottom: var(--spacing-lg);
-    border: 1px solid rgba(176, 224, 230, 0.3);
+    border: 1px solid rgba(176, 224, 230, 0.4);
+    transition: all 0.3s ease;
+}
+
+.word-card:hover {
+    box-shadow:
+        0 12px 45px rgba(70, 130, 180, 0.18),
+        0 6px 16px rgba(70, 130, 180, 0.12),
+        0 0 0 1px rgba(135, 206, 235, 0.3);
 }
 
 /* Word Section with Position Info */
@@ -391,33 +498,41 @@ body {
 .status-badge {
     font-weight: 600;
     font-size: 0.9rem;
-    padding: 0.4rem 1rem;
+    padding: 0.45rem 1.1rem;
     border-radius: 20px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     white-space: nowrap;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
 }
 
 /* Position Badge */
 .position-badge {
     color: var(--primary-dark);
-    background: rgba(135, 206, 235, 0.15);
-    border: 1px solid transparent;
+    background: rgba(135, 206, 235, 0.2);
+    border: 1px solid rgba(135, 206, 235, 0.4);
 }
 
 /* Daily Progress Badge */
 .daily-badge {
-    color: #333;
-    background: #FFE54C;
-    border: 1px solid #FFD700;
-    transition: background 0.3s ease, border-color 0.3s ease;
+    color: #1a1a1a;
+    background: linear-gradient(135deg, #ffe066, #ffd700);
+    border: 1px solid #e6c200;
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.35);
+    transition: all 0.3s ease;
+}
+
+.daily-badge:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.45);
 }
 
 .daily-badge.completed {
-    background: #90EE90;
-    border-color: #32CD32;
+    background: linear-gradient(135deg, #90EE90, #32CD32);
+    border-color: #28a428;
+    box-shadow: 0 2px 8px rgba(50, 205, 50, 0.35);
 }
 
 /* Word Debt Badge */
@@ -600,18 +715,42 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    height: 36px;
-    min-width: 36px;
-    padding: 0 8px;
-    border-radius: 18px;
-    background: linear-gradient(135deg, var(--primary-blue), var(--primary-dark));
+    height: 40px;
+    min-width: 40px;
+    padding: 0 10px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #a78bfa, #8b5cf6);
     color: white;
-    font-size: 1rem;
+    font-size: 1.1rem;
     font-weight: bold;
     cursor: pointer;
-    box-shadow: 0 2px 4px var(--shadow);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    margin-left: 8px;
+    box-shadow: 0 3px 10px rgba(139, 92, 246, 0.35);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-left: 10px;
+}
+
+.review-counter-badge:hover {
+    transform: scale(1.08);
+    box-shadow: 0 5px 15px rgba(139, 92, 246, 0.45);
+}
+
+.review-counter-badge:active {
+    transform: scale(0.95);
+    animation: pulse 0.3s ease;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.5);
+    }
+
+    70% {
+        box-shadow: 0 0 0 12px rgba(139, 92, 246, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(139, 92, 246, 0);
+    }
 }
 
 /* History Dropdown (right side, below counter) */
@@ -825,31 +964,63 @@ body {
     background: var(--bg-card);
     padding: var(--spacing-xl);
     border-radius: var(--radius-lg);
-    box-shadow: 0 8px 16px var(--shadow);
+    box-shadow:
+        0 10px 40px rgba(70, 130, 180, 0.12),
+        0 4px 12px rgba(70, 130, 180, 0.08);
     text-align: center;
     margin-top: var(--spacing-lg);
+    border: 1px solid rgba(176, 224, 230, 0.4);
+    animation: welcomeFadeIn 0.5s ease-out;
+}
+
+@keyframes welcomeFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .welcome-icon {
-    font-size: 4rem;
+    font-size: 4.5rem;
     margin-bottom: var(--spacing-md);
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-8px);
+    }
 }
 
 .welcome-message h2 {
-    font-size: 2rem;
+    font-size: 2.2rem;
     color: var(--primary-dark);
     margin-bottom: var(--spacing-sm);
+    font-weight: 700;
 }
 
 .welcome-message p {
-    font-size: 1.1rem;
+    font-size: 1.15rem;
     color: var(--text-secondary);
     margin-bottom: var(--spacing-sm);
+    line-height: 1.7;
 }
 
 .welcome-hint {
     color: var(--text-light);
     font-style: italic;
+    font-size: 1rem;
 }
 
 /* ============================================

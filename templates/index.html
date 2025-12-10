@@ -21,40 +21,42 @@
         <!-- Control Panel -->
         <div class="control-panel">
 
-            <!-- Category Selection -->
-            <div class="control-group">
-                <label for="categorySelect" class="control-label">Select Category:</label>
-                <select id="categorySelect" class="category-select">
-                    <option value="">-- Loading categories... --</option>
-                </select>
-                <span id="categoryInfo" class="category-info"></span>
-            </div>
+            <!-- Row 1: Primary Controls -->
+            <div class="control-row primary-controls">
+                <!-- Category Selection -->
+                <div class="control-group">
+                    <label for="categorySelect" class="control-label">Category:</label>
+                    <select id="categorySelect" class="category-select">
+                        <option value="">-- Loading categories... --</option>
+                    </select>
+                    <span id="categoryInfo" class="category-info"></span>
+                </div>
 
-            <!-- Sort Toggle -->
-            <div class="control-group sort-group">
-                <label for="sortSelect" class="control-label">Sort by:</label>
-                <select id="sortSelect" class="sort-select">
-                    <option value="updated_at">Recent Edits (Latest First)</option>
-                    <option value="review_count">Most Reviewed</option>
-                </select>
-            </div>
+                <!-- Sort Toggle -->
+                <div class="control-group sort-group">
+                    <label for="sortSelect" class="control-label">Sort:</label>
+                    <select id="sortSelect" class="sort-select">
+                        <option value="updated_at">Recent Edits (Latest First)</option>
+                        <option value="review_count">Most Reviewed</option>
+                    </select>
+                </div>
 
-            <!-- Search Section -->
-            <div class="control-group search-group">
-                <label for="searchInput" class="control-label">Search Words:</label>
-                <div class="search-container">
-                    <input type="text" id="searchInput" class="search-input" placeholder="Enter word or phrase...">
-                    <button id="searchBtn" class="btn btn-primary btn-sm">Search</button>
-                    <button id="clearSearchBtn" class="btn btn-cancel btn-sm" style="display: none;">Clear</button>
+                <!-- Search Section -->
+                <div class="control-group search-group">
+                    <label for="searchInput" class="control-label">Search:</label>
+                    <div class="search-container">
+                        <input type="text" id="searchInput" class="search-input" placeholder="Enter word or phrase...">
+                        <button id="searchBtn" class="btn btn-primary btn-sm">Search</button>
+                        <button id="clearSearchBtn" class="btn btn-cancel btn-sm" style="display: none;">Clear</button>
+                    </div>
                 </div>
             </div>
 
-            <!-- Import XML Section -->
-            <div class="control-group import-section">
-                <button id="importBtn" class="btn btn-secondary">Import XML File</button>
-                <button id="addWordBtn" class="btn btn-primary">+ Add New Word</button>
-                <a href="/quiz" class="btn btn-primary"
-                    style="background: linear-gradient(135deg, #3ba764, #5B21B6); text-decoration: none;">Quiz Me</a>
+            <!-- Row 2: Action Buttons -->
+            <div class="control-row action-controls">
+                <button id="importBtn" class="btn btn-import">📥 Import XML</button>
+                <button id="addWordBtn" class="btn btn-add-word">✨ Add New Word</button>
+                <a href="/quiz" class="btn btn-quiz">🎯 Quiz Me</a>
                 <div id="importPanel" class="import-panel" style="display: none;">
                     <input type="file" id="fileInput" accept=".xml" class="file-input">
                     <button id="uploadBtn" class="btn btn-primary">Upload</button>
