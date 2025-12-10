@@ -153,9 +153,10 @@ body {
 
 .action-controls {
     display: flex;
-    gap: var(--spacing-sm);
+    justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
+    width: 100%;
 }
 
 .control-group {
