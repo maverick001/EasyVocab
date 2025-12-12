@@ -91,7 +91,11 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="newSample">Example Sentences (optional)</label>
+                        <div class="form-label-row">
+                            <label for="newSample">Example Sentences (optional)</label>
+                            <button id="generateNewSampleBtn" class="btn btn-generate btn-sm" type="button">✨ Generate
+                            </button>
+                        </div>
                         <textarea id="newSample" class="form-textarea"
                             placeholder="Enter sample sentences (one per line)..." rows="4"></textarea>
                         <small class="form-hint">Enter one sentence per line</small>
@@ -197,7 +201,7 @@
             <div class="example-section">
                 <div class="section-header">
                     <h3 class="section-title">Example Sentences:</h3>
-                    <button id="generateSampleBtn" class="btn btn-generate">Generate</button>
+                    <button id="generateSampleBtn" class="btn btn-generate">✨ Generate</button>
                 </div>
                 <div id="sampleDisplay" class="content-display empty editable-field" title="Click to edit">
                     <p class="empty-hint">No example sentences yet. Click here to add some.</p>

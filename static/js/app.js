@@ -85,6 +85,7 @@ const Elements = {
     newTranslation: null,
     newCategory: null,
     newSample: null,
+    generateNewSampleBtn: null,
     addWordStatus: null,
 
     // Search
@@ -199,6 +200,7 @@ function cacheDOMElements() {
     Elements.newTranslation = document.getElementById('newTranslation');
     Elements.newCategory = document.getElementById('newCategory');
     Elements.newSample = document.getElementById('newSample');
+    Elements.generateNewSampleBtn = document.getElementById('generateNewSampleBtn');
     Elements.addWordStatus = document.getElementById('addWordStatus');
 
     // Search
@@ -275,6 +277,7 @@ function setupEventListeners() {
     Elements.closeModalBtn.addEventListener('click', closeAddWordModal);
     Elements.cancelModalBtn.addEventListener('click', closeAddWordModal);
     Elements.submitWordBtn.addEventListener('click', submitNewWord);
+    Elements.generateNewSampleBtn.addEventListener('click', generateNewWordSample);
 
     // Search functionality
     Elements.searchBtn.addEventListener('click', performSearch);
@@ -797,7 +800,7 @@ async function generateSampleSentence() {
     } finally {
         // Re-enable button
         Elements.generateSampleBtn.disabled = false;
-        Elements.generateSampleBtn.textContent = 'Generate';
+        Elements.generateSampleBtn.textContent = '✨ Generate';
     }
 }
 
@@ -896,6 +899,67 @@ function openAddWordModal() {
  */
 function closeAddWordModal() {
     Elements.addWordModal.style.display = 'none';
+}
+
+/**
+ * Generate sample sentence for new word using Poe API
+ */
+async function generateNewWordSample() {
+    const word = Elements.newWord.value.trim();
+
+    // Validate word is entered
+    if (!word) {
+        Elements.addWordStatus.textContent = '⚠️ Please enter a word first';
+        Elements.addWordStatus.className = 'form-status error';
+        return;
+    }
+
+    try {
+        // Disable button during generation
+        Elements.generateNewSampleBtn.disabled = true;
+        Elements.generateNewSampleBtn.textContent = 'Generating...';
+        Elements.addWordStatus.textContent = '⏳ Generating sample sentence...';
+        Elements.addWordStatus.className = 'form-status';
+
+        const response = await fetch('/api/generate-sample', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ word: word })
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.sentence) {
+            // Get current sample sentences
+            const currentSample = Elements.newSample.value.trim();
+
+            // Add new sentence to existing ones (on new line if there are existing sentences)
+            if (currentSample) {
+                Elements.newSample.value = currentSample + '\n' + data.sentence;
+            } else {
+                Elements.newSample.value = data.sentence;
+            }
+
+            Elements.addWordStatus.textContent = '✅ Sample sentence generated!';
+            Elements.addWordStatus.className = 'form-status success';
+
+            console.log('✅ Sample sentence generated for new word');
+        } else {
+            Elements.addWordStatus.textContent = `❌ ${data.error || 'Failed to generate sample sentence'}`;
+            Elements.addWordStatus.className = 'form-status error';
+        }
+
+    } catch (error) {
+        console.error('Error generating sample sentence:', error);
+        Elements.addWordStatus.textContent = '❌ Network error while generating sample sentence';
+        Elements.addWordStatus.className = 'form-status error';
+    } finally {
+        // Re-enable button
+        Elements.generateNewSampleBtn.disabled = false;
+        Elements.generateNewSampleBtn.textContent = 'Generate ✨';
+    }
 }
 
 /**
