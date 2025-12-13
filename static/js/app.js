@@ -472,7 +472,7 @@ function populateCategoryDropdown(categories) {
     sortedCategories.forEach(cat => {
         const option = document.createElement('option');
         option.value = cat.name;
-        option.textContent = `${cat.name} (${cat.word_count} words)`;
+        option.textContent = `${cat.name} (${cat.word_count})`;
         Elements.categorySelect.appendChild(option);
     });
 
@@ -482,7 +482,7 @@ function populateCategoryDropdown(categories) {
     sortedCategories.forEach(cat => {
         const option = document.createElement('option');
         option.value = cat.name;
-        option.textContent = cat.name;
+        option.textContent = `${cat.name} (${cat.word_count})`;
         Elements.changeCategorySelect.appendChild(option);
     });
 }
