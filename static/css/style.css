@@ -425,6 +425,35 @@ body {
     transform: none;
 }
 
+/* Generate Controls Container */
+.generate-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.model-select {
+    padding: 0.5rem 0.8rem;
+    font-size: 0.95rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: white;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 130px;
+}
+
+.model-select:hover {
+    border-color: var(--primary-blue);
+}
+
+.model-select:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(135, 206, 235, 0.2);
+}
+
 .btn-nav {
     background: linear-gradient(135deg, var(--primary-blue), var(--primary-dark));
     color: white;

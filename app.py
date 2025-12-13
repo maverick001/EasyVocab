@@ -1147,6 +1147,8 @@ def generate_sample_sentence():
             }), 400
 
         word = data['word'].strip()
+        # Get model from request, fallback to config default
+        model = data.get('model', app.config['POE_MODEL'])
 
         if not word:
             return jsonify({
@@ -1172,7 +1174,7 @@ def generate_sample_sentence():
 
         # Call Poe API via OpenAI SDK
         response = client.chat.completions.create(
-            model=app.config['POE_MODEL'],
+            model=model,
             messages=[{"role": "user", "content": prompt}],
             temperature=app.config.get('POE_TEMPERATURE', 0.7)
         )

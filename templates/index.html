@@ -201,7 +201,14 @@
             <div class="example-section">
                 <div class="section-header">
                     <h3 class="section-title">Example Sentences:</h3>
-                    <button id="generateSampleBtn" class="btn btn-generate">✨ Generate</button>
+                    <div class="generate-controls">
+                        <select id="modelSelect" class="model-select">
+                            <option value="Claude-Haiku-4.5">Haiku 4.5</option>
+                            <option value="gemini-2.5-flash">Gemini Flash</option>
+                            <option value="gpt-4o">GPT-4o</option>
+                        </select>
+                        <button id="generateSampleBtn" class="btn btn-generate">✨ Generate</button>
+                    </div>
                 </div>
                 <div id="sampleDisplay" class="content-display empty editable-field" title="Click to edit">
                     <p class="empty-hint">No example sentences yet. Click here to add some.</p>

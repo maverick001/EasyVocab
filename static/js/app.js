@@ -758,13 +758,18 @@ async function generateSampleSentence() {
         Elements.generateSampleBtn.disabled = true;
         Elements.generateSampleBtn.textContent = 'Generating...';
 
+        // Get selected model from dropdown
+        const modelSelect = document.getElementById('modelSelect');
+        const selectedModel = modelSelect ? modelSelect.value : 'Claude-Haiku-4.5';
+
         const response = await fetch('/api/generate-sample', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                word: AppState.currentWord.word
+                word: AppState.currentWord.word,
+                model: selectedModel
             })
         });
 
