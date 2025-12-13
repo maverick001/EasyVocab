@@ -482,7 +482,7 @@ function populateCategoryDropdown(categories) {
     sortedCategories.forEach(cat => {
         const option = document.createElement('option');
         option.value = cat.name;
-        option.textContent = `${cat.name} (${cat.word_count})`;
+        option.textContent = cat.name;
         Elements.changeCategorySelect.appendChild(option);
     });
 }
@@ -800,7 +800,7 @@ async function generateSampleSentence() {
     } finally {
         // Re-enable button
         Elements.generateSampleBtn.disabled = false;
-        Elements.generateSampleBtn.textContent = '✨ Generate';
+        Elements.generateSampleBtn.textContent = 'Generate';
     }
 }
 
