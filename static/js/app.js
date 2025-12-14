@@ -574,16 +574,11 @@ function showLoading(show) {
 }
 
 /**
- * Show error message
+ * Show error message as popup alert
  */
 function showError(message) {
-    Elements.errorText.textContent = message;
-    Elements.errorMessage.style.display = 'flex';
-
-    // Auto-hide after 5 seconds
-    setTimeout(() => {
-        hideError();
-    }, 5000);
+    // Display as popup alert window
+    alert(message);
 }
 
 /**
