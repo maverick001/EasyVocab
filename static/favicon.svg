@@ -1,24 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <!-- Background circle -->
-  <circle cx="50" cy="50" r="48" fill="#8B5CF6" stroke="#5B21B6" stroke-width="2"/>
-
-  <!-- Book shape -->
-  <g transform="translate(50, 50)">
-    <!-- Left page -->
-    <rect x="-20" y="-20" width="18" height="40" fill="#ffffff" rx="1"/>
-    <!-- Right page -->
-    <rect x="2" y="-20" width="18" height="40" fill="#f0f0f0" rx="1"/>
-    <!-- Book spine -->
-    <rect x="-2" y="-20" width="4" height="40" fill="#5B21B6"/>
-
-    <!-- Text lines on left page -->
-    <line x1="-17" y1="-12" x2="-5" y2="-12" stroke="#8B5CF6" stroke-width="1.5"/>
-    <line x1="-17" y1="-6" x2="-5" y2="-6" stroke="#8B5CF6" stroke-width="1.5"/>
-    <line x1="-17" y1="0" x2="-5" y2="0" stroke="#8B5CF6" stroke-width="1.5"/>
-
-    <!-- Text lines on right page -->
-    <line x1="5" y1="-12" x2="17" y2="-12" stroke="#8B5CF6" stroke-width="1.5"/>
-    <line x1="5" y1="-6" x2="17" y2="-6" stroke="#8B5CF6" stroke-width="1.5"/>
-    <line x1="5" y1="0" x2="17" y2="0" stroke="#8B5CF6" stroke-width="1.5"/>
-  </g>
+  <!-- Book cover background - light blue -->
+  <rect x="5" y="5" width="90" height="90" rx="3" fill="#64B5F6"/>
+  
+  <!-- Red banner at top -->
+  <rect x="5" y="5" width="90" height="35" fill="#c62828"/>
+  
+  <!-- Gold line under top banner -->
+  <rect x="5" y="38" width="90" height="3" fill="#ffd700"/>
+  
+  <!-- Text: BK -->
+  <text x="50" y="28" font-family="Georgia, serif" font-size="18" font-weight="bold" fill="white" text-anchor="middle">BK</text>
+  
+  <!-- Text: Dict -->
+  <text x="50" y="65" font-family="Georgia, serif" font-size="20" fill="white" text-anchor="middle">Dict</text>
 </svg>
