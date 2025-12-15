@@ -1198,6 +1198,85 @@ def generate_sample_sentence():
         }), 500
 
 
+@app.route('/api/generate-translation', methods=['POST'])
+def generate_translation():
+    """
+    Generate Chinese translation for a word using Poe API (OpenAI-compatible)
+    
+    Request Body (JSON):
+        {
+            "word": "example",
+            "model": "Claude-Haiku-4.5"  // optional, defaults to config
+        }
+    
+    Returns:
+        JSON response:
+        {
+            "success": true,
+            "translation": "示例\n例子"
+        }
+    """
+    try:
+        data = request.get_json()
+
+        if not data or 'word' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Word is required'
+            }), 400
+
+        word = data['word'].strip()
+        # Get model from request, fallback to config default
+        model = data.get('model', app.config['POE_MODEL'])
+
+        if not word:
+            return jsonify({
+                'success': False,
+                'error': 'Word cannot be empty'
+            }), 400
+
+        # Check Poe API Key
+        if not app.config['POE_API_KEY']:
+            return jsonify({
+                'success': False,
+                'error': 'Poe API Key not configured. Please set POE_API_KEY in .env file.'
+            }), 500
+
+        # Initialize OpenAI client with Poe API endpoint
+        client = OpenAI(
+            api_key=app.config['POE_API_KEY'],
+            base_url="https://api.poe.com/v1/"
+        )
+
+        # Prepare prompt for Chinese translation
+        prompt = f"What's the Chinese translation of '{word}'? Only list the 2 most common translations and ignore others. Only list the translations in Chinese characters, no other explanations or phonetics are needed."
+
+        # Call Poe API via OpenAI SDK
+        response = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=app.config.get('POE_TEMPERATURE', 0.7)
+        )
+        
+        if response.choices and response.choices[0].message.content:
+            generated_translation = response.choices[0].message.content.strip()
+            return jsonify({
+                'success': True,
+                'translation': generated_translation
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Poe returned empty response'
+            }), 500
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 @app.route('/api/category/<category>/count', methods=['GET'])
 def get_category_count(category):
     """

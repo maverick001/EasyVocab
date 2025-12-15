@@ -54,6 +54,7 @@ const Elements = {
     translationInput: null,
     saveTransBtn: null,
     cancelTransBtn: null,
+    generateTransBtn: null,
 
     // Sample sentence elements (simplified)
     sampleDisplay: null,
@@ -86,6 +87,7 @@ const Elements = {
     newCategory: null,
     newSample: null,
     generateNewSampleBtn: null,
+    generateNewTransBtn: null,
     addWordStatus: null,
 
     // Search
@@ -169,6 +171,7 @@ function cacheDOMElements() {
     Elements.translationInput = document.getElementById('translationInput');
     Elements.saveTransBtn = document.getElementById('saveTransBtn');
     Elements.cancelTransBtn = document.getElementById('cancelTransBtn');
+    Elements.generateTransBtn = document.getElementById('generateTransBtn');
 
     // Sample (simplified - single textarea)
     Elements.sampleDisplay = document.getElementById('sampleDisplay');
@@ -201,6 +204,7 @@ function cacheDOMElements() {
     Elements.newCategory = document.getElementById('newCategory');
     Elements.newSample = document.getElementById('newSample');
     Elements.generateNewSampleBtn = document.getElementById('generateNewSampleBtn');
+    Elements.generateNewTransBtn = document.getElementById('generateNewTransBtn');
     Elements.addWordStatus = document.getElementById('addWordStatus');
 
     // Search
@@ -248,6 +252,7 @@ function setupEventListeners() {
     Elements.translationDisplay.addEventListener('click', () => toggleEditMode('translation', true));
     Elements.saveTransBtn.addEventListener('click', () => saveTranslation());
     Elements.cancelTransBtn.addEventListener('click', () => toggleEditMode('translation', false));
+    Elements.generateTransBtn.addEventListener('click', () => generateTranslation());
 
     // Sample sentence editing - click on display to edit
     Elements.sampleDisplay.addEventListener('click', () => toggleEditMode('sample', true));
@@ -278,6 +283,7 @@ function setupEventListeners() {
     Elements.cancelModalBtn.addEventListener('click', closeAddWordModal);
     Elements.submitWordBtn.addEventListener('click', submitNewWord);
     Elements.generateNewSampleBtn.addEventListener('click', generateNewWordSample);
+    Elements.generateNewTransBtn.addEventListener('click', generateNewWordTranslation);
 
     // Search functionality
     Elements.searchBtn.addEventListener('click', performSearch);
@@ -805,6 +811,69 @@ async function generateSampleSentence() {
 }
 
 /**
+ * Generate Chinese translation using AI
+ */
+async function generateTranslation() {
+    if (!AppState.currentWord) return;
+
+    try {
+        // Disable button during generation
+        Elements.generateTransBtn.disabled = true;
+        Elements.generateTransBtn.textContent = 'Generating...';
+
+        // Get selected model from dropdown (same as example sentence)
+        const modelSelect = document.getElementById('modelSelect');
+        const selectedModel = modelSelect ? modelSelect.value : 'Claude-Haiku-4.5';
+
+        const response = await fetch('/api/generate-translation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                word: AppState.currentWord.word,
+                model: selectedModel
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.translation) {
+            // Get current translation
+            const currentTranslation = AppState.currentWord.translation || '';
+
+            // Format the generated translation: replace newlines with ；
+            const formattedTranslation = data.translation.replace(/\n/g, '；');
+
+            // Append new translation to existing (with ； separator if there's existing content)
+            let updatedTranslation;
+            if (currentTranslation.trim()) {
+                updatedTranslation = currentTranslation + '；' + formattedTranslation;
+            } else {
+                updatedTranslation = formattedTranslation;
+            }
+
+            // Enter edit mode and populate textarea with updated translation
+            // This allows user to review, modify, then Save or Cancel
+            toggleEditMode('translation', true);
+            Elements.translationInput.value = updatedTranslation;
+
+            console.log('✅ Translation generated - ready for review');
+        } else {
+            showError(data.error || 'Failed to generate translation');
+        }
+
+    } catch (error) {
+        console.error('Error generating translation:', error);
+        showError('Network error while generating translation');
+    } finally {
+        // Re-enable button
+        Elements.generateTransBtn.disabled = false;
+        Elements.generateTransBtn.textContent = '✨ Generate';
+    }
+}
+
+/**
  * Upload XML file
  */
 async function uploadXMLFile() {
@@ -959,6 +1028,77 @@ async function generateNewWordSample() {
         // Re-enable button
         Elements.generateNewSampleBtn.disabled = false;
         Elements.generateNewSampleBtn.textContent = 'Generate ✨';
+    }
+}
+
+/**
+ * Generate Chinese translation for new word using Poe API
+ */
+async function generateNewWordTranslation() {
+    const word = Elements.newWord.value.trim();
+
+    // Validate word is entered
+    if (!word) {
+        Elements.addWordStatus.textContent = '⚠️ Please enter a word first';
+        Elements.addWordStatus.className = 'form-status error';
+        return;
+    }
+
+    try {
+        // Disable button during generation
+        Elements.generateNewTransBtn.disabled = true;
+        Elements.generateNewTransBtn.textContent = 'Generating...';
+        Elements.addWordStatus.textContent = '⏳ Generating translation...';
+        Elements.addWordStatus.className = 'form-status';
+
+        // Get selected model from dropdown
+        const modelSelect = document.getElementById('modelSelect');
+        const selectedModel = modelSelect ? modelSelect.value : 'Claude-Haiku-4.5';
+
+        const response = await fetch('/api/generate-translation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                word: word,
+                model: selectedModel
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.translation) {
+            // Format the generated translation: replace newlines with ；
+            const formattedTranslation = data.translation.replace(/\n/g, '；');
+
+            // Get current translation
+            const currentTranslation = Elements.newTranslation.value.trim();
+
+            // Append new translation to existing (with ； separator if there's existing content)
+            if (currentTranslation) {
+                Elements.newTranslation.value = currentTranslation + '；' + formattedTranslation;
+            } else {
+                Elements.newTranslation.value = formattedTranslation;
+            }
+
+            Elements.addWordStatus.textContent = '✅ Translation generated!';
+            Elements.addWordStatus.className = 'form-status success';
+
+            console.log('✅ Translation generated for new word');
+        } else {
+            Elements.addWordStatus.textContent = `❌ ${data.error || 'Failed to generate translation'}`;
+            Elements.addWordStatus.className = 'form-status error';
+        }
+
+    } catch (error) {
+        console.error('Error generating translation:', error);
+        Elements.addWordStatus.textContent = '❌ Network error while generating translation';
+        Elements.addWordStatus.className = 'form-status error';
+    } finally {
+        // Re-enable button
+        Elements.generateNewTransBtn.disabled = false;
+        Elements.generateNewTransBtn.textContent = '✨ Generate';
     }
 }
 

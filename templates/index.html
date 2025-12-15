@@ -80,7 +80,11 @@
                         <input type="text" id="newWord" class="form-input" placeholder="Enter word..." required>
                     </div>
                     <div class="form-group">
-                        <label for="newTranslation">Translation (Chinese) *</label>
+                        <div class="form-label-row">
+                            <label for="newTranslation">Translation (Chinese) *</label>
+                            <button id="generateNewTransBtn" class="btn btn-generate btn-sm" type="button">✨
+                                Generate</button>
+                        </div>
                         <input type="text" id="newTranslation" class="form-input" placeholder="Enter translation..."
                             required>
                     </div>
@@ -186,6 +190,7 @@
             <div class="translation-section">
                 <div class="section-header">
                     <h3 class="section-title">Translation:</h3>
+                    <button id="generateTransBtn" class="btn btn-generate">✨ Generate</button>
                 </div>
                 <div id="translationDisplay" class="content-display editable-field" title="Click to edit"></div>
                 <div id="translationEdit" class="content-edit" style="display: none;">

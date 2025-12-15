@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <!-- Book cover background - light blue -->
-  <rect x="5" y="5" width="90" height="90" rx="3" fill="#64B5F6"/>
+  <!-- Book cover background - light blue with rounded corners -->
+  <rect x="5" y="5" width="90" height="90" rx="15" fill="#64B5F6"/>
   
-  <!-- Red banner at top -->
-  <rect x="5" y="5" width="90" height="35" fill="#c62828"/>
+  <!-- Red banner at top with rounded top corners -->
+  <path d="M5 20 Q5 5 20 5 L80 5 Q95 5 95 20 L95 40 L5 40 Z" fill="#c62828"/>
   
   <!-- Gold line under top banner -->
   <rect x="5" y="38" width="90" height="3" fill="#ffd700"/>
