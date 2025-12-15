@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Background with rounded corners -->
+  <defs>
+    <clipPath id="roundedCorners">
+      <rect x="0" y="0" width="512" height="512" rx="80" ry="80"/>
+    </clipPath>
+  </defs>
+  
+  <g clip-path="url(#roundedCorners)">
+    <!-- Red top half -->
+    <rect x="0" y="0" width="512" height="248" fill="#D93830"/>
+    
+    <!-- Golden divider line -->
+    <rect x="0" y="248" width="512" height="16" fill="#E6B422"/>
+    
+    <!-- Light blue bottom half -->
+    <rect x="0" y="264" width="512" height="248" fill="#5CB8E8"/>
+    
+    <!-- BK text on red background -->
+    <text x="256" y="165" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="140" font-weight="bold" fill="white">BK</text>
+    
+    <!-- Dict text on blue background -->
+    <text x="256" y="420" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="120" font-style="italic" fill="white">Dict</text>
+  </g>
+</svg>
