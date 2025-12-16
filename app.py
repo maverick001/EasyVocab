@@ -1124,6 +1124,47 @@ def get_word_debt():
             conn.close()
 
 
+@app.route('/api/daily-count', methods=['GET'])
+def get_daily_count():
+    """
+    Get today's word review count from the database
+    This ensures the daily counter is consistent across all browsers
+    
+    Returns:
+        JSON response:
+        {
+            "success": true,
+            "count": 45
+        }
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("""
+            SELECT review_count 
+            FROM daily_study_log 
+            WHERE date = CURDATE()
+        """)
+        result = cursor.fetchone()
+        
+        count = result['review_count'] if result else 0
+        
+        return jsonify({
+            'success': True,
+            'count': count
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+    finally:
+        if conn:
+            conn.close()
+
+
 @app.route('/api/generate-sample', methods=['POST'])
 def generate_sample_sentence():
     """

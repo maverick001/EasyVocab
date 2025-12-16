@@ -1446,31 +1446,30 @@ function displayHistoricalVersion(historyRecord) {
 // ============================================
 
 /**
- * Initialize daily progress counter from localStorage
- * Resets at midnight
+ * Initialize daily progress counter from the database
+ * This ensures the counter is consistent across all browsers
  */
-function initializeDailyCounter() {
-    const today = new Date().toDateString();
-    const savedData = localStorage.getItem('dailyProgress');
+async function initializeDailyCounter() {
+    try {
+        // Fetch the authoritative count from the database
+        const response = await fetch('/api/daily-count');
+        const data = await response.json();
 
-    if (savedData) {
-        const data = JSON.parse(savedData);
-
-        // Check if the saved date is today
-        if (data.date === today) {
+        if (data.success) {
             AppState.dailyProgress = data.count;
-            AppState.countedWordIds = new Set(data.wordIds || []);
+            console.log(`📊 Daily count from database: ${data.count}`);
         } else {
-            // New day, reset counter
+            console.error('Failed to fetch daily count:', data.error);
             AppState.dailyProgress = 0;
-            AppState.countedWordIds = new Set();
-            saveDailyProgress();
         }
-    } else {
+    } catch (error) {
+        console.error('Error fetching daily count:', error);
         AppState.dailyProgress = 0;
-        AppState.countedWordIds = new Set();
-        saveDailyProgress();
     }
+
+    // Reset countedWordIds for this browser session
+    // (used to prevent redundant API calls within the same session)
+    AppState.countedWordIds = new Set();
 
     updateDailyCounterDisplay();
     scheduleMidnightReset();
