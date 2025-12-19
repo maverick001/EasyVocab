@@ -1165,6 +1165,60 @@ def get_daily_count():
             conn.close()
 
 
+import re
+
+# ... existing code ...
+
+def clean_poe_response(text):
+    """
+    Remove "Thinking..." blocks from Poe/Gemini output.
+    Strategy: 
+    1. Identify the *last* line that looks like a blockquote (>).
+    2. Discard everything up to that line.
+    3. Also handle cases where only the *Thinking...* header exists without quotes.
+    4. If no thinking artifacts found, return original text.
+    """
+    if not text:
+        return ""
+    
+    lines = text.strip().split('\n')
+    
+    # 1. Find the index of the LAST line that starts with '>'
+    last_quote_index = -1
+    for i, line in enumerate(lines):
+        if line.strip().startswith('>'):
+            last_quote_index = i
+            
+    # 2. Determine start index for content
+    start_index = 0
+    if last_quote_index != -1:
+        # Content starts after the last quote
+        start_index = last_quote_index + 1
+        
+    # Extract the candidate content
+    candidate_lines = lines[start_index:]
+    
+    # 3. Check if the FIRST remaining line is a "Thinking..." header
+    # (This handles case where there were no quotes, OR if the Thinking header was somehow after quotes logic?? 
+    # Actually, mainly for case where there are NO quotes but there IS a *Thinking...* line)
+    if candidate_lines:
+        first_line = candidate_lines[0].strip()
+        # Matches *Thinking...*, **Thinking...**, Thinking...
+        # Also handle potential italics/bold markers
+        if re.match(r'^[\s\*]*Thinking\.\.\.[\s\*]*$', first_line, re.IGNORECASE):
+            candidate_lines = candidate_lines[1:]
+            
+    # 4. Filter out leading empty lines from the result
+    final_lines = []
+    has_content_started = False
+    for line in candidate_lines:
+        if not has_content_started and not line.strip():
+            continue
+        has_content_started = True
+        final_lines.append(line)
+        
+    return '\n'.join(final_lines).strip()
+
 @app.route('/api/generate-sample', methods=['POST'])
 def generate_sample_sentence():
     """
@@ -1221,7 +1275,10 @@ def generate_sample_sentence():
         )
         
         if response.choices and response.choices[0].message.content:
-            generated_sentence = response.choices[0].message.content.strip()
+            raw_content = response.choices[0].message.content.strip()
+            # Clean up potential thinking process output
+            generated_sentence = clean_poe_response(raw_content)
+            
             return jsonify({
                 'success': True,
                 'sentence': generated_sentence
@@ -1300,7 +1357,10 @@ def generate_translation():
         )
         
         if response.choices and response.choices[0].message.content:
-            generated_translation = response.choices[0].message.content.strip()
+            raw_content = response.choices[0].message.content.strip()
+            # Clean up potential thinking process output
+            generated_translation = clean_poe_response(raw_content)
+            
             return jsonify({
                 'success': True,
                 'translation': generated_translation
