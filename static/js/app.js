@@ -112,7 +112,10 @@ const Elements = {
     welcomeMessage: null,
     loadingIndicator: null,
     errorMessage: null,
-    errorText: null
+    errorText: null,
+
+    // Theme Toggle
+    themeToggle: null
 };
 
 // ============================================
@@ -127,6 +130,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // Setup event listeners
     setupEventListeners();
 
+    // Initialize theme from localStorage
+    initializeTheme();
+
     // Initialize daily progress counter
     initializeDailyCounter();
 
@@ -138,6 +144,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
     console.log('✅ Initialization complete');
 });
+
+/**
+ * Initialize theme from localStorage
+ */
+function initializeTheme() {
+    const savedTheme = localStorage.getItem('bkdict-theme');
+    if (savedTheme === 'dark') {
+        document.body.classList.add('dark-mode');
+    }
+    console.log(`🎨 Theme initialized: ${savedTheme || 'light'}`);
+}
+
+/**
+ * Toggle between light and dark mode
+ */
+function toggleTheme() {
+    const isDark = document.body.classList.toggle('dark-mode');
+    localStorage.setItem('bkdict-theme', isDark ? 'dark' : 'light');
+    console.log(`🌓 Theme switched to: ${isDark ? 'dark' : 'light'}`);
+}
 
 /**
  * Cache all DOM elements for efficient access
@@ -231,6 +257,9 @@ function cacheDOMElements() {
     Elements.loadingIndicator = document.getElementById('loadingIndicator');
     Elements.errorMessage = document.getElementById('errorMessage');
     Elements.errorText = document.getElementById('errorText');
+
+    // Theme Toggle
+    Elements.themeToggle = document.getElementById('themeToggle');
 }
 
 /**
@@ -314,6 +343,9 @@ function setupEventListeners() {
             Elements.wordDebtDropdown.classList.remove('show');
         }
     });
+
+    // Theme toggle
+    Elements.themeToggle.addEventListener('click', toggleTheme);
 }
 
 // ============================================
