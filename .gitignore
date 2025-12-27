@@ -52,6 +52,7 @@ uploads/*
 
 # Logs
 *.log
+db_logs.txt
 
 # Database
 *.db
@@ -61,6 +62,7 @@ uploads/*
 # Backup files
 *.bak
 *.backup
+backups/
 
 # OS Files
 Thumbs.db
@@ -68,3 +70,9 @@ Thumbs.db
 
 # Temporary Scripts
 temp/
+
+# Personal Vocabulary Data (large XML files)
+data/*.xml
+
+# AI Agent Config
+.agent/

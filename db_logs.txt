@@ -1,5 +1,0 @@
-{'date': datetime.date(2025, 11, 25), 'review_count': 4, 'last_updated': datetime.datetime(2025, 11, 25, 16, 1, 17)}
-{'date': datetime.date(2025, 11, 24), 'review_count': 109, 'last_updated': datetime.datetime(2025, 11, 24, 22, 42, 35)}
-{'date': datetime.date(2025, 11, 23), 'review_count': 88, 'last_updated': datetime.datetime(2025, 11, 23, 23, 26, 21)}
-{'date': datetime.date(2025, 11, 22), 'review_count': 107, 'last_updated': datetime.datetime(2025, 11, 22, 18, 51, 15)}
-{'date': datetime.date(2025, 11, 21), 'review_count': 33, 'last_updated': datetime.datetime(2025, 11, 21, 23, 27, 37)}
