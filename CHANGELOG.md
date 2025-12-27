@@ -1,11 +1,22 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [1.3.0] - 2025-12-28
+### Added
+- **Dark Mode**: Added dark mode toggle for improved readability in low-light environments.
+- **New Vocabulary Category**: Imported December 2025 vocabulary into `202512_New` category.
+
+### Changed
+- **AI Model Upgrade**: Upgraded to `gemini-3-flash` for improved performance and response quality.
+- **UI Improvements**: Minor user interface enhancements.
+
+### Repository
+- **GitHub Publication**: Cleaned up repository for public release.
+- **Security**: Removed sensitive files (XML data, database backups, configuration) from version control.
+- **Documentation**: Updated README with improved setup instructions.
+
 
 ## [1.2.0] - 2025-12-07
 ### Added

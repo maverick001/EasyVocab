@@ -1,4 +1,4 @@
-# BKDict - Vocabulary Learning Web Application
+# EasyDict - Vocabulary Learning Web Application
 
 📚 A responsive vocabulary web application for reviewing and managing English vocabulary with Chinese translations. Built with Flask, MySQL, and vanilla JavaScript.
 
@@ -324,4 +324,4 @@ If you encounter any issues:
 
 ---
 
-**Enjoy learning vocabulary with BKDict!** 📚✨
+**Enjoy learning vocabulary with EasyDict!** 📚✨
