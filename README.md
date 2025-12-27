@@ -190,8 +190,8 @@ BKDict/
 │       └── app.js             # Frontend JavaScript logic
 │
 ├── data/
-│   ├── 文化_cleaned.xml        # Example vocabulary file
-│   └── AI.xml                 # Example vocabulary file
+│   ├── Science.xml               # Example vocabulary file
+│   └── IT_CS.xml                 # Example vocabulary file
 │
 └── uploads/                   # Temporary storage for uploaded files
 ```
@@ -269,7 +269,7 @@ DB_POOL_SIZE = 5  # Increase for more concurrent users
 | id | INT | Primary key (auto-increment) |
 | word | VARCHAR(255) | The English word or phrase |
 | translation | TEXT | Chinese translation |
-| category | VARCHAR(100) | Category tag (e.g., 文化, AI) |
+| category | VARCHAR(100) | Category tag |
 | sample_sentence | TEXT | User-added example sentence |
 | created_at | TIMESTAMP | Record creation time |
 | updated_at | TIMESTAMP | Last update time |
