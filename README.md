@@ -38,7 +38,7 @@ cd c:\Users\bbcba\Downloads\BKDict
 
 ```bash
 # Create new conda environment
-conda create -n bkdict python=3.11
+conda create -n bkdict python=3.11 -y
 
 # Activate the environment
 conda activate bkdict
