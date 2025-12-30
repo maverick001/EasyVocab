@@ -1,4 +1,4 @@
-# EasyVocab is a vocabulary learning app designed for students and English learners. 
+# EasyVocab is a vocabulary learning app that can be customerized for user preference. 
 It allows users to build your own dictionary, review words and phrases with example sentences and quick quiz. There are also mechanisms implemented to track each user's daily progress. 
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
