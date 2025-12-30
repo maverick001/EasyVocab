@@ -1,5 +1,5 @@
 """
-Configuration file for BKDict Flask Application
+Configuration file for EasyVocab Flask Application
 Contains database connection settings and app configurations
 """
 
