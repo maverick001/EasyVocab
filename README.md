@@ -1,6 +1,6 @@
 # EasyVocab - Vocabulary Learning App
 
-**EasyVocab** is a personal vocabulary builder web application designed for students and language learners. It allows you to build your own dictionary, review words with example sentences, and track your daily progress.
+**EasyVocab** is a personal vocabulary builder web app designed for English learners. It allows you to build your own vocabulary, review words and phrases in example sentences, and track your daily progress.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue)
