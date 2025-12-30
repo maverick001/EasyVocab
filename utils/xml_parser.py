@@ -1,5 +1,5 @@
-"""xml_parser.py
-XML Parser for EasyVocab Vocabulary Import
+"""
+XML Parser for BKDict Vocabulary Import
 Handles XML file validation, parsing, and batch database insertion
 """
 
@@ -15,7 +15,7 @@ class XMLParserError(Exception):
 
 class VocabularyXMLParser:
     """
-    Parser for vocabulary XML files in EasyVocab format
+    Parser for vocabulary XML files in BKDict format
     Expected format:
     <wordbook>
         <item>

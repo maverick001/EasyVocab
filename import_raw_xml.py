@@ -122,7 +122,7 @@ def import_cleaned_xml(cleaned_file):
 def main():
     """Main function"""
     print("\n" + "="*60)
-    print("  EasyVocab - Raw XML Cleaner and Importer")
+    print("  BKDict - Raw XML Cleaner and Importer")
     print("="*60 + "\n")
 
     # Define file paths
