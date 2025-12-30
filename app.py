@@ -1,5 +1,5 @@
 """
-BKDict - Vocabulary Web Application
+EasyVocab - Vocabulary Web Application
 Main Flask application with REST API endpoints
 Author: Built for vocabulary learning and management
 """
@@ -42,7 +42,7 @@ def init_db_pool():
     global db_pool
     try:
         db_pool = pooling.MySQLConnectionPool(
-            pool_name="bkdict_pool",
+            pool_name="easyvocab_pool",
             pool_size=app.config['DB_POOL_SIZE'],
             pool_reset_session=True,
             host=app.config['DB_HOST'],
@@ -1766,10 +1766,10 @@ if __name__ == '__main__':
 
     # Run Flask development server
     print("\n" + "="*50)
-    print("  BKDict Vocabulary Web Application")
+    print("  EasyVocab Web Application")
     print("="*50)
     print(f"  🌐 Server running on: http://localhost:5001")
-    print(f"  📚 Database: {app.config['DB_NAME']}")
+    print(f"  📚 Database: {app.config['DB_NAME']} (Legacy: bkdict_db)")
     print(f"  🔧 Debug mode: {app.config['DEBUG']}")
     print("="*50 + "\n")
 

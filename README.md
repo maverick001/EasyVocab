@@ -1,6 +1,4 @@
-# EasyDict - Vocabulary Learning Web Application
-
-📚 A responsive vocabulary web application for reviewing and managing English vocabulary with Chinese translations. Built with Flask, MySQL, and vanilla JavaScript.
+# EasyVocab - Vocabulary Learning AppWeb Appl**EasyVocab** is a personal vocabulary builder web application designed for students and language learners. It allows you to build your own dictionary, review words with example sentences, and track your daily progress.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue)
@@ -103,7 +101,7 @@ You should see:
 
 ```
 ==================================================
-  BKDict Vocabulary Web Application
+  EasyVocab Web Application
 ==================================================
   🌐 Server running on: http://localhost:5000
   📚 Database: bkdict_db

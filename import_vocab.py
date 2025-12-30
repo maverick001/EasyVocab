@@ -15,7 +15,7 @@ import time
 def main():
     """Main function to import vocab.xml"""
     print("\n" + "="*70)
-    print("  BKDict - Full Vocabulary Importer")
+    print("  EasyVocab - Full Vocabulary Importer")
     print("  Importing 30,000+ words from vocab.xml")
     print("="*70 + "\n")
 
