@@ -240,10 +240,10 @@
         </div>
 
         <!-- Welcome Message (shown when no category selected) -->
-        <div id="welcomeMessage" class="welcome-message">
-            <div class="welcome-icon">📖</div>
+        <div id="welcomeMessage" class="welcome-message" style="cursor: pointer;" onclick="loadFirstCategory()">
+            <div class="welcome-icon" id="bookIcon">📖</div>
             <h2>Welcome to BKDict!</h2>
-            <p>Select a category from the dropdown above to start reviewing vocabulary.</p>
+            <p><strong>Click the Book to Enter</strong></p>
             <p class="welcome-hint">Or import a new XML file to add more words to your collection.</p>
         </div>
 

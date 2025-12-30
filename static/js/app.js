@@ -349,6 +349,23 @@ function setupEventListeners() {
 }
 
 // ============================================
+// Helper Functions
+// ============================================
+
+/**
+ * Load first category automatically (triggered by book icon click)
+ */
+function loadFirstCategory() {
+    // Wait a moment for categories to be loaded if they haven't been yet
+    setTimeout(() => {
+        if (Elements.categorySelect.options.length > 1) {
+            Elements.categorySelect.selectedIndex = 1; // Skip "-- Select a Category --"
+            Elements.categorySelect.dispatchEvent(new Event('change'));
+        }
+    }, 100);
+}
+
+// ============================================
 // API Functions
 // ============================================
 
