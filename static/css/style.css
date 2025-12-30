@@ -2071,3 +2071,13 @@ body {
     background: linear-gradient(135deg, #d62c1e, #b12515) !important;
     box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
 }
+
+/* Welcome icon - 2x size */
+.welcome-icon {
+    font-size: 8rem;
+    transition: transform 0.3s ease;
+}
+
+.welcome-icon:hover {
+    transform: scale(1.1);
+}
