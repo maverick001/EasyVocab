@@ -13,10 +13,22 @@ from werkzeug.utils import secure_filename
 from config import Config
 from utils import parse_and_import_xml, XMLParserError
 from datetime import datetime, date, timedelta
+from openai import OpenAI
 
 # Initialize Flask application
 app = Flask(__name__)
 app.config.from_object(Config)
+
+# Disable caching for development (prevents browser caching issues)
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+
+@app.after_request
+def add_header(response):
+    """Add headers to prevent caching"""
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '-1'
+    return response
 
 # Initialize MySQL connection pool for better performance
 db_pool = None
@@ -79,7 +91,7 @@ def ensure_word_history_table():
                 word_id INT NOT NULL COMMENT 'Reference to words.id',
                 word VARCHAR(255) NOT NULL COMMENT 'The word text at this point in time',
                 translation TEXT NOT NULL COMMENT 'Translation at this point in time',
-                sample_sentence TEXT DEFAULT NULL COMMENT 'Sample sentence at this point in time',
+                example_sentence TEXT DEFAULT NULL COMMENT 'Example sentence at this point in time',
                 category VARCHAR(100) NOT NULL COMMENT 'Category at this point in time',
                 modified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'When this version was created',
                 modification_type ENUM('created', 'updated', 'moved') NOT NULL DEFAULT 'updated' COMMENT 'Type of modification',
@@ -99,12 +111,12 @@ def ensure_word_history_table():
 
         if count == 0:
             cursor.execute("""
-                INSERT INTO word_history (word_id, word, translation, sample_sentence, category, modified_at, modification_type)
+                INSERT INTO word_history (word_id, word, translation, example_sentence, category, modified_at, modification_type)
                 SELECT
                     id,
                     word,
                     translation,
-                    sample_sentence,
+                    example_sentence,
                     category,
                     created_at,
                     'created'
@@ -121,7 +133,7 @@ def ensure_word_history_table():
             connection.close()
 
 
-def create_history_record(cursor, word_id, word_text, translation, sample_sentence, category, modification_type='updated'):
+def create_history_record(cursor, word_id, word_text, translation, example_sentence, category, modification_type='updated'):
     """
     Create a history record for a word modification
 
@@ -130,14 +142,14 @@ def create_history_record(cursor, word_id, word_text, translation, sample_senten
         word_id: ID of the word being modified
         word_text: Current word text
         translation: Current translation
-        sample_sentence: Current sample sentence
+        example_sentence: Current example sentence
         category: Current category
         modification_type: Type of modification ('created', 'updated', 'moved')
     """
     cursor.execute("""
-        INSERT INTO word_history (word_id, word, translation, sample_sentence, category, modification_type)
+        INSERT INTO word_history (word_id, word, translation, example_sentence, category, modification_type)
         VALUES (%s, %s, %s, %s, %s, %s)
-    """, (word_id, word_text, translation, sample_sentence, category, modification_type))
+    """, (word_id, word_text, translation, example_sentence, category, modification_type))
 
 
 def allowed_file(filename):
@@ -318,7 +330,7 @@ def get_word_by_category(category):
         # Get the word at the specified index
         # Using LIMIT with OFFSET for pagination with dynamic sorting
         query = f"""
-            SELECT id, word, translation, category, sample_sentence,
+            SELECT id, word, translation, category, example_sentence,
                    review_count, last_reviewed, created_at, updated_at
             FROM words
             WHERE category = %s
@@ -366,7 +378,7 @@ def add_word():
         {
             "word": "example",
             "translation": "示例",
-            "sample_sentence": "This is an example.\nAnother example.",  // optional
+            "example_sentence": "This is an example.\nAnother example.",  // optional
             "category": "日常词汇"
         }
 
@@ -387,7 +399,7 @@ def add_word():
         word = data.get('word', '').strip()
         translation = data.get('translation', '').strip()
         category = data.get('category', '').strip()
-        sample_sentence = data.get('sample_sentence', '').strip()
+        example_sentence = data.get('example_sentence', '').strip()
 
         if not word:
             return jsonify({
@@ -427,9 +439,9 @@ def add_word():
 
         # Insert new word
         cursor.execute("""
-            INSERT INTO words (word, translation, sample_sentence, category, review_count, last_reviewed)
-            VALUES (%s, %s, %s, %s, 0, NULL)
-        """, (word, translation, sample_sentence if sample_sentence else None, category))
+            INSERT INTO words (word, translation, example_sentence, category, review_count, last_reviewed)
+            VALUES (%s, %s, %s, %s, 1, NULL)
+        """, (word, translation, example_sentence if example_sentence else None, category))
 
         new_word_id = cursor.lastrowid
 
@@ -439,7 +451,7 @@ def add_word():
             new_word_id,
             word,
             translation,
-            sample_sentence if sample_sentence else None,
+            example_sentence if example_sentence else None,
             category,
             'created'
         )
@@ -449,6 +461,15 @@ def add_word():
         # Update category counts
         try:
             cursor.callproc('update_category_counts')
+            
+            # Increment daily review counter for the new word
+            # We treat adding a new word as a "review" activity for today
+            cursor.execute("""
+                INSERT INTO daily_study_log (date, review_count)
+                VALUES (CURDATE(), 1)
+                ON DUPLICATE KEY UPDATE review_count = review_count + 1
+            """)
+            
             conn.commit()
         except Exception:
             pass  # Non-critical
@@ -503,7 +524,7 @@ def search_words():
 
         # Search for words containing the query (case-insensitive)
         cursor.execute("""
-            SELECT id, word, translation, category, review_count, sample_sentence
+            SELECT id, word, translation, category, review_count, example_sentence
             FROM words
             WHERE word LIKE %s
             ORDER BY word ASC
@@ -551,7 +572,7 @@ def get_word_history(word_id):
                 id,
                 word,
                 translation,
-                sample_sentence,
+                example_sentence,
                 category,
                 DATE(modified_at) as modified_date,
                 modification_type
@@ -593,7 +614,7 @@ def get_word_history(word_id):
 @app.route('/api/words/<int:word_id>', methods=['PUT'])
 def update_word(word_id):
     """
-    Update word, translation, or sample sentence for a word
+    Update word, translation, or example_sentence for a word
 
     Args:
         word_id: ID of the word to update (from URL path)
@@ -625,8 +646,8 @@ def update_word(word_id):
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # First, get the current word text
-        cursor.execute("SELECT word FROM words WHERE id = %s", (word_id,))
+        # First, get the current word text and sample_sentence
+        cursor.execute("SELECT word, example_sentence, last_sample_review_date FROM words WHERE id = %s", (word_id,))
         current_word_data = cursor.fetchone()
 
         if not current_word_data:
@@ -636,9 +657,11 @@ def update_word(word_id):
             }), 404
 
         current_word_text = current_word_data['word']
+        current_sample = current_word_data.get('example_sentence') or ''
+        last_sample_date = current_word_data.get('last_sample_review_date')
 
-        # Update translation and sample_sentence across ALL instances of this word
-        if 'translation' in data or 'sample_sentence' in data:
+        # Update translation and example_sentence across ALL instances of this word
+        if 'translation' in data or 'example_sentence' in data:
             shared_update_fields = []
             shared_params = []
 
@@ -646,9 +669,21 @@ def update_word(word_id):
                 shared_update_fields.append('translation = %s')
                 shared_params.append(data['translation'])
 
-            if 'sample_sentence' in data:
-                shared_update_fields.append('sample_sentence = %s')
-                shared_params.append(data['sample_sentence'])
+            if 'example_sentence' in data:
+                new_sample = data['example_sentence'] or ''
+                
+                shared_update_fields.append('example_sentence = %s')
+                shared_params.append(data['example_sentence'])
+                
+                # Check if sample sentence actually changed to trigger review increment
+                if new_sample.strip() != current_sample.strip():
+                    # Check daily cap
+                    today = date.today()
+                    
+                    if last_sample_date != today:
+                        shared_update_fields.append('review_count = review_count + 1')
+                        shared_update_fields.append('last_reviewed = NOW()')
+                        shared_update_fields.append('last_sample_review_date = CURDATE()')
 
             if shared_update_fields:
                 # Update ALL rows with the same word text
@@ -670,7 +705,7 @@ def update_word(word_id):
 
         # Get the updated word data for history record
         cursor.execute("""
-            SELECT word, translation, sample_sentence, category
+            SELECT word, translation, example_sentence, category
             FROM words
             WHERE id = %s
         """, (word_id,))
@@ -682,7 +717,7 @@ def update_word(word_id):
             word_id,
             updated_word['word'],
             updated_word['translation'],
-            updated_word['sample_sentence'],
+            updated_word['example_sentence'],
             updated_word['category'],
             'updated'
         )
@@ -748,7 +783,7 @@ def change_word_category(word_id):
 
         # Get current word information
         cursor.execute("""
-            SELECT word, translation, sample_sentence, category, review_count, last_reviewed
+            SELECT word, translation, example_sentence, category, review_count, last_reviewed
             FROM words
             WHERE id = %s
         """, (word_id,))
@@ -778,34 +813,19 @@ def change_word_category(word_id):
             }), 409
 
         # Word doesn't exist in target category - perform the move
-        # Step 1: Insert word into new category
-        cursor.execute("""
-            INSERT INTO words (word, translation, sample_sentence, category, review_count, last_reviewed)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """, (
-            current_word['word'],
-            current_word['translation'],
-            current_word['sample_sentence'],
-            new_category,
-            current_word['review_count'],
-            current_word['last_reviewed']
-        ))
-
-        new_word_id = cursor.lastrowid
-
+        # Update category directly to preserve ID and last_daily_activity_date
+        cursor.execute("UPDATE words SET category = %s WHERE id = %s", (new_category, word_id))
+        
         # Create history record for the moved word
         create_history_record(
             cursor,
-            new_word_id,
+            word_id,
             current_word['word'],
             current_word['translation'],
-            current_word['sample_sentence'],
+            current_word['example_sentence'],
             new_category,
             'moved'
         )
-
-        # Step 2: Delete word from current category
-        cursor.execute("DELETE FROM words WHERE id = %s", (word_id,))
 
         conn.commit()
 
@@ -965,7 +985,7 @@ def increment_review_counter(word_id):
 
         # Get updated word data for history
         cursor.execute("""
-            SELECT word, translation, sample_sentence, category, review_count, last_reviewed
+            SELECT word, translation, example_sentence, category, review_count, last_reviewed
             FROM words
             WHERE id = %s
         """, (word_id,))
@@ -979,19 +999,15 @@ def increment_review_counter(word_id):
                 word_id,
                 result['word'],
                 result['translation'],
-                result['sample_sentence'],
+                result['example_sentence'],
                 result['category'],
                 'updated'
             )
 
             # Log daily review activity
-            # Using ON DUPLICATE KEY UPDATE to increment count for today
-            cursor.execute("""
-                INSERT INTO daily_study_log (date, review_count)
-                VALUES (CURDATE(), 1)
-                ON DUPLICATE KEY UPDATE review_count = review_count + 1
-            """)
-
+            # NOTE: This is now handled by the 'after_review_increment' MySQL trigger
+            # to ensure persistence across git branches/versions.
+            
             conn.commit()
 
             return jsonify({
@@ -1019,66 +1035,89 @@ def increment_review_counter(word_id):
 def get_word_debt():
     """
     Calculate and return total word debt and daily breakdown
-    Debt = 100 - review_count for each day (if review_count < 100)
+    Debt = 100 - review_count for each day
+    - Days with no activity get +100 debt
+    - Days exceeding 100 get negative debt (surplus)
+    - Today's deficit is not counted until the day ends
     """
     conn = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Get all daily logs
+        # Get the earliest date from the database
+        cursor.execute("""
+            SELECT MIN(date) as earliest_date
+            FROM daily_study_log
+        """)
+        result = cursor.fetchone()
+        
+        if not result or not result['earliest_date']:
+            # No records at all
+            return jsonify({
+                'success': True,
+                'total_debt': 0,
+                'breakdown': []
+            })
+        
+        earliest_date = result['earliest_date']
+        if isinstance(earliest_date, datetime):
+            earliest_date = earliest_date.date()
+        
+        # Get all daily logs as a dictionary for fast lookup
         cursor.execute("""
             SELECT date, review_count
             FROM daily_study_log
-            ORDER BY date DESC
         """)
-        
         logs = cursor.fetchall()
         
+        # Create a lookup dictionary: date -> review_count
+        daily_counts = {}
+        for log in logs:
+            log_date = log['date']
+            if isinstance(log_date, datetime):
+                log_date = log_date.date()
+            daily_counts[log_date] = log['review_count']
+        
+        today = date.today()
         total_debt = 0
         debt_breakdown = []
         
-        # We only calculate debt for days that exist in the log
-        # (since we agreed to start tracking from "today")
-        
-        # Also check if today is in the logs, if not, debt is 100 (or 0 if we don't count today as debt yet)
-        # Usually "debt" implies past due. But the user request implies accumulating debt.
-        # "If the user has only reviewed 80 words on Day1, she has a word debt of 20."
-        # This implies we sum up (100 - count) for all days where count < 100.
-        # If count > 100, we should subtract the surplus from total debt?
-        # User said: "If for a day, the user finishes his daily quota (100 words) and keeps reviewing, 
-        # for every additinal word he reviews, the displayed total word debt shall decrement 1 spontaneously."
-        # This implies surplus reduces TOTAL debt.
-        
-        today = date.today()
-        
-        for log in logs:
-            count = log['review_count']
-            log_date = log['date']
+        # Iterate through every day from earliest_date to yesterday
+        current_date = earliest_date
+        while current_date < today:  # Exclude today
+            count = daily_counts.get(current_date, 0)  # Default to 0 if no record
             
-            # Convert log_date to date object if it's not already (mysql connector might return date or datetime)
-            if isinstance(log_date, datetime):
-                log_date = log_date.date()
+            # Deficit increases debt, surplus decreases debt
+            daily_debt = 100 - count
+            total_debt += daily_debt
             
-            if log_date == today:
-                # Today: Only surplus counts (reduces debt). Deficit is ignored.
-                if count > 100:
-                    total_debt -= (count - 100)
-            else:
-                # Past days: Deficit adds to debt, Surplus reduces debt
-                contribution = 100 - count
-                total_debt += contribution
-                
-                # Add to breakdown if there is a debt for this past day
-                if count < 100:
-                    debt_breakdown.append({
-                        'date': log_date.strftime('%Y-%m-%d'),
-                        'debt': 100 - count
-                    })
-                
-        # Ensure total debt doesn't go below 0 (optional, but makes sense)
+            current_date += timedelta(days=1)
+        
+        # Handle today separately: only apply surplus if > 100
+        today_count = daily_counts.get(today, 0)
+        if today_count > 100:
+            total_debt -= (today_count - 100)
+        
+        # Ensure total debt doesn't go below 0
         if total_debt < 0:
             total_debt = 0
+        
+        # Build breakdown for the past 20 days (starting from YESTERDAY, not today)
+        # Today is excluded since user is still reviewing
+        breakdown_date = today - timedelta(days=1)  # Start from yesterday
+        for i in range(20):
+            if breakdown_date < earliest_date:
+                break
+                
+            count = daily_counts.get(breakdown_date, 0)
+            daily_debt = 100 - count
+            debt_breakdown.append({
+                'date': breakdown_date.strftime('%Y-%m-%d'),
+                'debt': daily_debt
+            })
+            
+            breakdown_date -= timedelta(days=1)
             
         return jsonify({
             'success': True,
@@ -1096,10 +1135,105 @@ def get_word_debt():
             conn.close()
 
 
+@app.route('/api/daily-count', methods=['GET'])
+def get_daily_count():
+    """
+    Get today's word review count from the database
+    This ensures the daily counter is consistent across all browsers
+    
+    Returns:
+        JSON response:
+        {
+            "success": true,
+            "count": 45
+        }
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        cursor.execute("""
+            SELECT review_count 
+            FROM daily_study_log 
+            WHERE date = CURDATE()
+        """)
+        result = cursor.fetchone()
+        
+        count = result['review_count'] if result else 0
+        
+        return jsonify({
+            'success': True,
+            'count': count
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+import re
+
+# ... existing code ...
+
+def clean_poe_response(text):
+    """
+    Remove "Thinking..." blocks from Poe/Gemini output.
+    Strategy: 
+    1. Identify the *last* line that looks like a blockquote (>).
+    2. Discard everything up to that line.
+    3. Also handle cases where only the *Thinking...* header exists without quotes.
+    4. If no thinking artifacts found, return original text.
+    """
+    if not text:
+        return ""
+    
+    lines = text.strip().split('\n')
+    
+    # 1. Find the index of the LAST line that starts with '>'
+    last_quote_index = -1
+    for i, line in enumerate(lines):
+        if line.strip().startswith('>'):
+            last_quote_index = i
+            
+    # 2. Determine start index for content
+    start_index = 0
+    if last_quote_index != -1:
+        # Content starts after the last quote
+        start_index = last_quote_index + 1
+        
+    # Extract the candidate content
+    candidate_lines = lines[start_index:]
+    
+    # 3. Check if the FIRST remaining line is a "Thinking..." header
+    # (This handles case where there were no quotes, OR if the Thinking header was somehow after quotes logic?? 
+    # Actually, mainly for case where there are NO quotes but there IS a *Thinking...* line)
+    if candidate_lines:
+        first_line = candidate_lines[0].strip()
+        # Matches *Thinking...*, **Thinking...**, Thinking...
+        # Also handle potential italics/bold markers
+        if re.match(r'^[\s\*]*Thinking\.\.\.[\s\*]*$', first_line, re.IGNORECASE):
+            candidate_lines = candidate_lines[1:]
+            
+    # 4. Filter out leading empty lines from the result
+    final_lines = []
+    has_content_started = False
+    for line in candidate_lines:
+        if not has_content_started and not line.strip():
+            continue
+        has_content_started = True
+        final_lines.append(line)
+        
+    return '\n'.join(final_lines).strip()
+
 @app.route('/api/generate-sample', methods=['POST'])
 def generate_sample_sentence():
     """
-    Generate a sample sentence using Ollama AI
+    Generate a example sentence using Poe API (OpenAI-compatible)
 
     Request Body (JSON):
         {
@@ -1119,6 +1253,8 @@ def generate_sample_sentence():
             }), 400
 
         word = data['word'].strip()
+        # Get model from request, fallback to config default
+        model = data.get('model', app.config['POE_MODEL'])
 
         if not word:
             return jsonify({
@@ -1126,23 +1262,34 @@ def generate_sample_sentence():
                 'error': 'Word cannot be empty'
             }), 400
 
-        # Prepare prompt for Ollama
+        # Check Poe API Key
+        if not app.config['POE_API_KEY']:
+            return jsonify({
+                'success': False,
+                'error': 'Poe API Key not configured. Please set POE_API_KEY in .env file.'
+            }), 500
+
+        # Initialize OpenAI client with Poe API endpoint
+        client = OpenAI(
+            api_key=app.config['POE_API_KEY'],
+            base_url="https://api.poe.com/v1/"
+        )
+
+        # Prepare prompt
         prompt = f'Create a simple, natural English sentence that uses the EXACT word or phrase "{word}" (including all words as shown). You must use "{word}" exactly as written, not variations or partial matches. Use simple language and vocabulary suitable for a high school student. Keep the sentence short and easy to understand. Only output the sentence, nothing else.'
 
-        # Call Ollama API
-        ollama_url = "http://localhost:11434/api/generate"
-        ollama_payload = {
-            "model": "gemma3n",
-            "prompt": prompt,
-            "stream": False
-        }
-
-        response = requests.post(ollama_url, json=ollama_payload, timeout=30)
-
-        if response.status_code == 200:
-            result = response.json()
-            generated_sentence = result.get('response', '').strip()
-
+        # Call Poe API via OpenAI SDK
+        response = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=app.config.get('POE_TEMPERATURE', 0.7)
+        )
+        
+        if response.choices and response.choices[0].message.content:
+            raw_content = response.choices[0].message.content.strip()
+            # Clean up potential thinking process output
+            generated_sentence = clean_poe_response(raw_content)
+            
             return jsonify({
                 'success': True,
                 'sentence': generated_sentence
@@ -1150,19 +1297,91 @@ def generate_sample_sentence():
         else:
             return jsonify({
                 'success': False,
-                'error': f'Ollama API error: {response.status_code}'
+                'error': 'Poe returned empty response'
             }), 500
 
-    except requests.exceptions.Timeout:
+    except Exception as e:
         return jsonify({
             'success': False,
-            'error': 'Ollama request timed out. Please try again.'
+            'error': str(e)
         }), 500
-    except requests.exceptions.ConnectionError:
-        return jsonify({
-            'success': False,
-            'error': 'Cannot connect to Ollama server. Please ensure Ollama is running on port 11434.'
-        }), 500
+
+
+@app.route('/api/generate-translation', methods=['POST'])
+def generate_translation():
+    """
+    Generate Chinese translation for a word using Poe API (OpenAI-compatible)
+    
+    Request Body (JSON):
+        {
+            "word": "example",
+            "model": "Claude-Haiku-4.5"  // optional, defaults to config
+        }
+    
+    Returns:
+        JSON response:
+        {
+            "success": true,
+            "translation": "示例\n例子"
+        }
+    """
+    try:
+        data = request.get_json()
+
+        if not data or 'word' not in data:
+            return jsonify({
+                'success': False,
+                'error': 'Word is required'
+            }), 400
+
+        word = data['word'].strip()
+        # Get model from request, fallback to config default
+        model = data.get('model', app.config['POE_MODEL'])
+
+        if not word:
+            return jsonify({
+                'success': False,
+                'error': 'Word cannot be empty'
+            }), 400
+
+        # Check Poe API Key
+        if not app.config['POE_API_KEY']:
+            return jsonify({
+                'success': False,
+                'error': 'Poe API Key not configured. Please set POE_API_KEY in .env file.'
+            }), 500
+
+        # Initialize OpenAI client with Poe API endpoint
+        client = OpenAI(
+            api_key=app.config['POE_API_KEY'],
+            base_url="https://api.poe.com/v1/"
+        )
+
+        # Prepare prompt for Chinese translation
+        prompt = f"What's the Chinese translation of '{word}'? Only list the 2 most common translations and ignore others. Only list the translations in Chinese characters, no other explanations or phonetics are needed."
+
+        # Call Poe API via OpenAI SDK
+        response = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=app.config.get('POE_TEMPERATURE', 0.7)
+        )
+        
+        if response.choices and response.choices[0].message.content:
+            raw_content = response.choices[0].message.content.strip()
+            # Clean up potential thinking process output
+            generated_translation = clean_poe_response(raw_content)
+            
+            return jsonify({
+                'success': True,
+                'translation': generated_translation
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Poe returned empty response'
+            }), 500
+
     except Exception as e:
         return jsonify({
             'success': False,
@@ -1215,61 +1434,42 @@ def get_category_count(category):
         }), 500
 
 
-@app.route('/api/quiz/random-words', methods=['GET'])
-def get_random_quiz_words():
+@app.route('/api/quiz/next-word', methods=['GET'])
+def get_next_quiz_word():
     """
-    Get random words for quiz (only words with review_count > 0)
-
-    Query Parameters:
-        limit: Number of words to return (default=10)
-
+    Get the next word for quiz (oldest updated word with review_count >= 1)
+    
     Returns:
-        JSON response:
-        {
-            "success": true,
-            "count": 10,
-            "words": [
-                {"id": 1, "word": "example", "translation": "例子"},
-                ...
-            ]
-        }
+        JSON response with word data
     """
     conn = None
     try:
-        limit = int(request.args.get('limit', 10))
-
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Get random words with review_count > 0
+        # Get oldest updated word with review_count >= 1
         cursor.execute("""
-            SELECT id, word, translation
+            SELECT id, word, translation, example_sentence, review_count
             FROM words
-            WHERE review_count > 0
-            ORDER BY RAND()
-            LIMIT %s
-        """, (limit,))
+            WHERE review_count >= 1
+            ORDER BY updated_at ASC
+            LIMIT 1
+        """)
 
-        words = cursor.fetchall()
+        word = cursor.fetchone()
 
-        if not words:
+        if not word:
             return jsonify({
                 'success': False,
-                'error': 'No reviewed words found. Please review some words first by clicking the counter badge.',
-                'count': 0
+                'error': 'No words found for review. Please review some words first.',
+                'word': None
             }), 404
 
         return jsonify({
             'success': True,
-            'count': len(words),
-            'words': words
+            'word': word
         })
 
-    except ValueError:
-        return jsonify({
-            'success': False,
-            'error': 'Invalid limit parameter'
-        }), 400
     except Exception as e:
         return jsonify({
             'success': False,
@@ -1280,132 +1480,86 @@ def get_random_quiz_words():
             conn.close()
 
 
-@app.route('/api/quiz/generate', methods=['POST'])
-def generate_quiz():
+@app.route('/api/quiz/result', methods=['POST'])
+def submit_quiz_result():
     """
-    Generate quiz questions using Ollama AI
-
-    Request Body (JSON):
+    Submit quiz result for a word
+    
+    Request Body:
         {
-            "words": [
-                {"id": 1, "word": "example", "translation": "例子"},
-                ...
-            ]
-        }
-
-    Returns:
-        JSON response with quiz questions:
-        {
-            "success": true,
-            "questions": [
-                {
-                    "word_id": 1,
-                    "word": "example",
-                    "options": ["例子", "错误1", "错误2", "错误3"],
-                    "correct_answer": 0
-                },
-                ...
-            ]
+            "word_id": 123,
+            "result": "remember" | "not_remember"
         }
     """
+    conn = None
     try:
         data = request.get_json()
-
-        if not data or 'words' not in data:
+        
+        if not data or 'word_id' not in data or 'result' not in data:
             return jsonify({
                 'success': False,
-                'error': 'Words array is required'
+                'error': 'Missing word_id or result'
             }), 400
-
-        words = data['words']
-
-        if not words or len(words) == 0:
+            
+        word_id = data['word_id']
+        result = data['result']
+        
+        if result not in ['remember', 'not_remember']:
             return jsonify({
                 'success': False,
-                'error': 'At least one word is required'
+                'error': 'Invalid result value'
             }), 400
-
-        questions = []
-
-        # Generate questions for each word using Ollama
-        for word_data in words:
-            correct_word = word_data.get('word', '')
-            translation = word_data.get('translation', '')
-            word_id = word_data.get('id')
-
-            # Prepare prompt for Ollama to generate 2 plausible wrong English words
-            prompt = f'''For the Chinese translation "{translation}" (correct English word: {correct_word}), generate 2 plausible but INCORRECT English words that could mislead someone.
-
-Requirements:
-- Each wrong answer should be a realistic English word that sounds plausible for this Chinese meaning
-- They should be different from the correct answer: {correct_word}
-- Output ONLY 2 English words, one per line, nothing else
-- No numbering, no explanations, just the words'''
-
-            # Call Ollama API
-            ollama_url = "http://localhost:11434/api/generate"
-            ollama_payload = {
-                "model": "gemma3n",
-                "prompt": prompt,
-                "stream": False
-            }
-
-            response = requests.post(ollama_url, json=ollama_payload, timeout=30)
-
-            if response.status_code == 200:
-                result = response.json()
-                generated_text = result.get('response', '').strip()
-
-                # Parse the 2 wrong answers
-                wrong_answers = [line.strip() for line in generated_text.split('\n') if line.strip()][:2]
-
-                # Ensure we have exactly 2 wrong answers
-                while len(wrong_answers) < 2:
-                    wrong_answers.append(f"option{len(wrong_answers) + 1}")
-
-                # Create options array with correct answer and 2 wrong answers (3 total)
-                options = [correct_word] + wrong_answers[:2]
-
-                # Shuffle options but remember correct answer position
-                import random
-                correct_index = 0
-                indices = list(range(3))
-                random.shuffle(indices)
-                shuffled_options = [options[i] for i in indices]
-                correct_answer_index = indices.index(correct_index)
-
-                questions.append({
-                    'word_id': word_id,
-                    'translation': translation,
-                    'options': shuffled_options,
-                    'correct_answer': correct_answer_index
-                })
-            else:
-                return jsonify({
-                    'success': False,
-                    'error': f'Ollama API error: {response.status_code}'
-                }), 500
-
+            
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Get current review count
+        cursor.execute("SELECT review_count FROM words WHERE id = %s", (word_id,))
+        word = cursor.fetchone()
+        
+        if not word:
+            return jsonify({
+                'success': False,
+                'error': 'Word not found'
+            }), 404
+            
+        current_count = word['review_count']
+        new_count = current_count
+        
+        if result == 'remember':
+            # Decrement, but min 1
+            if current_count > 1:
+                new_count = current_count - 1
+        else:
+            # Increment
+            new_count = current_count + 1
+            
+        # Update review_count and updated_at (to rotate the word in the queue)
+        # But do NOT update last_reviewed
+        cursor.execute("""
+            UPDATE words 
+            SET review_count = %s,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = %s
+        """, (new_count, word_id))
+        
+        conn.commit()
+        
         return jsonify({
             'success': True,
-            'questions': questions
+            'word_id': word_id,
+            'old_count': current_count,
+            'new_count': new_count
         })
 
-    except requests.exceptions.Timeout:
-        return jsonify({
-            'success': False,
-            'error': 'Ollama request timed out. Please try again.'
-        }), 500
-    except requests.exceptions.ConnectionError:
-        return jsonify({
-            'success': False,
-            'error': 'Cannot connect to Ollama server. Please ensure Ollama is running on port 11434.'
-        }), 500
     except Exception as e:
         return jsonify({
             'success': False,
             'error': str(e)
         }), 500
+    finally:
+        if conn:
+            conn.close()
 
 
 @app.route('/api/upload', methods=['POST'])
@@ -1507,6 +1661,83 @@ def upload_xml():
 # Application Initialization
 # ============================================
 
+
+@app.route('/api/words/<int:word_id>/position', methods=['GET'])
+def get_word_position(word_id):
+    """
+    Get the index/position of a word within its category based on sort order
+    
+    Query Parameters:
+        sort_by: Sort criteria (default: 'updated_at')
+        
+    Returns:
+        JSON response with index, total_count, and category
+    """
+    conn = None
+    try:
+        sort_by = request.args.get('sort_by', 'updated_at')
+        
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        # First get the word's category
+        cursor.execute("SELECT category FROM words WHERE id = %s", (word_id,))
+        word_data = cursor.fetchone()
+        
+        if not word_data:
+            return jsonify({
+                'success': False,
+                'error': 'Word not found'
+            }), 404
+            
+        category = word_data['category']
+        
+        # Determine sort order
+        order_clause = "updated_at DESC, id DESC"
+        if sort_by == 'review_count':
+            order_clause = "review_count DESC, updated_at DESC, id DESC"
+            
+        # Get all IDs in this category with the same sort order
+        query = f"""
+            SELECT id 
+            FROM words 
+            WHERE category = %s 
+            ORDER BY {order_clause}
+        """
+        
+        cursor.execute(query, (category,))
+        all_words = cursor.fetchall()
+        
+        # Find index
+        index = -1
+        for i, w in enumerate(all_words):
+            if w['id'] == word_id:
+                index = i
+                break
+                
+        if index == -1:
+            return jsonify({
+                'success': False,
+                'error': 'Word not found in category list'
+            }), 500
+            
+        return jsonify({
+            'success': True,
+            'index': index,
+            'total_count': len(all_words),
+            'category': category
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+    finally:
+        if conn:
+            conn.close()
+
+
 def create_app():
     """
     Application factory function
@@ -1537,13 +1768,13 @@ if __name__ == '__main__':
     print("\n" + "="*50)
     print("  BKDict Vocabulary Web Application")
     print("="*50)
-    print(f"  🌐 Server running on: http://localhost:5000")
+    print(f"  🌐 Server running on: http://localhost:5001")
     print(f"  📚 Database: {app.config['DB_NAME']}")
     print(f"  🔧 Debug mode: {app.config['DEBUG']}")
     print("="*50 + "\n")
 
     app.run(
         host='0.0.0.0',
-        port=5000,
+        port=5001,
         debug=app.config['DEBUG']
     )

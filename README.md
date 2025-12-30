@@ -1,4 +1,4 @@
-# BKDict - Vocabulary Learning Web Application
+# EasyDict - Vocabulary Learning Web Application
 
 📚 A responsive vocabulary web application for reviewing and managing English vocabulary with Chinese translations. Built with Flask, MySQL, and vanilla JavaScript.
 
@@ -38,7 +38,7 @@ cd c:\Users\bbcba\Downloads\BKDict
 
 ```bash
 # Create new conda environment
-conda create -n bkdict python=3.11
+conda create -n bkdict python=3.11 -y
 
 # Activate the environment
 conda activate bkdict
@@ -190,8 +190,8 @@ BKDict/
 │       └── app.js             # Frontend JavaScript logic
 │
 ├── data/
-│   ├── 文化_cleaned.xml        # Example vocabulary file
-│   └── AI.xml                 # Example vocabulary file
+│   ├── Science.xml               # Example vocabulary file
+│   └── IT_CS.xml                 # Example vocabulary file
 │
 └── uploads/                   # Temporary storage for uploaded files
 ```
@@ -269,7 +269,7 @@ DB_POOL_SIZE = 5  # Increase for more concurrent users
 | id | INT | Primary key (auto-increment) |
 | word | VARCHAR(255) | The English word or phrase |
 | translation | TEXT | Chinese translation |
-| category | VARCHAR(100) | Category tag (e.g., 文化, AI) |
+| category | VARCHAR(100) | Category tag |
 | sample_sentence | TEXT | User-added example sentence |
 | created_at | TIMESTAMP | Record creation time |
 | updated_at | TIMESTAMP | Last update time |
@@ -324,4 +324,4 @@ If you encounter any issues:
 
 ---
 
-**Enjoy learning vocabulary with BKDict!** 📚✨
+**Enjoy learning vocabulary with EasyDict!** 📚✨

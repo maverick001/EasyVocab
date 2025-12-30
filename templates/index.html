@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,51 +8,28 @@
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
+
 <body>
     <!-- Main Container -->
     <div class="container">
 
         <!-- Header Section -->
         <header class="app-header">
-            <h1 class="app-title">📚 BKDict Vocabulary</h1>
+            <h1 class="app-title">📚 Easy Vocab</h1>
+            <button id="themeToggle" class="theme-toggle" title="Toggle dark mode">
+                <span class="icon sun-icon">☀️</span>
+                <span class="icon moon-icon">🌙</span>
+            </button>
         </header>
 
         <!-- Control Panel -->
         <div class="control-panel">
 
-            <!-- Category Selection -->
-            <div class="control-group">
-                <label for="categorySelect" class="control-label">Select Category:</label>
-                <select id="categorySelect" class="category-select">
-                    <option value="">-- Loading categories... --</option>
-                </select>
-                <span id="categoryInfo" class="category-info"></span>
-            </div>
-
-            <!-- Sort Toggle -->
-            <div class="control-group sort-group">
-                <label for="sortSelect" class="control-label">Sort by:</label>
-                <select id="sortSelect" class="sort-select">
-                    <option value="updated_at">Recent Edits (Latest First)</option>
-                    <option value="review_count">Most Reviewed</option>
-                </select>
-            </div>
-
-            <!-- Search Section -->
-            <div class="control-group search-group">
-                <label for="searchInput" class="control-label">Search Words:</label>
-                <div class="search-container">
-                    <input type="text" id="searchInput" class="search-input" placeholder="Enter word or phrase...">
-                    <button id="searchBtn" class="btn btn-primary btn-sm">Search</button>
-                    <button id="clearSearchBtn" class="btn btn-cancel btn-sm" style="display: none;">Clear</button>
-                </div>
-            </div>
-
-            <!-- Import XML Section -->
-            <div class="control-group import-section">
-                <button id="importBtn" class="btn btn-secondary">Import XML File</button>
-                <button id="addWordBtn" class="btn btn-primary">+ Add New Word</button>
-                <a href="/quiz" class="btn btn-primary" style="background: linear-gradient(135deg, #3ba764, #5B21B6); text-decoration: none;">Quiz Me</a>
+            <!-- Row 1: Action Buttons -->
+            <div class="control-row action-controls">
+                <button id="importBtn" class="btn btn-import">📥 Import XML</button>
+                <button id="addWordBtn" class="btn btn-add-word">✨ Add New Word</button>
+                <a href="/quiz" class="btn btn-quiz">🎯 Quiz Me</a>
                 <div id="importPanel" class="import-panel" style="display: none;">
                     <input type="file" id="fileInput" accept=".xml" class="file-input">
                     <button id="uploadBtn" class="btn btn-primary">Upload</button>
@@ -59,6 +37,7 @@
                     <div id="uploadStatus" class="upload-status"></div>
                 </div>
             </div>
+
 
         </div>
 
@@ -75,8 +54,13 @@
                         <input type="text" id="newWord" class="form-input" placeholder="Enter word..." required>
                     </div>
                     <div class="form-group">
-                        <label for="newTranslation">Translation (Chinese) *</label>
-                        <input type="text" id="newTranslation" class="form-input" placeholder="Enter translation..." required>
+                        <div class="form-label-row">
+                            <label for="newTranslation">Translation (Chinese) *</label>
+                            <button id="generateNewTransBtn" class="btn btn-generate btn-sm" type="button">✨
+                                Generate</button>
+                        </div>
+                        <input type="text" id="newTranslation" class="form-input" placeholder="Enter translation..."
+                            required>
                     </div>
                     <div class="form-group">
                         <label for="newCategory">Category *</label>
@@ -85,8 +69,13 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="newSample">Sample Sentences (optional)</label>
-                        <textarea id="newSample" class="form-textarea" placeholder="Enter sample sentences (one per line)..." rows="4"></textarea>
+                        <div class="form-label-row">
+                            <label for="newSample">Example Sentences (optional)</label>
+                            <button id="generateNewSampleBtn" class="btn btn-generate btn-sm" type="button">✨ Generate
+                            </button>
+                        </div>
+                        <textarea id="newSample" class="form-textarea"
+                            placeholder="Enter sample sentences (one per line)..." rows="4"></textarea>
                         <small class="form-hint">Enter one sentence per line</small>
                     </div>
                     <div id="addWordStatus" class="form-status"></div>
@@ -102,7 +91,10 @@
         <div id="searchResults" class="search-results" style="display: none;">
             <div class="search-results-header">
                 <h3>Search Results</h3>
-                <span id="searchResultsCount" class="search-count"></span>
+                <div class="search-header-controls">
+                    <span id="searchResultsCount" class="search-count"></span>
+                    <button id="closeSearchResultsBtn" class="btn-close-results" title="Close results">&times;</button>
+                </div>
             </div>
             <div id="searchResultsList" class="search-results-list">
                 <!-- Results will be populated here -->
@@ -112,11 +104,42 @@
         <!-- Word Display Card -->
         <div id="wordCard" class="word-card" style="display: none;">
 
+            <!-- Primary Controls (Category/Sort/Search) -->
+            <div class="control-row primary-controls">
+                <!-- Category Selection -->
+                <div class="control-group">
+                    <label for="categorySelect" class="control-label">Category:</label>
+                    <select id="categorySelect" class="category-select">
+                        <option value="">-- Loading categories... --</option>
+                    </select>
+                    <span id="categoryInfo" class="category-info"></span>
+                </div>
+
+                <!-- Sort Toggle -->
+                <div class="control-group sort-group">
+                    <label for="sortSelect" class="control-label">Sort:</label>
+                    <select id="sortSelect" class="sort-select">
+                        <option value="updated_at">Recent Edits (Latest First)</option>
+                        <option value="review_count">Most Reviewed</option>
+                    </select>
+                </div>
+
+                <!-- Search Section -->
+                <div class="control-group search-group">
+                    <label for="searchInput" class="control-label">Search:</label>
+                    <div class="search-container">
+                        <input type="text" id="searchInput" class="search-input" placeholder="Enter word or phrase...">
+                        <button id="searchBtn" class="btn btn-primary btn-sm">Search</button>
+                        <button id="clearSearchBtn" class="btn btn-cancel btn-sm" style="display: none;">Clear</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Word Section -->
             <div class="word-section">
                 <!-- Status Bar (Top Left) -->
                 <div class="status-bar">
-                    <span id="positionInfo" class="status-badge position-badge">Word 1 of 100</span>
+
                     <span id="dailyCounter" class="status-badge daily-badge">0/100</span>
                     <div class="debt-wrapper">
                         <button id="wordDebtBtn" class="status-badge debt-badge">Word Debt: 0</button>
@@ -162,9 +185,7 @@
                         <option value="">-- Select Category --</option>
                     </select>
                     <button id="moveCategoryBtn" class="btn btn-secondary btn-sm">Move</button>
-                </div>
-                <div class="action-group">
-                    <button id="deleteWordBtn" class="btn btn-delete">🗑️ Delete Word</button>
+                    <button id="deleteWordBtn" class="btn btn-secondary btn-sm btn-delete-inline">🗑️ Delete</button>
                 </div>
             </div>
 
@@ -172,6 +193,7 @@
             <div class="translation-section">
                 <div class="section-header">
                     <h3 class="section-title">Translation:</h3>
+                    <button id="generateTransBtn" class="btn btn-generate">✨ Generate</button>
                 </div>
                 <div id="translationDisplay" class="content-display editable-field" title="Click to edit"></div>
                 <div id="translationEdit" class="content-edit" style="display: none;">
@@ -183,18 +205,26 @@
                 </div>
             </div>
 
-            <!-- Sample Sentence Section (Multiple Sentences Supported) -->
-            <div class="sample-section">
+            <!-- Example Sentence Section (Multiple Sentences Supported) -->
+            <div class="example-section">
                 <div class="section-header">
-                    <h3 class="section-title">Sample Sentences:</h3>
-                    <button id="generateSampleBtn" class="btn btn-generate">Generate</button>
+                    <h3 class="section-title">Example Sentences:</h3>
+                    <div class="generate-controls">
+                        <select id="modelSelect" class="model-select">
+                            <option value="Claude-Haiku-4.5">Haiku-4.5</option>
+                            <option value="gemini-3-flash">Gemini-3-Flash</option>
+                            <option value="gpt-4o">GPT-4o</option>
+                        </select>
+                        <button id="generateSampleBtn" class="btn btn-generate">✨ Generate</button>
+                    </div>
                 </div>
                 <div id="sampleDisplay" class="content-display empty editable-field" title="Click to edit">
-                    <p class="empty-hint">No sample sentences yet. Click here to add some.</p>
+                    <p class="empty-hint">No example sentences yet. Click here to add some.</p>
                 </div>
                 <div id="sampleEdit" class="content-edit" style="display: none;">
                     <p class="edit-hint">Type each sentence on a new line:</p>
-                    <textarea id="sampleInput" class="content-textarea" rows="6" placeholder="Enter sample sentences (one per line)..."></textarea>
+                    <textarea id="sampleInput" class="content-textarea" rows="6"
+                        placeholder="Enter example sentences (one per line)..."></textarea>
                     <div class="edit-actions">
                         <button id="saveSampleBtn" class="btn btn-save">Save</button>
                         <button id="cancelSampleBtn" class="btn btn-cancel">Cancel</button>
@@ -212,27 +242,35 @@
 
         <!-- Welcome Message (shown when no category selected) -->
         <div id="welcomeMessage" class="welcome-message">
-            <div class="welcome-icon">📖</div>
-            <h2>Welcome to BKDict!</h2>
-            <p>Select a category from the dropdown above to start reviewing vocabulary.</p>
-            <p class="welcome-hint">Or import a new XML file to add more words to your collection.</p>
+            <div class="welcome-icon" id="bookIcon" style="cursor: pointer; margin-top: -30px;"
+                onclick="loadFirstCategory()">📖</div>
+            <h2 style="margin-top: -30px;">Welcome to Easy Vocab</h2>
+            <p
+                style="font-size: 1rem; color: var(--text-secondary); margin-top: calc(-0.5rem - 10px); margin-bottom: 1.5rem;">
+                Your Vocabulary Learning Companion</p>
+            <button onclick="loadFirstCategory()" class="btn btn-primary"
+                style="font-size: 1.5rem; padding: 1rem 2.5rem; border-radius: 12px;">
+                Enter
+            </button>
         </div>
+    </div>
 
-        <!-- Loading Indicator -->
-        <div id="loadingIndicator" class="loading-indicator" style="display: none;">
-            <div class="spinner"></div>
-            <p>Loading...</p>
-        </div>
+    <!-- Loading Indicator -->
+    <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+        <div class="spinner"></div>
+        <p>Loading...</p>
+    </div>
 
-        <!-- Error Message -->
-        <div id="errorMessage" class="error-message" style="display: none;">
-            <span class="error-icon">⚠️</span>
-            <span id="errorText"></span>
-        </div>
+    <!-- Error Message -->
+    <div id="errorMessage" class="error-message" style="display: none;">
+        <span class="error-icon">⚠️</span>
+        <span id="errorText"></span>
+    </div>
 
     </div>
 
     <!-- JavaScript -->
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
+
 </html>

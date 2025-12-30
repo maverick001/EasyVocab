@@ -54,6 +54,7 @@ const Elements = {
     translationInput: null,
     saveTransBtn: null,
     cancelTransBtn: null,
+    generateTransBtn: null,
 
     // Sample sentence elements (simplified)
     sampleDisplay: null,
@@ -85,6 +86,8 @@ const Elements = {
     newTranslation: null,
     newCategory: null,
     newSample: null,
+    generateNewSampleBtn: null,
+    generateNewTransBtn: null,
     addWordStatus: null,
 
     // Search
@@ -109,7 +112,10 @@ const Elements = {
     welcomeMessage: null,
     loadingIndicator: null,
     errorMessage: null,
-    errorText: null
+    errorText: null,
+
+    // Theme Toggle
+    themeToggle: null
 };
 
 // ============================================
@@ -124,6 +130,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // Setup event listeners
     setupEventListeners();
 
+    // Initialize theme from localStorage
+    initializeTheme();
+
     // Initialize daily progress counter
     initializeDailyCounter();
 
@@ -135,6 +144,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
     console.log('✅ Initialization complete');
 });
+
+/**
+ * Initialize theme from localStorage
+ */
+function initializeTheme() {
+    const savedTheme = localStorage.getItem('bkdict-theme');
+    if (savedTheme === 'dark') {
+        document.body.classList.add('dark-mode');
+    }
+    console.log(`🎨 Theme initialized: ${savedTheme || 'light'}`);
+}
+
+/**
+ * Toggle between light and dark mode
+ */
+function toggleTheme() {
+    const isDark = document.body.classList.toggle('dark-mode');
+    localStorage.setItem('bkdict-theme', isDark ? 'dark' : 'light');
+    console.log(`🌓 Theme switched to: ${isDark ? 'dark' : 'light'}`);
+}
 
 /**
  * Cache all DOM elements for efficient access
@@ -168,6 +197,7 @@ function cacheDOMElements() {
     Elements.translationInput = document.getElementById('translationInput');
     Elements.saveTransBtn = document.getElementById('saveTransBtn');
     Elements.cancelTransBtn = document.getElementById('cancelTransBtn');
+    Elements.generateTransBtn = document.getElementById('generateTransBtn');
 
     // Sample (simplified - single textarea)
     Elements.sampleDisplay = document.getElementById('sampleDisplay');
@@ -199,6 +229,8 @@ function cacheDOMElements() {
     Elements.newTranslation = document.getElementById('newTranslation');
     Elements.newCategory = document.getElementById('newCategory');
     Elements.newSample = document.getElementById('newSample');
+    Elements.generateNewSampleBtn = document.getElementById('generateNewSampleBtn');
+    Elements.generateNewTransBtn = document.getElementById('generateNewTransBtn');
     Elements.addWordStatus = document.getElementById('addWordStatus');
 
     // Search
@@ -208,6 +240,7 @@ function cacheDOMElements() {
     Elements.searchResults = document.getElementById('searchResults');
     Elements.searchResultsCount = document.getElementById('searchResultsCount');
     Elements.searchResultsList = document.getElementById('searchResultsList');
+    Elements.closeSearchResultsBtn = document.getElementById('closeSearchResultsBtn');
 
     // History
     Elements.historySelect = document.getElementById('historySelect');
@@ -224,6 +257,9 @@ function cacheDOMElements() {
     Elements.loadingIndicator = document.getElementById('loadingIndicator');
     Elements.errorMessage = document.getElementById('errorMessage');
     Elements.errorText = document.getElementById('errorText');
+
+    // Theme Toggle
+    Elements.themeToggle = document.getElementById('themeToggle');
 }
 
 /**
@@ -245,6 +281,7 @@ function setupEventListeners() {
     Elements.translationDisplay.addEventListener('click', () => toggleEditMode('translation', true));
     Elements.saveTransBtn.addEventListener('click', () => saveTranslation());
     Elements.cancelTransBtn.addEventListener('click', () => toggleEditMode('translation', false));
+    Elements.generateTransBtn.addEventListener('click', () => generateTranslation());
 
     // Sample sentence editing - click on display to edit
     Elements.sampleDisplay.addEventListener('click', () => toggleEditMode('sample', true));
@@ -274,10 +311,13 @@ function setupEventListeners() {
     Elements.closeModalBtn.addEventListener('click', closeAddWordModal);
     Elements.cancelModalBtn.addEventListener('click', closeAddWordModal);
     Elements.submitWordBtn.addEventListener('click', submitNewWord);
+    Elements.generateNewSampleBtn.addEventListener('click', generateNewWordSample);
+    Elements.generateNewTransBtn.addEventListener('click', generateNewWordTranslation);
 
     // Search functionality
     Elements.searchBtn.addEventListener('click', performSearch);
     Elements.clearSearchBtn.addEventListener('click', clearSearch);
+    Elements.closeSearchResultsBtn.addEventListener('click', closeSearchResults);
     Elements.searchInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             performSearch();
@@ -303,6 +343,26 @@ function setupEventListeners() {
             Elements.wordDebtDropdown.classList.remove('show');
         }
     });
+
+    // Theme toggle
+    Elements.themeToggle.addEventListener('click', toggleTheme);
+}
+
+// ============================================
+// Helper Functions
+// ============================================
+
+/**
+ * Load first category automatically (triggered by book icon click)
+ */
+function loadFirstCategory() {
+    // Wait a moment for categories to be loaded if they haven't been yet
+    setTimeout(() => {
+        if (Elements.categorySelect.options.length > 1) {
+            Elements.categorySelect.selectedIndex = 1; // Skip "-- Select a Category --"
+            Elements.categorySelect.dispatchEvent(new Event('change'));
+        }
+    }, 100);
 }
 
 // ============================================
@@ -390,10 +450,10 @@ async function updateWord(wordId, updates) {
                 AppState.currentWord.translation = updates.translation;
                 Elements.translationDisplay.textContent = updates.translation;
             }
-            if ('sample_sentence' in updates) {
-                AppState.currentWord.sample_sentence = updates.sample_sentence;
+            if ('example_sentence' in updates) {
+                AppState.currentWord.example_sentence = updates.example_sentence;
                 // Redisplay samples with updated content
-                displaySampleSentences(updates.sample_sentence);
+                displaySampleSentences(updates.example_sentence);
             }
 
             // Reload history after update
@@ -467,7 +527,7 @@ function populateCategoryDropdown(categories) {
     sortedCategories.forEach(cat => {
         const option = document.createElement('option');
         option.value = cat.name;
-        option.textContent = `${cat.name} (${cat.word_count} words)`;
+        option.textContent = `${cat.name} (${cat.word_count})`;
         Elements.categorySelect.appendChild(option);
     });
 
@@ -477,7 +537,7 @@ function populateCategoryDropdown(categories) {
     sortedCategories.forEach(cat => {
         const option = document.createElement('option');
         option.value = cat.name;
-        option.textContent = cat.name;
+        option.textContent = `${cat.name} (${cat.word_count})`;
         Elements.changeCategorySelect.appendChild(option);
     });
 }
@@ -507,14 +567,12 @@ function displayWord(wordData) {
     Elements.translationInput.value = wordData.translation;
 
     // Display sample sentences using helper function
-    displaySampleSentences(wordData.sample_sentence);
+    displaySampleSentences(wordData.example_sentence);
 
     // Update word input
     Elements.wordInput.value = wordData.word;
 
-    // Update position info
-    Elements.positionInfo.textContent =
-        `Word ${wordData.current_index + 1} of ${wordData.total_in_category}`;
+
 
     // Update navigation button states
     updateNavigationButtons();
@@ -571,16 +629,11 @@ function showLoading(show) {
 }
 
 /**
- * Show error message
+ * Show error message as popup alert
  */
 function showError(message) {
-    Elements.errorText.textContent = message;
-    Elements.errorMessage.style.display = 'flex';
-
-    // Auto-hide after 5 seconds
-    setTimeout(() => {
-        hideError();
-    }, 5000);
+    // Display as popup alert window
+    alert(message);
 }
 
 /**
@@ -646,8 +699,13 @@ function handleSortChange(event) {
 /**
  * Handle word navigation (prev/next)
  */
-function navigateWord(direction) {
+async function navigateWord(direction) {
     if (!AppState.currentCategory) return;
+
+    // Auto-save translation if editing
+    if (AppState.isEditingTranslation) {
+        await saveTranslation();
+    }
 
     const newIndex = AppState.currentIndex + direction;
 
@@ -729,7 +787,7 @@ async function saveSample() {
     const newSample = Elements.sampleInput.value.trim();
 
     const success = await updateWord(AppState.currentWord.id, {
-        sample_sentence: newSample
+        example_sentence: newSample
     });
 
     if (success) {
@@ -750,13 +808,18 @@ async function generateSampleSentence() {
         Elements.generateSampleBtn.disabled = true;
         Elements.generateSampleBtn.textContent = 'Generating...';
 
+        // Get selected model from dropdown
+        const modelSelect = document.getElementById('modelSelect');
+        const selectedModel = modelSelect ? modelSelect.value : 'Claude-Haiku-4.5';
+
         const response = await fetch('/api/generate-sample', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                word: AppState.currentWord.word
+                word: AppState.currentWord.word,
+                model: selectedModel
             })
         });
 
@@ -764,7 +827,7 @@ async function generateSampleSentence() {
 
         if (data.success && data.sentence) {
             // Get current sample sentences
-            const currentSample = AppState.currentWord.sample_sentence || '';
+            const currentSample = AppState.currentWord.example_sentence || '';
 
             // Add new sentence to existing ones (on new line if there are existing sentences)
             let updatedSample;
@@ -776,7 +839,7 @@ async function generateSampleSentence() {
 
             // Update the word with new sample sentence
             const success = await updateWord(AppState.currentWord.id, {
-                sample_sentence: updatedSample
+                example_sentence: updatedSample
             });
 
             if (success) {
@@ -793,6 +856,69 @@ async function generateSampleSentence() {
         // Re-enable button
         Elements.generateSampleBtn.disabled = false;
         Elements.generateSampleBtn.textContent = 'Generate';
+    }
+}
+
+/**
+ * Generate Chinese translation using AI
+ */
+async function generateTranslation() {
+    if (!AppState.currentWord) return;
+
+    try {
+        // Disable button during generation
+        Elements.generateTransBtn.disabled = true;
+        Elements.generateTransBtn.textContent = 'Generating...';
+
+        // Get selected model from dropdown (same as example sentence)
+        const modelSelect = document.getElementById('modelSelect');
+        const selectedModel = modelSelect ? modelSelect.value : 'Claude-Haiku-4.5';
+
+        const response = await fetch('/api/generate-translation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                word: AppState.currentWord.word,
+                model: selectedModel
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.translation) {
+            // Get current translation
+            const currentTranslation = AppState.currentWord.translation || '';
+
+            // Format the generated translation: replace newlines with ；
+            const formattedTranslation = data.translation.replace(/\n/g, '；');
+
+            // Append new translation to existing (with ； separator if there's existing content)
+            let updatedTranslation;
+            if (currentTranslation.trim()) {
+                updatedTranslation = currentTranslation + '；' + formattedTranslation;
+            } else {
+                updatedTranslation = formattedTranslation;
+            }
+
+            // Enter edit mode and populate textarea with updated translation
+            // This allows user to review, modify, then Save or Cancel
+            toggleEditMode('translation', true);
+            Elements.translationInput.value = updatedTranslation;
+
+            console.log('✅ Translation generated - ready for review');
+        } else {
+            showError(data.error || 'Failed to generate translation');
+        }
+
+    } catch (error) {
+        console.error('Error generating translation:', error);
+        showError('Network error while generating translation');
+    } finally {
+        // Re-enable button
+        Elements.generateTransBtn.disabled = false;
+        Elements.generateTransBtn.textContent = '✨ Generate';
     }
 }
 
@@ -894,6 +1020,138 @@ function closeAddWordModal() {
 }
 
 /**
+ * Generate sample sentence for new word using Poe API
+ */
+async function generateNewWordSample() {
+    const word = Elements.newWord.value.trim();
+
+    // Validate word is entered
+    if (!word) {
+        Elements.addWordStatus.textContent = '⚠️ Please enter a word first';
+        Elements.addWordStatus.className = 'form-status error';
+        return;
+    }
+
+    try {
+        // Disable button during generation
+        Elements.generateNewSampleBtn.disabled = true;
+        Elements.generateNewSampleBtn.textContent = 'Generating...';
+        Elements.addWordStatus.textContent = '⏳ Generating sample sentence...';
+        Elements.addWordStatus.className = 'form-status';
+
+        const response = await fetch('/api/generate-sample', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ word: word })
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.sentence) {
+            // Get current sample sentences
+            const currentSample = Elements.newSample.value.trim();
+
+            // Add new sentence to existing ones (on new line if there are existing sentences)
+            if (currentSample) {
+                Elements.newSample.value = currentSample + '\n' + data.sentence;
+            } else {
+                Elements.newSample.value = data.sentence;
+            }
+
+            Elements.addWordStatus.textContent = '✅ Sample sentence generated!';
+            Elements.addWordStatus.className = 'form-status success';
+
+            console.log('✅ Sample sentence generated for new word');
+        } else {
+            Elements.addWordStatus.textContent = `❌ ${data.error || 'Failed to generate sample sentence'}`;
+            Elements.addWordStatus.className = 'form-status error';
+        }
+
+    } catch (error) {
+        console.error('Error generating sample sentence:', error);
+        Elements.addWordStatus.textContent = '❌ Network error while generating sample sentence';
+        Elements.addWordStatus.className = 'form-status error';
+    } finally {
+        // Re-enable button
+        Elements.generateNewSampleBtn.disabled = false;
+        Elements.generateNewSampleBtn.textContent = 'Generate ✨';
+    }
+}
+
+/**
+ * Generate Chinese translation for new word using Poe API
+ */
+async function generateNewWordTranslation() {
+    const word = Elements.newWord.value.trim();
+
+    // Validate word is entered
+    if (!word) {
+        Elements.addWordStatus.textContent = '⚠️ Please enter a word first';
+        Elements.addWordStatus.className = 'form-status error';
+        return;
+    }
+
+    try {
+        // Disable button during generation
+        Elements.generateNewTransBtn.disabled = true;
+        Elements.generateNewTransBtn.textContent = 'Generating...';
+        Elements.addWordStatus.textContent = '⏳ Generating translation...';
+        Elements.addWordStatus.className = 'form-status';
+
+        // Get selected model from dropdown
+        const modelSelect = document.getElementById('modelSelect');
+        const selectedModel = modelSelect ? modelSelect.value : 'Claude-Haiku-4.5';
+
+        const response = await fetch('/api/generate-translation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                word: word,
+                model: selectedModel
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.translation) {
+            // Format the generated translation: replace newlines with ；
+            const formattedTranslation = data.translation.replace(/\n/g, '；');
+
+            // Get current translation
+            const currentTranslation = Elements.newTranslation.value.trim();
+
+            // Append new translation to existing (with ； separator if there's existing content)
+            if (currentTranslation) {
+                Elements.newTranslation.value = currentTranslation + '；' + formattedTranslation;
+            } else {
+                Elements.newTranslation.value = formattedTranslation;
+            }
+
+            Elements.addWordStatus.textContent = '✅ Translation generated!';
+            Elements.addWordStatus.className = 'form-status success';
+
+            console.log('✅ Translation generated for new word');
+        } else {
+            Elements.addWordStatus.textContent = `❌ ${data.error || 'Failed to generate translation'}`;
+            Elements.addWordStatus.className = 'form-status error';
+        }
+
+    } catch (error) {
+        console.error('Error generating translation:', error);
+        Elements.addWordStatus.textContent = '❌ Network error while generating translation';
+        Elements.addWordStatus.className = 'form-status error';
+    } finally {
+        // Re-enable button
+        Elements.generateNewTransBtn.disabled = false;
+        Elements.generateNewTransBtn.textContent = '✨ Generate';
+    }
+}
+
+/**
  * Submit new word to backend
  */
 async function submitNewWord() {
@@ -945,6 +1203,11 @@ async function submitNewWord() {
         if (data.success) {
             Elements.addWordStatus.textContent = `✅ ${data.message}`;
             Elements.addWordStatus.className = 'form-status success';
+
+            // Increment daily counter for the new word
+            if (data.word_id) {
+                incrementDailyCounter(data.word_id);
+            }
 
             // Reload categories to update counts
             await loadCategories();
@@ -1022,6 +1285,16 @@ async function performSearch() {
 }
 
 /**
+ * Close search results and return to word view
+ */
+function closeSearchResults() {
+    Elements.searchResults.style.display = 'none';
+    Elements.wordCard.style.display = 'block';
+    // Optional: Clear search input if desired, but keeping it might be better for context
+    // clearSearch(); 
+}
+
+/**
  * Display search results
  */
 function displaySearchResults(data) {
@@ -1081,19 +1354,26 @@ async function viewSearchResult(result) {
         Elements.searchResults.style.display = 'none';
         Elements.wordCard.style.display = 'block';
 
-        // Load words in the category and find this word's index
-        const response = await fetch(`/api/words/${encodeURIComponent(result.category)}?index=0&sort_by=${AppState.currentSortBy}`);
+        // Fetch the position of this word in its category based on current sort
+        const response = await fetch(`/api/words/${result.id}/position?sort_by=${AppState.currentSortBy}`);
         const data = await response.json();
 
         if (data.success) {
-            // Find the index of the clicked word
-            const wordResponse = await fetch(`/api/words/${encodeURIComponent(result.category)}?sort_by=${AppState.currentSortBy}`);
-            const wordData = await wordResponse.json();
+            // Set category
+            AppState.currentCategory = data.category;
+            Elements.categorySelect.value = data.category;
 
-            // Simple approach: just load the first word and let user navigate
-            // Or we could find the exact index, but that would require additional API support
-            displayWord(data.word);
-            console.log(`✅ Viewing "${result.word}" in category "${result.category}"`);
+            // Hide search results
+            Elements.searchResults.style.display = 'none';
+            Elements.wordCard.style.display = 'block';
+
+            // Load the specific word by index
+            // This ensures navigation (Next/Prev) works correctly
+            await loadWord(data.category, data.index);
+
+            console.log(`✅ Viewing "${result.word}" at index ${data.index} in category "${data.category}"`);
+        } else {
+            showError(data.error || 'Failed to find word position');
         }
 
     } catch (error) {
@@ -1215,31 +1495,30 @@ function displayHistoricalVersion(historyRecord) {
 // ============================================
 
 /**
- * Initialize daily progress counter from localStorage
- * Resets at midnight
+ * Initialize daily progress counter from the database
+ * This ensures the counter is consistent across all browsers
  */
-function initializeDailyCounter() {
-    const today = new Date().toDateString();
-    const savedData = localStorage.getItem('dailyProgress');
+async function initializeDailyCounter() {
+    try {
+        // Fetch the authoritative count from the database
+        const response = await fetch('/api/daily-count');
+        const data = await response.json();
 
-    if (savedData) {
-        const data = JSON.parse(savedData);
-
-        // Check if the saved date is today
-        if (data.date === today) {
+        if (data.success) {
             AppState.dailyProgress = data.count;
-            AppState.countedWordIds = new Set(data.wordIds || []);
+            console.log(`📊 Daily count from database: ${data.count}`);
         } else {
-            // New day, reset counter
+            console.error('Failed to fetch daily count:', data.error);
             AppState.dailyProgress = 0;
-            AppState.countedWordIds = new Set();
-            saveDailyProgress();
         }
-    } else {
+    } catch (error) {
+        console.error('Error fetching daily count:', error);
         AppState.dailyProgress = 0;
-        AppState.countedWordIds = new Set();
-        saveDailyProgress();
     }
+
+    // Reset countedWordIds for this browser session
+    // (used to prevent redundant API calls within the same session)
+    AppState.countedWordIds = new Set();
 
     updateDailyCounterDisplay();
     scheduleMidnightReset();
@@ -1290,7 +1569,7 @@ function saveDailyProgress() {
  */
 function updateDailyCounterDisplay() {
     if (Elements.dailyCounter) {
-        Elements.dailyCounter.textContent = `${AppState.dailyProgress}/100`;
+        Elements.dailyCounter.textContent = `Word Today: ${AppState.dailyProgress}/100`;
 
         // Change color to green when >= 100
         if (AppState.dailyProgress >= 100) {
@@ -1361,9 +1640,28 @@ function updateDebtDisplay() {
             AppState.debtBreakdown.forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'debt-item';
+
+                // Determine color class based on debt value
+                // Positive debt (missed quota) = red
+                // Negative debt (exceeded quota) = green
+                // Zero = neutral
+                let debtClass = 'debt-amount';
+                let displayDebt = item.debt;
+
+                if (item.debt < 0) {
+                    debtClass = 'debt-amount debt-surplus';  // Green - exceeded quota
+                } else if (item.debt > 0) {
+                    debtClass = 'debt-amount debt-deficit';  // Red - missed quota
+                } else {
+                    debtClass = 'debt-amount debt-neutral';  // Neutral - exactly 100
+                }
+
+                // Format date label
+                const dateLabel = item.date;
+
                 div.innerHTML = `
-                    <span class="debt-date">${item.date}</span>
-                    <span class="debt-amount">${item.debt}</span>
+                    <span class="debt-date">${dateLabel}</span>
+                    <span class="${debtClass}">${displayDebt}</span>
                 `;
                 Elements.wordDebtDropdown.appendChild(div);
             });
@@ -1437,6 +1735,11 @@ async function incrementReviewCounter() {
  */
 async function changeWordCategory() {
     if (!AppState.currentWord) return;
+
+    // Auto-save translation if editing
+    if (AppState.isEditingTranslation) {
+        await saveTranslation();
+    }
 
     const newCategory = Elements.changeCategorySelect.value;
 

@@ -27,6 +27,11 @@ class Config:
     DB_PASSWORD = os.environ.get('DB_PASSWORD', '')  # Set this in .env file
     DB_NAME = os.environ.get('DB_NAME', 'bkdict_db')
 
+    # Poe API Configuration (OpenAI-compatible)
+    POE_API_KEY = os.environ.get('POE_API_KEY')
+    POE_MODEL = os.environ.get('POE_MODEL', 'Claude-Haiku-4.5')
+    POE_TEMPERATURE = float(os.environ.get('POE_TEMPERATURE', 0.7))
+
     # Database connection pool settings (for performance with large dataset)
     DB_POOL_SIZE = int(os.environ.get('DB_POOL_SIZE', 5))
     DB_POOL_RECYCLE = int(os.environ.get('DB_POOL_RECYCLE', 3600))
