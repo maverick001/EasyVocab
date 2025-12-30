@@ -2061,3 +2061,13 @@ body {
 .btn-close-results:hover {
     color: var(--error);
 }
+/* Delete button inline styling - red background */
+.btn-delete-inline {
+    background: linear-gradient(135deg, var(--error), #d62c1e) !important;
+    color: white !important;
+}
+
+.btn-delete-inline:hover {
+    background: linear-gradient(135deg, #d62c1e, #b12515) !important;
+    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
+}
