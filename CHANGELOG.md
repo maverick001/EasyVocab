@@ -3,12 +3,6 @@
 
 ## [Unreleased]
 
-## [1.4.0] - 2025-12-30
-### Changed
-- **Renamed App**: Renamed application from "BKDict" to "EasyVocab".
-- **Database**: Retained legacy database name `bkdict_db` for backward compatibility.
-- **Theme**: Updated theme storage key to `easyvocab-theme` (Settings reset).
-
 ## [1.3.0] - 2025-12-28
 ### Added
 - **Dark Mode**: Added dark mode toggle for improved readability in low-light environments.

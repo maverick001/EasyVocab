@@ -1,5 +1,5 @@
 /**
- * EasyVocab Vocabulary App - Frontend JavaScript
+ * BKDict Vocabulary App - Frontend JavaScript
  * Handles all client-side interactions, API calls, and UI updates
  */
 
@@ -122,7 +122,7 @@ const Elements = {
 // Initialization
 // ============================================
 document.addEventListener('DOMContentLoaded', function () {
-    console.log('🚀 EasyVocab Application Initializing...');
+    console.log('🚀 BKDict Application Initializing...');
 
     // Cache DOM elements
     cacheDOMElements();
@@ -149,7 +149,7 @@ document.addEventListener('DOMContentLoaded', function () {
  * Initialize theme from localStorage
  */
 function initializeTheme() {
-    const savedTheme = localStorage.getItem('easyvocab-theme');
+    const savedTheme = localStorage.getItem('bkdict-theme');
     if (savedTheme === 'dark') {
         document.body.classList.add('dark-mode');
     }
@@ -161,7 +161,7 @@ function initializeTheme() {
  */
 function toggleTheme() {
     const isDark = document.body.classList.toggle('dark-mode');
-    localStorage.setItem('easyvocab-theme', isDark ? 'dark' : 'light');
+    localStorage.setItem('bkdict-theme', isDark ? 'dark' : 'light');
     console.log(`🌓 Theme switched to: ${isDark ? 'dark' : 'light'}`);
 }
 
@@ -1932,7 +1932,7 @@ function escapeHTML(text) {
 // ============================================
 console.log(`
 ╔════════════════════════════════════════╗
-║     EasyVocab Vocabulary Learning App    ║
+║     BKDict Vocabulary Learning App     ║
 ║         Frontend Initialized           ║
 ╚════════════════════════════════════════╝
 `);
