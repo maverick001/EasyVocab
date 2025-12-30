@@ -19,6 +19,17 @@ from openai import OpenAI
 app = Flask(__name__)
 app.config.from_object(Config)
 
+# Disable caching for development (prevents browser caching issues)
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+
+@app.after_request
+def add_header(response):
+    """Add headers to prevent caching"""
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '-1'
+    return response
+
 # Initialize MySQL connection pool for better performance
 db_pool = None
 
