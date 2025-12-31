@@ -28,7 +28,7 @@
 
 Before you begin, ensure you have the following installed:
 
-- **Python 3.8+** (Download from [python.org](https://www.python.org/downloads/))
+- **Python 3.8+**
 - **MySQL 8.0+** 
 - **Anaconda** 
 - **Git** 
@@ -86,7 +86,7 @@ python app.py
 
 Open your web browser and navigate to:
 ```
-http://localhost:5000
+http://localhost:5001
 ```
 
 ## 📖 Usage Guide
