@@ -193,7 +193,14 @@
             <div class="translation-section">
                 <div class="section-header">
                     <h3 class="section-title">Translation:</h3>
-                    <button id="generateTransBtn" class="btn btn-generate">✨ Generate</button>
+                    <div class="generate-controls">
+                        <select id="transModelSelect" class="model-select">
+                            <option value="Claude-Haiku-4.5">Haiku-4.5</option>
+                            <option value="gemini-3-flash">Gemini-3-Flash</option>
+                            <option value="gpt-4o">GPT-4o</option>
+                        </select>
+                        <button id="generateTransBtn" class="btn btn-generate">✨ Generate</button>
+                    </div>
                 </div>
                 <div id="translationDisplay" class="content-display editable-field" title="Click to edit"></div>
                 <div id="translationEdit" class="content-edit" style="display: none;">

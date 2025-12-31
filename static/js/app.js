@@ -855,7 +855,7 @@ async function generateSampleSentence() {
     } finally {
         // Re-enable button
         Elements.generateSampleBtn.disabled = false;
-        Elements.generateSampleBtn.textContent = 'Generate';
+        Elements.generateSampleBtn.textContent = '✨ Generate';
     }
 }
 
@@ -870,8 +870,8 @@ async function generateTranslation() {
         Elements.generateTransBtn.disabled = true;
         Elements.generateTransBtn.textContent = 'Generating...';
 
-        // Get selected model from dropdown (same as example sentence)
-        const modelSelect = document.getElementById('modelSelect');
+        // Get selected model from translation dropdown
+        const modelSelect = document.getElementById('transModelSelect');
         const selectedModel = modelSelect ? modelSelect.value : 'Claude-Haiku-4.5';
 
         const response = await fetch('/api/generate-translation', {
@@ -1076,7 +1076,7 @@ async function generateNewWordSample() {
     } finally {
         // Re-enable button
         Elements.generateNewSampleBtn.disabled = false;
-        Elements.generateNewSampleBtn.textContent = 'Generate ✨';
+        Elements.generateNewSampleBtn.textContent = '✨ Generate';
     }
 }
 
@@ -1100,9 +1100,8 @@ async function generateNewWordTranslation() {
         Elements.addWordStatus.textContent = '⏳ Generating translation...';
         Elements.addWordStatus.className = 'form-status';
 
-        // Get selected model from dropdown
-        const modelSelect = document.getElementById('modelSelect');
-        const selectedModel = modelSelect ? modelSelect.value : 'Claude-Haiku-4.5';
+        // Default to Claude-Haiku-4.5
+        const selectedModel = 'Claude-Haiku-4.5';
 
         const response = await fetch('/api/generate-translation', {
             method: 'POST',
