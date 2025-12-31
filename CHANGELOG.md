@@ -14,7 +14,7 @@
 
 ### Repository
 - **GitHub Publication**: Cleaned up repository for public release.
-- **Security**: Removed unnecessary files (XML data, database backups, configuration) from version control.
+- **Security**: Removed unnecessary files (xml data, database backups, configuration) from version control.
 - **Documentation**: Updated README with improved setup instructions.
 
 
