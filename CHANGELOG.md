@@ -14,7 +14,7 @@
 
 ### Repository
 - **GitHub Publication**: Cleaned up repository for public release.
-- **Security**: Removed sensitive files (XML data, database backups, configuration) from version control.
+- **Security**: Removed unnecessary files (XML data, database backups, configuration) from version control.
 - **Documentation**: Updated README with improved setup instructions.
 
 
@@ -31,7 +31,7 @@
 
 ## [1.1.0] - 2025-12-06
 ### Changed
-- **Server Port**: Changed default Flask server port from 5000 to 5001.
+- **Server Port**: Changed default Flask server port to 5001.
 - **Word Debt Calculation**: 
   - Refined logic to calculate debt for every natural day (including days with no activity).
   - Debt starts calculating from the earliest record in the database.
@@ -43,7 +43,7 @@
 
 ## [1.0.0] - 2025-11-20
 ### Added
-- Initial release of BKDict Vocabulary Builder.
+- Initial release of EasyVocab Vocabulary Builder.
 - Basic CRUD operations for words.
 - Category management.
 - Gemini API integration (initial version).
