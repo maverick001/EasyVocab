@@ -3,6 +3,12 @@
 
 ## [Unreleased]
 
+## [1.4.0] - 2025-12-31
+### Changed
+- **Renamed App**: Renamed application to "EasyVocab".
+- **Database**: Retained legacy database name for backward compatibility.
+- **Theme**: Updated theme storage key to `easyvocab-theme` (Settings reset).
+
 ## [1.3.0] - 2025-12-28
 ### Added
 - **Dark Mode**: Added dark mode toggle for improved readability in low-light environments.
@@ -31,7 +37,7 @@
 
 ## [1.1.0] - 2025-12-06
 ### Changed
-- **Server Port**: Changed default Flask server port from 5000 to 5001.
+- **Server Port**: Changed default Flask server port to 5001.
 - **Word Debt Calculation**: 
   - Refined logic to calculate debt for every natural day (including days with no activity).
   - Debt starts calculating from the earliest record in the database.
@@ -43,7 +49,7 @@
 
 ## [1.0.0] - 2025-11-20
 ### Added
-- Initial release of BKDict Vocabulary Builder.
+- Initial release of EasyVocab Vocabulary Builder.
 - Basic CRUD operations for words.
 - Category management.
 - Gemini API integration (initial version).
