@@ -22,7 +22,7 @@
 - **Performance Optimized**: Handles 30,000+ words efficiently with database indexing
 - **Beautiful UI**: Light blue theme optimized for comfortable long-term study sessions
 
-![EasyVocab Interface](docs/images/app-interface.png)
+![EasyVocab Interface](static/images/app-interface.png)
 
 ## 📋 Prerequisites
 
