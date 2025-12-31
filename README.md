@@ -2,10 +2,15 @@
 
 **EasyVocab** is a personal vocabulary builder web app designed for English learners. It allows you to build your own vocabulary, review words and phrases in example sentences, and track your daily progress.
 
+![EasyVocab Frontpage](static/images/frontpage.png)
+
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue)
 ![Flask](https://img.shields.io/badge/flask-3.0.0-green)
 ![MySQL](https://img.shields.io/badge/mysql-8.0-orange)
+
+
+
 
 ## 🌟 Features
 
@@ -17,41 +22,27 @@
 - **Performance Optimized**: Handles 30,000+ words efficiently with database indexing
 - **Beautiful UI**: Light blue theme optimized for comfortable long-term study sessions
 
+![EasyVocab Interface](docs/images/app-interface.png)
+
 ## 📋 Prerequisites
 
 Before you begin, ensure you have the following installed:
 
 - **Python 3.8+** (Download from [python.org](https://www.python.org/downloads/))
-- **MySQL 8.0+** (MySQL Workbench 8.0.43 recommended)
-- **Conda** (Optional, for environment management)
-- **Git** (Optional, for version control)
+- **MySQL 8.0+** 
+- **Anaconda** 
+- **Git** 
 
 ## 🚀 Installation & Setup
 
-### Step 1: Clone or Download the Project
-
-```bash
-cd c:\Users\bbcba\Downloads\BKDict
-```
-
-### Step 2: Create and Activate Conda Environment (Recommended)
-
-```bash
-# Create new conda environment
-conda create -n bkdict python=3.11 -y
-
-# Activate the environment
-conda activate bkdict
-```
-
-### Step 3: Install Python Dependencies
+### Step 1: Install Python Dependencies
 
 ```bash
 # Install required packages
 pip install -r requirements.txt
 ```
 
-### Step 4: Setup MySQL Database
+### Step 2: Setup MySQL Database
 
 1. **Open MySQL Workbench** and connect to your MySQL server
 
@@ -66,7 +57,7 @@ pip install -r requirements.txt
    -- Should show: words, categories, and category_stats view
    ```
 
-### Step 5: Configure Environment Variables
+### Step 3: Configure Environment Variables
 
 1. **Copy the example environment file**:
    ```bash
@@ -78,17 +69,9 @@ pip install -r requirements.txt
    DB_HOST=localhost
    DB_PORT=3306
    DB_USER=root
-   DB_PASSWORD=your_mysql_password_here
    DB_NAME=bkdict_db
-   ```
-
-### Step 6: Create Required Directories
-
-The application will create these automatically, but you can do it manually:
-
-```bash
-mkdir uploads
-```
+   DB_PASSWORD=your_mysql_password_here
+      ```
 
 ## ▶️ Running the Application
 
@@ -97,18 +80,6 @@ mkdir uploads
 ```bash
 # Make sure you're in the BKDict directory and conda environment is activated
 python app.py
-```
-
-You should see:
-
-```
-==================================================
-  BKDict Vocabulary Web Application
-==================================================
-  🌐 Server running on: http://localhost:5000
-  📚 Database: bkdict_db
-  🔧 Debug mode: True
-==================================================
 ```
 
 ### Access the Application
@@ -203,56 +174,8 @@ BKDict/
 - **Typography**: Clean, readable fonts (Segoe UI)
 - **Responsive**: Adapts to different screen sizes
 
-## 🔧 Troubleshooting
-
-### Database Connection Issues
-
-**Error**: `Access denied for user 'root'@'localhost'`
-- **Solution**: Check your MySQL password in the `.env` file
-- Ensure MySQL server is running
-
-**Error**: `Unknown database 'bkdict_db'`
-- **Solution**: Run the `database/init_database.sql` script in MySQL Workbench
-
-### Import Issues
-
-**Error**: "XML validation failed"
-- **Solution**: Ensure your XML file follows the correct format (see Usage Guide)
-- Check that all `<item>` elements have `<word>`, `<trans>`, and `<tags>` children
-
-**Error**: "No file selected"
-- **Solution**: Click "Choose File" before clicking "Upload"
-
-### Performance Issues
-
-If the app feels slow with large datasets:
-
-1. **Verify indexes exist**:
-   ```sql
-   SHOW INDEX FROM words;
-   -- Should show indexes on: id, word, category, (word, category)
-   ```
-
-2. **Update category counts**:
-   ```sql
-   CALL update_category_counts();
-   ```
 
 ## 🛠️ Advanced Configuration
-
-### Changing the Port
-
-Edit `app.py` (line 482):
-```python
-app.run(host='0.0.0.0', port=5000, debug=True)  # Change 5000 to your desired port
-```
-
-### Adjusting Batch Size for Imports
-
-Edit `config.py`:
-```python
-XML_BATCH_SIZE = 1000  # Change to 500 or 2000 depending on your needs
-```
 
 ### Database Connection Pool Size
 
@@ -268,7 +191,7 @@ DB_POOL_SIZE = 5  # Increase for more concurrent users
 |--------|------|-------------|
 | id | INT | Primary key (auto-increment) |
 | word | VARCHAR(255) | The English word or phrase |
-| translation | TEXT | Chinese translation |
+| translation | TEXT | Translation |
 | category | VARCHAR(100) | Category tag |
 | sample_sentence | TEXT | User-added example sentence |
 | created_at | TIMESTAMP | Record creation time |
@@ -285,43 +208,9 @@ DB_POOL_SIZE = 5  # Increase for more concurrent users
 | word_count | INT | Number of words in category |
 | last_updated | TIMESTAMP | Last modification time |
 
-## 🤝 Contributing
-
-This is a personal vocabulary learning project. However, if you'd like to suggest improvements:
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
 
 ## 📝 License
 
 This project is licensed under the MIT License.
 
-## 🙏 Acknowledgments
-
-- Built for personal English vocabulary learning
-- Inspired by various vocabulary learning apps and spaced repetition systems
-- Uses Flask web framework and MySQL database
-
-## 📞 Support
-
-If you encounter any issues:
-
-1. Check the Troubleshooting section above
-2. Review the Flask and MySQL logs for error messages
-3. Ensure all prerequisites are properly installed
-
-## 🔮 Future Enhancements (Potential)
-
-- [ ] Spaced repetition algorithm (SRS)
-- [ ] Study statistics and progress tracking
-- [ ] Audio pronunciation support
-- [ ] Quiz and testing modes
-- [ ] Export vocabulary to Anki or other formats
-- [ ] Dark mode theme toggle
-- [ ] Mobile app version
-
----
-
-**Enjoy learning vocabulary with EasyDict!** 📚✨
+##
