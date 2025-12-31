@@ -3,12 +3,6 @@
 
 ## [Unreleased]
 
-## [1.4.0] - 2025-12-31
-### Changed
-- **Renamed App**: Renamed application to "EasyVocab".
-- **Database**: Retained legacy database name for backward compatibility.
-- **Theme**: Updated theme storage key to `easyvocab-theme` (Settings reset).
-
 ## [1.3.0] - 2025-12-28
 ### Added
 - **Dark Mode**: Added dark mode toggle for improved readability in low-light environments.
@@ -20,7 +14,7 @@
 
 ### Repository
 - **GitHub Publication**: Cleaned up repository for public release.
-- **Security**: Removed sensitive files (XML data, database backups, configuration) from version control.
+- **Security**: Removed unnecessary files (XML data, database backups, configuration) from version control.
 - **Documentation**: Updated README with improved setup instructions.
 
 
