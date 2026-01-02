@@ -1643,12 +1643,26 @@ body {
     border-color: var(--primary-color);
 }
 
-.search-results {
-    margin: 20px 0;
-    background: white;
+/* Search Results Panel - Styled like Control Panel */
+.search-results-panel {
+    background: var(--bg-card);
+    padding: var(--spacing-md);
     border-radius: var(--radius-lg);
-    padding: 20px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow:
+        0 4px 20px rgba(70, 130, 180, 0.12),
+        0 1px 6px rgba(70, 130, 180, 0.08);
+    margin-bottom: var(--spacing-lg);
+    border: 1px solid rgba(176, 224, 230, 0.4);
+    display: none;
+    /* Hidden by default */
+    flex-direction: column;
+}
+
+/* Dark mode support for new panel */
+body.dark-mode .search-results-panel {
+    background: var(--bg-card);
+    border-color: var(--border-color);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 .search-results-header {
