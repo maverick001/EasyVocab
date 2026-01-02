@@ -1298,9 +1298,7 @@ function closeSearchResults() {
  */
 function displaySearchResults(data) {
     // Show search results panel
-    Elements.searchResults.style.display = 'block';
-    Elements.wordCard.style.display = 'none';
-    Elements.welcomeMessage.style.display = 'none';
+    Elements.searchResults.style.display = 'flex'; // Use flex for modal centering
 
     // Update header
     Elements.searchResultsCount.textContent = `Found ${data.count} result${data.count !== 1 ? 's' : ''} for "${data.query}"`;

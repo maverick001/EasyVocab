@@ -76,3 +76,6 @@ data/*.xml
 
 # AI Agent Config
 .agent/
+
+# bash script to start the server
+start_bkdict.bat
