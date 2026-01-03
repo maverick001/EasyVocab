@@ -1546,7 +1546,7 @@ function incrementDailyCounter(wordId) {
 
     saveDailyProgress();
     updateDailyCounterDisplay();
-    console.log(`📊 Daily progress: ${AppState.dailyProgress}/100 (word ${wordId})`);
+    console.log(`📊 Daily progress: ${AppState.dailyProgress} (word ${wordId})`);
 }
 
 /**
@@ -1566,7 +1566,7 @@ function saveDailyProgress() {
  */
 function updateDailyCounterDisplay() {
     if (Elements.dailyCounter) {
-        Elements.dailyCounter.textContent = `Word Today: ${AppState.dailyProgress}/100`;
+        Elements.dailyCounter.textContent = `Word Today: ${AppState.dailyProgress}`;
 
         // Change color to green when >= 100
         if (AppState.dailyProgress >= 100) {

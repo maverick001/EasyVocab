@@ -293,12 +293,14 @@ def get_word_by_category(category):
         sort_by = request.args.get('sort_by', 'updated_at')  # Default to latest edits
 
         # Validate sort_by parameter
-        if sort_by not in ['updated_at', 'review_count']:
+        if sort_by not in ['updated_at', 'review_count', 'updated_at_asc']:
             sort_by = 'updated_at'
 
         # Determine ORDER BY clause based on sort_by
         if sort_by == 'updated_at':
             order_clause = "ORDER BY updated_at DESC, id DESC"
+        elif sort_by == 'updated_at_asc':
+            order_clause = "ORDER BY updated_at ASC, id ASC"
         else:  # review_count
             order_clause = "ORDER BY review_count DESC, updated_at DESC, id DESC"
 

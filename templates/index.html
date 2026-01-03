@@ -121,6 +121,7 @@
                     <label for="sortSelect" class="control-label">Sort:</label>
                     <select id="sortSelect" class="sort-select">
                         <option value="updated_at">Recent Edits (Latest First)</option>
+                        <option value="updated_at_asc">Oldest Edits (Oldest First)</option>
                         <option value="review_count">Most Reviewed</option>
                     </select>
                 </div>
@@ -141,7 +142,7 @@
                 <!-- Status Bar (Top Left) -->
                 <div class="status-bar">
 
-                    <span id="dailyCounter" class="status-badge daily-badge">0/100</span>
+                    <span id="dailyCounter" class="status-badge daily-badge">0</span>
                     <div class="debt-wrapper">
                         <button id="wordDebtBtn" class="status-badge debt-badge">Word Debt: 0</button>
                         <div id="wordDebtDropdown" class="debt-dropdown">
