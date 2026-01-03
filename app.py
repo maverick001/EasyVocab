@@ -1698,6 +1698,8 @@ def get_word_position(word_id):
         order_clause = "updated_at DESC, id DESC"
         if sort_by == 'review_count':
             order_clause = "review_count DESC, updated_at DESC, id DESC"
+        elif sort_by == 'updated_at_asc':
+            order_clause = "updated_at ASC, id ASC"
             
         # Get all IDs in this category with the same sort order
         query = f"""
