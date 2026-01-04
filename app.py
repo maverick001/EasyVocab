@@ -293,12 +293,14 @@ def get_word_by_category(category):
         sort_by = request.args.get('sort_by', 'updated_at')  # Default to latest edits
 
         # Validate sort_by parameter
-        if sort_by not in ['updated_at', 'review_count']:
+        if sort_by not in ['updated_at', 'review_count', 'updated_at_asc']:
             sort_by = 'updated_at'
 
         # Determine ORDER BY clause based on sort_by
         if sort_by == 'updated_at':
             order_clause = "ORDER BY updated_at DESC, id DESC"
+        elif sort_by == 'updated_at_asc':
+            order_clause = "ORDER BY updated_at ASC, id ASC"
         else:  # review_count
             order_clause = "ORDER BY review_count DESC, updated_at DESC, id DESC"
 
@@ -1311,19 +1313,17 @@ def generate_sample_sentence():
 def generate_translation():
     """
     Generate Chinese translation for a word using Poe API (OpenAI-compatible)
+    Also supports reverse generation (Chinese -> English) via 'mode' parameter.
     
     Request Body (JSON):
         {
             "word": "example",
-            "model": "Claude-Haiku-4.5"  // optional, defaults to config
+            "model": "Claude-Haiku-4.5",  # optional
+            "mode": "normal" | "reverse"  # optional, default "normal"
         }
     
     Returns:
-        JSON response:
-        {
-            "success": true,
-            "translation": "示例\n例子"
-        }
+        JSON response with generated text in 'translation' field
     """
     try:
         data = request.get_json()
@@ -1331,17 +1331,18 @@ def generate_translation():
         if not data or 'word' not in data:
             return jsonify({
                 'success': False,
-                'error': 'Word is required'
+                'error': 'Word/Text is required'
             }), 400
 
         word = data['word'].strip()
         # Get model from request, fallback to config default
         model = data.get('model', app.config['POE_MODEL'])
+        mode = data.get('mode', 'normal')
 
         if not word:
             return jsonify({
                 'success': False,
-                'error': 'Word cannot be empty'
+                'error': 'Text cannot be empty'
             }), 400
 
         # Check Poe API Key
@@ -1357,8 +1358,13 @@ def generate_translation():
             base_url="https://api.poe.com/v1/"
         )
 
-        # Prepare prompt for Chinese translation
-        prompt = f"What's the Chinese translation of '{word}'? Only list the 2 most common translations and ignore others. Only list the translations in Chinese characters, no other explanations or phonetics are needed."
+        # Prepare prompt based on mode
+        if mode == 'reverse':
+            # Chinese -> English
+            prompt = f"What is the English translation for the Chinese word '{word}'? Only list the 2 most common English words or short phrases. Separate them with a semicolon. Do not include any other explanations."
+        else:
+            # English -> Chinese
+            prompt = f"What's the Chinese translation of '{word}'? Only list the 2 most common translations and ignore others. Only list the translations in Chinese characters, no other explanations or phonetics are needed."
 
         # Call Poe API via OpenAI SDK
         response = client.chat.completions.create(
@@ -1370,11 +1376,11 @@ def generate_translation():
         if response.choices and response.choices[0].message.content:
             raw_content = response.choices[0].message.content.strip()
             # Clean up potential thinking process output
-            generated_translation = clean_poe_response(raw_content)
+            generated_text = clean_poe_response(raw_content)
             
             return jsonify({
                 'success': True,
-                'translation': generated_translation
+                'translation': generated_text
             })
         else:
             return jsonify({
@@ -1696,6 +1702,8 @@ def get_word_position(word_id):
         order_clause = "updated_at DESC, id DESC"
         if sort_by == 'review_count':
             order_clause = "review_count DESC, updated_at DESC, id DESC"
+        elif sort_by == 'updated_at_asc':
+            order_clause = "updated_at ASC, id ASC"
             
         # Get all IDs in this category with the same sort order
         query = f"""

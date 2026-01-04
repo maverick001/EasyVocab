@@ -1082,13 +1082,23 @@ async function generateNewWordSample() {
 
 /**
  * Generate Chinese translation for new word using Poe API
+ * Also supports reverse generation (Chinese -> English) if Word is empty and Translation is filled
  */
 async function generateNewWordTranslation() {
     const word = Elements.newWord.value.trim();
+    const translation = Elements.newTranslation.value.trim();
 
-    // Validate word is entered
-    if (!word) {
-        Elements.addWordStatus.textContent = '⚠️ Please enter a word first';
+    // Determine generation mode
+    let sourceText = word;
+    let mode = 'normal'; // normal (En->Zh) or reverse (Zh->En)
+
+    // If Word is empty but Translation is provided, switch to reverse mode
+    if (!word && translation) {
+        mode = 'reverse';
+        sourceText = translation;
+    } else if (!word) {
+        // Both empty
+        Elements.addWordStatus.textContent = '⚠️ Please enter a word (or translation for reverse lookup) first';
         Elements.addWordStatus.className = 'form-status error';
         return;
     }
@@ -1097,7 +1107,9 @@ async function generateNewWordTranslation() {
         // Disable button during generation
         Elements.generateNewTransBtn.disabled = true;
         Elements.generateNewTransBtn.textContent = 'Generating...';
-        Elements.addWordStatus.textContent = '⏳ Generating translation...';
+        Elements.addWordStatus.textContent = mode === 'normal'
+            ? '⏳ Generating translation...'
+            : '⏳ Generating English matching words...';
         Elements.addWordStatus.className = 'form-status';
 
         // Default to Claude-Haiku-4.5
@@ -1109,39 +1121,53 @@ async function generateNewWordTranslation() {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                word: word,
-                model: selectedModel
+                word: sourceText,
+                model: selectedModel,
+                mode: mode
             })
         });
 
         const data = await response.json();
 
         if (data.success && data.translation) {
-            // Format the generated translation: replace newlines with ；
-            const formattedTranslation = data.translation.replace(/\n/g, '；');
 
-            // Get current translation
-            const currentTranslation = Elements.newTranslation.value.trim();
+            if (mode === 'normal') {
+                // Normal flow: Fill Translation field
 
-            // Append new translation to existing (with ； separator if there's existing content)
-            if (currentTranslation) {
-                Elements.newTranslation.value = currentTranslation + '；' + formattedTranslation;
+                // Format the generated translation: replace newlines with ；
+                const formattedTranslation = data.translation.replace(/\n/g, '；');
+
+                // Get current translation
+                const currentTranslation = Elements.newTranslation.value.trim();
+
+                // Append new translation to existing (with ； separator if there's existing content)
+                if (currentTranslation) {
+                    Elements.newTranslation.value = currentTranslation + '；' + formattedTranslation;
+                } else {
+                    Elements.newTranslation.value = formattedTranslation;
+                }
+
+                Elements.addWordStatus.textContent = '✅ Translation generated!';
             } else {
-                Elements.newTranslation.value = formattedTranslation;
+                // Reverse flow: Fill Word field
+                // Ensure we handle potential multiple lines/formats nicely, though prompt asks for semicolons
+                const formattedWord = data.translation.replace(/\n/g, '; ');
+                Elements.newWord.value = formattedWord;
+
+                Elements.addWordStatus.textContent = '✅ English word generated!';
             }
 
-            Elements.addWordStatus.textContent = '✅ Translation generated!';
             Elements.addWordStatus.className = 'form-status success';
+            console.log(`✅ Generation complete (Mode: ${mode})`);
 
-            console.log('✅ Translation generated for new word');
         } else {
-            Elements.addWordStatus.textContent = `❌ ${data.error || 'Failed to generate translation'}`;
+            Elements.addWordStatus.textContent = `❌ ${data.error || 'Failed to generate'}`;
             Elements.addWordStatus.className = 'form-status error';
         }
 
     } catch (error) {
-        console.error('Error generating translation:', error);
-        Elements.addWordStatus.textContent = '❌ Network error while generating translation';
+        console.error('Error generating:', error);
+        Elements.addWordStatus.textContent = '❌ Network error while generating';
         Elements.addWordStatus.className = 'form-status error';
     } finally {
         // Re-enable button
@@ -1193,7 +1219,7 @@ async function submitNewWord() {
                 word: word,
                 translation: translation,
                 category: category,
-                sample_sentence: sample
+                example_sentence: sample
             })
         });
 
@@ -1546,7 +1572,7 @@ function incrementDailyCounter(wordId) {
 
     saveDailyProgress();
     updateDailyCounterDisplay();
-    console.log(`📊 Daily progress: ${AppState.dailyProgress}/100 (word ${wordId})`);
+    console.log(`📊 Daily progress: ${AppState.dailyProgress} (word ${wordId})`);
 }
 
 /**
@@ -1566,7 +1592,7 @@ function saveDailyProgress() {
  */
 function updateDailyCounterDisplay() {
     if (Elements.dailyCounter) {
-        Elements.dailyCounter.textContent = `Word Today: ${AppState.dailyProgress}/100`;
+        Elements.dailyCounter.textContent = `Word Today: ${AppState.dailyProgress}`;
 
         // Change color to green when >= 100
         if (AppState.dailyProgress >= 100) {
