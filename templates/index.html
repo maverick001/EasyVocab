@@ -63,10 +63,16 @@
                             required>
                     </div>
                     <div class="form-group">
-                        <label for="newCategory">Category *</label>
+                        <div class="form-label-row">
+                            <label for="newCategory">Category *</label>
+                            <button id="toggleCategoryBtn" class="btn btn-sm btn-secondary" type="button"
+                                style="font-size: 0.8rem; padding: 2px 8px; margin-left: auto;">+ New Category</button>
+                        </div>
                         <select id="newCategory" class="form-input" required>
                             <option value="">-- Select Category --</option>
                         </select>
+                        <input type="text" id="newCategoryInput" class="form-input"
+                            placeholder="Enter new category name..." style="display: none;">
                     </div>
                     <div class="form-group">
                         <div class="form-label-row">

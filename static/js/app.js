@@ -244,6 +244,8 @@ function cacheDOMElements() {
     Elements.newWord = document.getElementById('newWord');
     Elements.newTranslation = document.getElementById('newTranslation');
     Elements.newCategory = document.getElementById('newCategory');
+    Elements.newCategoryInput = document.getElementById('newCategoryInput');
+    Elements.toggleCategoryBtn = document.getElementById('toggleCategoryBtn');
     Elements.newSample = document.getElementById('newSample');
     Elements.generateNewSampleBtn = document.getElementById('generateNewSampleBtn');
     Elements.generateNewTransBtn = document.getElementById('generateNewTransBtn');
@@ -350,6 +352,7 @@ function setupEventListeners() {
     Elements.submitWordBtn.addEventListener('click', submitNewWord);
     Elements.generateNewSampleBtn.addEventListener('click', generateNewWordSample);
     Elements.generateNewTransBtn.addEventListener('click', generateNewWordTranslation);
+    Elements.toggleCategoryBtn.addEventListener('click', toggleNewCategoryInput);
 
     // Search functionality
 
@@ -1422,13 +1425,44 @@ async function generateNewWordTranslation() {
 }
 
 /**
+ * Toggle between Select and Input for Category
+ */
+function toggleNewCategoryInput() {
+    const isSelectVisible = Elements.newCategory.style.display !== 'none';
+
+    if (isSelectVisible) {
+        // Switch to Input
+        Elements.newCategory.style.display = 'none';
+        Elements.newCategoryInput.style.display = 'block';
+        Elements.newCategoryInput.focus();
+        Elements.toggleCategoryBtn.textContent = 'Select Existing';
+        Elements.toggleCategoryBtn.classList.replace('btn-secondary', 'btn-primary');
+    } else {
+        // Switch to Select
+        Elements.newCategory.style.display = 'block';
+        Elements.newCategoryInput.style.display = 'none';
+        Elements.newCategoryInput.value = ''; // Clear input
+        Elements.toggleCategoryBtn.textContent = '+ New Category';
+        Elements.toggleCategoryBtn.classList.replace('btn-primary', 'btn-secondary');
+    }
+}
+
+/**
  * Submit new word to backend
  */
 async function submitNewWord() {
     // Get values
     const word = Elements.newWord.value.trim();
     const translation = Elements.newTranslation.value.trim();
-    const category = Elements.newCategory.value.trim();
+
+    // Determine category source
+    let category;
+    if (Elements.newCategory.style.display !== 'none') {
+        category = Elements.newCategory.value.trim();
+    } else {
+        category = Elements.newCategoryInput.value.trim();
+    }
+
     const sample = Elements.newSample.value.trim();
 
     // Validate required fields
