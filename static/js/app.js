@@ -352,7 +352,7 @@ function setupEventListeners() {
     Elements.generateNewTransBtn.addEventListener('click', generateNewWordTranslation);
 
     // Search functionality
-    Elements.searchInput.addEventListener('click', performSearch);
+
     Elements.searchBtn.addEventListener('click', performSearch);
     Elements.clearSearchBtn.addEventListener('click', clearSearch);
     Elements.closeSearchResultsBtn.addEventListener('click', closeSearchResults);
