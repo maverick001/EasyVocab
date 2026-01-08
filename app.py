@@ -14,6 +14,9 @@ from config import Config
 from utils import parse_and_import_xml, XMLParserError
 from datetime import datetime, date, timedelta
 from openai import OpenAI
+from PIL import Image
+import io
+import time
 
 # Initialize Flask application
 app = Flask(__name__)
@@ -128,6 +131,38 @@ def ensure_word_history_table():
         cursor.close()
     except mysql.connector.Error as err:
         print(f"✗ Error ensuring word_history table: {err}")
+    finally:
+        if connection:
+            connection.close()
+
+
+def ensure_image_file_column():
+    """
+    Ensure image_file column exists in words table
+    """
+    connection = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        # Check if column exists
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = %s
+            AND TABLE_NAME = 'words'
+            AND COLUMN_NAME = 'image_file'
+        """, (app.config['DB_NAME'],))
+        
+        if cursor.fetchone()[0] == 0:
+            print("Adding image_file column to words table...")
+            cursor.execute("ALTER TABLE words ADD COLUMN image_file VARCHAR(255) DEFAULT NULL")
+            connection.commit()
+            print("✓ image_file column added successfully")
+        
+        cursor.close()
+    except mysql.connector.Error as err:
+        print(f"✗ Error ensuring image_file column: {err}")
     finally:
         if connection:
             connection.close()
@@ -256,6 +291,37 @@ def get_categories():
             conn.close()
 
 
+@app.route('/api/images', methods=['GET'])
+def get_available_images():
+    """
+    Get list of available images in static/images/word_images
+    
+    Returns:
+        JSON response with list of image filenames
+    """
+    try:
+        images_dir = os.path.join(app.root_path, 'static', 'images', 'word_images')
+        
+        # Create directory if it doesn't exist (though user said it does)
+        if not os.path.exists(images_dir):
+            os.makedirs(images_dir)
+            
+        images = []
+        for filename in os.listdir(images_dir):
+            if allowed_file(filename):
+                images.append(filename)
+                
+        return jsonify({
+            'success': True,
+            'images': sorted(images)
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 @app.route('/api/words/<category>', methods=['GET'])
 def get_word_by_category(category):
     """
@@ -332,7 +398,7 @@ def get_word_by_category(category):
         # Get the word at the specified index
         # Using LIMIT with OFFSET for pagination with dynamic sorting
         query = f"""
-            SELECT id, word, translation, category, example_sentence,
+            SELECT id, word, translation, category, example_sentence, image_file,
                    review_count, last_reviewed, created_at, updated_at
             FROM words
             WHERE category = %s
@@ -625,7 +691,10 @@ def update_word(word_id):
         {
             "word": "updated word",                // optional
             "translation": "updated translation",  // optional
-            "sample_sentence": "updated sentence"  // optional
+            "word": "updated word",                // optional
+            "translation": "updated translation",  // optional
+            "sample_sentence": "updated sentence", // optional
+            "image_file": "image.png"              # optional
         }
 
     Returns:
@@ -662,11 +731,17 @@ def update_word(word_id):
         current_sample = current_word_data.get('example_sentence') or ''
         last_sample_date = current_word_data.get('last_sample_review_date')
 
-        # Update translation and example_sentence across ALL instances of this word
-        if 'translation' in data or 'example_sentence' in data:
-            shared_update_fields = []
-            shared_params = []
+        # Update fields across ALL instances of this word
+        shared_update_fields = []
+        shared_params = []
 
+        if 'image_file' in data:
+            shared_update_fields.append('image_file = %s')
+            # Handle empty string or null to remove image
+            image_val = data['image_file'].strip() if data['image_file'] else None
+            shared_params.append(image_val)
+
+        if 'translation' in data or 'example_sentence' in data:
             if 'translation' in data:
                 shared_update_fields.append('translation = %s')
                 shared_params.append(data['translation'])
@@ -687,15 +762,15 @@ def update_word(word_id):
                         shared_update_fields.append('last_reviewed = NOW()')
                         shared_update_fields.append('last_sample_review_date = CURDATE()')
 
-            if shared_update_fields:
-                # Update ALL rows with the same word text
-                shared_params.append(current_word_text)
-                shared_update_query = f"""
-                    UPDATE words
-                    SET {', '.join(shared_update_fields)}
-                    WHERE word = %s
-                """
-                cursor.execute(shared_update_query, shared_params)
+        if shared_update_fields:
+            # Update ALL rows with the same word text
+            shared_params.append(current_word_text)
+            shared_update_query = f"""
+                UPDATE words
+                SET {', '.join(shared_update_fields)}
+                WHERE word = %s
+            """
+            cursor.execute(shared_update_query, shared_params)
 
         # Update the word text itself only for this specific row
         if 'word' in data:
@@ -1746,6 +1821,80 @@ def get_word_position(word_id):
             conn.close()
 
 
+@app.route('/api/words/<int:word_id>/image', methods=['POST'])
+def upload_word_image(word_id):
+    """
+    Upload and process an image for a specific word
+    
+    1. Resizes image to 256x256
+    2. Saves to static/images/word_images with unique name
+    3. Updates database
+    """
+    conn = None
+    try:
+        if 'image' not in request.files:
+            return jsonify({'success': False, 'error': 'No image file provided'}), 400
+            
+        file = request.files['image']
+        
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No selected file'}), 400
+            
+        if file:
+            # Process image using Pillow
+            try:
+                # Open image from stream
+                img = Image.open(file.stream)
+                
+                # Convert to RGB (in case of RGBA/P palette)
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                
+                # Resize to 256x256 using High Quality resampling
+                img_resized = img.resize((256, 256), Image.Resampling.LANCZOS)
+                
+                # Generate unique filename
+                timestamp = int(time.time())
+                filename = f"img_{word_id}_{timestamp}.png"
+                save_path = os.path.join(app.root_path, 'static', 'images', 'word_images', filename)
+                
+                # Ensure directory exists
+                os.makedirs(os.path.dirname(save_path), exist_ok=True)
+                
+                # Save optimized PNG
+                img_resized.save(save_path, 'PNG', optimize=True)
+                
+                # Update Database
+                conn = get_db_connection()
+                cursor = conn.cursor(dictionary=True)
+                
+                # Get old image to delete later (optional cleanup)
+                cursor.execute("SELECT image_file, word FROM words WHERE id = %s", (word_id,))
+                word_data = cursor.fetchone()
+                
+                if not word_data:
+                    return jsonify({'success': False, 'error': 'Word not found'}), 404
+                
+                # Update word record
+                cursor.execute("UPDATE words SET image_file = %s WHERE id = %s", (filename, word_id))
+                conn.commit()
+                
+                return jsonify({
+                    'success': True, 
+                    'message': 'Image uploaded and processed',
+                    'filename': filename
+                })
+                
+            except Exception as e:
+                return jsonify({'success': False, 'error': f'Image processing failed: {str(e)}'}), 500
+                
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
 def create_app():
     """
     Application factory function
@@ -1768,9 +1917,10 @@ if __name__ == '__main__':
 
     # Initialize database connection pool
     init_db_pool()
-
-    # Ensure word history table exists
     ensure_word_history_table()
+    ensure_image_file_column()
+    
+    print("🚀 BKDict application starting...")
 
     # Run Flask development server
     print("\n" + "="*50)

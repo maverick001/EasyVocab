@@ -196,6 +196,9 @@
                 <div class="section-header">
                     <h3 class="section-title">Translation:</h3>
                     <div class="generate-controls">
+                        <button id="wordImageBtn" class="btn btn-image"
+                            style="display: none; padding: 0.4rem 0.8rem; font-size: 0.9rem; margin-right: 10px;">Add
+                            Image</button>
                         <select id="transModelSelect" class="model-select">
                             <option value="Claude-Haiku-4.5">Haiku-4.5</option>
                             <option value="gemini-3-flash">Gemini-3-Flash</option>
@@ -247,6 +250,52 @@
                 <button id="nextBtn" class="btn btn-nav">Next →</button>
             </div>
 
+        </div>
+
+        <!-- Paste Image Modal -->
+        <div id="pasteImageModal" class="modal" style="display: none;">
+            <div class="modal-content modal-sm">
+                <div class="modal-header">
+                    <h2>Add Image</h2>
+                    <button id="closePasteImageBtn" class="btn-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p class="modal-hint">Paste an image from your clipboard (Ctrl+V)</p>
+
+                    <div id="pasteArea" class="paste-area" tabindex="0">
+                        <div class="paste-placeholder">
+                            <span class="icon">📋</span>
+                            <span>Click here & Paste Image</span>
+                        </div>
+                        <img id="pastePreview" class="paste-preview" style="display: none;">
+                    </div>
+
+                    <div id="pasteStatus" class="form-status"></div>
+                </div>
+                <div class="modal-footer">
+                    <button id="uploadImageBtn" class="btn btn-primary" disabled>Save Image</button>
+                    <button id="cancelPasteBtn" class="btn btn-cancel">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Image Display Modal -->
+        <div id="imageDisplayModal" class="modal" style="display: none;">
+            <div class="modal-content modal-image-display">
+                <div class="modal-header">
+                    <h2 id="imageDisplayTitle">Word Image</h2>
+                    <button id="closeImageDisplayBtn" class="btn-close">&times;</button>
+                </div>
+                <div class="modal-body"
+                    style="display: flex; justify-content: center; align-items: center; padding: 20px;">
+                    <img id="wordImageDisplay" src="" alt="Word Image" class="word-image-large">
+                </div>
+                <div class="modal-footer">
+                    <button id="changeImageBtn" class="btn btn-secondary">Change Image</button>
+                    <button id="removeImageBtn" class="btn btn-danger btn-sm">Remove</button>
+                    <button id="closeImageDisplayFooterBtn" class="btn btn-primary">Close</button>
+                </div>
+            </div>
         </div>
 
         <!-- Welcome Message (shown when no category selected) -->
