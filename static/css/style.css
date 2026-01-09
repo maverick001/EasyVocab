@@ -2225,6 +2225,39 @@ body.dark-mode .word-image-large {
         flex-direction: column;
         gap: var(--spacing-sm);
         text-align: center;
+        padding-top: var(--spacing-xl);
+        /* Make room for toggle if absolute */
+        position: relative;
+    }
+
+    /* Fix Theme Toggle position on mobile */
+    .theme-toggle {
+        top: var(--spacing-sm);
+        right: var(--spacing-sm);
+        transform: none;
+        /* Remove vertical centering transform */
+    }
+
+    /* Fix Status Bar (Word Today/Debt) overlap */
+    .status-bar {
+        position: relative;
+        top: auto;
+        left: auto;
+        width: 100%;
+        justify-content: center;
+        margin-bottom: var(--spacing-md);
+        flex-wrap: wrap;
+    }
+
+    .word-section {
+        padding: var(--spacing-sm);
+    }
+
+    /* Fix Big Word Display font size */
+    .word-display {
+        font-size: 1.8rem;
+        /* Reduced from 3rem */
+        line-height: 1.3;
     }
 
     .control-row {
@@ -2236,12 +2269,22 @@ body.dark-mode .word-image-large {
     .control-group {
         width: 100%;
         flex-direction: column;
+        /* Stack label and input */
         align-items: flex-start;
+    }
+
+    /* Ensure selects take full width for easier tapping */
+    .category-select,
+    .sort-select,
+    .model-select {
+        width: 100%;
+        min-width: 0;
     }
 
     .control-label {
         margin-bottom: var(--spacing-xs);
     }
+
 
     .search-container {
         width: 100%;
@@ -2288,5 +2331,59 @@ body.dark-mode .word-image-large {
 
     .btn-nav {
         flex: 1;
+    }
+
+    /* Fix Word Display wrapping and layout */
+    .word-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    #wordDisplayContainer {
+        flex-wrap: wrap;
+        justify-content: center;
+        width: 100%;
+        gap: var(--spacing-xs);
+    }
+
+    .word-display {
+        font-size: 2rem;
+        line-height: 1.2;
+        width: 100%;
+        text-align: center;
+        margin-bottom: var(--spacing-xs);
+        word-break: break-word;
+        /* Ensure long words break if needed */
+    }
+
+    /* Fix History Dropdown positioning */
+    .history-dropdown-container {
+        position: static;
+        width: 100%;
+        margin-top: var(--spacing-md);
+        justify-content: center;
+        display: flex;
+        gap: var(--spacing-xs);
+        align-items: center;
+    }
+
+    .history-select {
+        flex: 1;
+    }
+
+    /* Fix Action Groups (Move Category) */
+    .word-actions .action-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .category-change-select {
+        width: 100%;
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .btn-delete-inline {
+        margin-top: var(--spacing-xs);
     }
 }
