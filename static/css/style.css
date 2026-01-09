@@ -2210,3 +2210,83 @@ body.dark-mode .word-image-large {
     border-color: var(--border-color);
     background: var(--bg-card);
 }
+
+/* ============================================
+   General Mobile Responsiveness (Galaxy S23 et al.)
+   ============================================ */
+@media (max-width: 768px) {
+    .container {
+        width: 95%;
+        padding: var(--spacing-sm);
+        margin: var(--spacing-sm) auto;
+    }
+
+    .app-header {
+        flex-direction: column;
+        gap: var(--spacing-sm);
+        text-align: center;
+    }
+
+    .control-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--spacing-sm);
+    }
+
+    .control-group {
+        width: 100%;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .control-label {
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .search-container {
+        width: 100%;
+        display: flex;
+        gap: 5px;
+    }
+
+    .search-input {
+        flex: 1;
+        min-width: 0;
+    }
+
+    /* Stack buttons in the control panel */
+    .action-controls {
+        flex-direction: column;
+    }
+
+    .action-controls .btn {
+        width: 100%;
+        margin: 0;
+    }
+
+    /* Adjust generated controls */
+    .generate-controls {
+        flex-direction: column;
+        width: 100%;
+        gap: var(--spacing-sm);
+    }
+
+    .generate-controls .btn,
+    .generate-controls select {
+        width: 100%;
+    }
+
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-sm);
+    }
+
+    .navigation-buttons {
+        gap: var(--spacing-sm);
+    }
+
+    .btn-nav {
+        flex: 1;
+    }
+}
