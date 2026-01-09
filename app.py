@@ -590,14 +590,20 @@ def search_words():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Search for words containing the query (case-insensitive)
+        # Search for words containing the query in word OR translation
+        # Prioritize matches in 'word' column over 'translation' column
         cursor.execute("""
             SELECT id, word, translation, category, review_count, example_sentence
             FROM words
-            WHERE word LIKE %s
-            ORDER BY word ASC
+            WHERE word LIKE %s OR translation LIKE %s
+            ORDER BY 
+                CASE 
+                    WHEN word LIKE %s THEN 1 
+                    ELSE 2 
+                END,
+                word ASC
             LIMIT 100
-        """, (f'%{query}%',))
+        """, (f'%{query}%', f'%{query}%', f'%{query}%'))
 
         results = cursor.fetchall()
 
