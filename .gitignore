@@ -79,3 +79,17 @@ data/*.xml
 
 # bash script to start the server
 start_bkdict.bat
+
+
+# Brainstorm ideas
+feature_ideas.md
+
+# Project Rules
+GEMINI.md
+
+
+# Saved Images
+static/images/word_images
+
+
+

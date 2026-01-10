@@ -115,7 +115,23 @@ const Elements = {
     errorText: null,
 
     // Theme Toggle
-    themeToggle: null
+    themeToggle: null,
+
+    // Image Feature
+    wordImageBtn: null,
+    // Selection Modal
+    imageSelectionModal: null,
+    closeImageSelectionBtn: null,
+    cancelImageSelectionBtn: null,
+    imageList: null,
+    // Display Modal
+    imageDisplayModal: null,
+    closeImageDisplayBtn: null,
+    closeImageDisplayFooterBtn: null,
+    wordImageDisplay: null,
+    changeImageBtn: null,
+    removeImageBtn: null,
+    imageDisplayTitle: null
 };
 
 // ============================================
@@ -228,6 +244,8 @@ function cacheDOMElements() {
     Elements.newWord = document.getElementById('newWord');
     Elements.newTranslation = document.getElementById('newTranslation');
     Elements.newCategory = document.getElementById('newCategory');
+    Elements.newCategoryInput = document.getElementById('newCategoryInput');
+    Elements.toggleCategoryBtn = document.getElementById('toggleCategoryBtn');
     Elements.newSample = document.getElementById('newSample');
     Elements.generateNewSampleBtn = document.getElementById('generateNewSampleBtn');
     Elements.generateNewTransBtn = document.getElementById('generateNewTransBtn');
@@ -260,6 +278,27 @@ function cacheDOMElements() {
 
     // Theme Toggle
     Elements.themeToggle = document.getElementById('themeToggle');
+
+    // Image Feature
+    Elements.wordImageBtn = document.getElementById('wordImageBtn');
+
+    // Paste Modal
+    Elements.pasteImageModal = document.getElementById('pasteImageModal');
+    Elements.closePasteImageBtn = document.getElementById('closePasteImageBtn');
+    Elements.cancelPasteBtn = document.getElementById('cancelPasteBtn');
+    Elements.pasteArea = document.getElementById('pasteArea');
+    Elements.pastePreview = document.getElementById('pastePreview');
+    Elements.uploadImageBtn = document.getElementById('uploadImageBtn');
+    Elements.pasteStatus = document.getElementById('pasteStatus');
+
+    // Display Modal
+    Elements.imageDisplayModal = document.getElementById('imageDisplayModal');
+    Elements.closeImageDisplayBtn = document.getElementById('closeImageDisplayBtn');
+    Elements.closeImageDisplayFooterBtn = document.getElementById('closeImageDisplayFooterBtn');
+    Elements.wordImageDisplay = document.getElementById('wordImageDisplay');
+    Elements.changeImageBtn = document.getElementById('changeImageBtn');
+    Elements.removeImageBtn = document.getElementById('removeImageBtn');
+    Elements.imageDisplayTitle = document.getElementById('imageDisplayTitle');
 }
 
 /**
@@ -313,8 +352,10 @@ function setupEventListeners() {
     Elements.submitWordBtn.addEventListener('click', submitNewWord);
     Elements.generateNewSampleBtn.addEventListener('click', generateNewWordSample);
     Elements.generateNewTransBtn.addEventListener('click', generateNewWordTranslation);
+    Elements.toggleCategoryBtn.addEventListener('click', toggleNewCategoryInput);
 
     // Search functionality
+
     Elements.searchBtn.addEventListener('click', performSearch);
     Elements.clearSearchBtn.addEventListener('click', clearSearch);
     Elements.closeSearchResultsBtn.addEventListener('click', closeSearchResults);
@@ -346,6 +387,32 @@ function setupEventListeners() {
 
     // Theme toggle
     Elements.themeToggle.addEventListener('click', toggleTheme);
+
+    // Image Feature
+    Elements.wordImageBtn.addEventListener('click', handleImageButtonClick);
+
+    // Paste Modal
+    Elements.closePasteImageBtn.addEventListener('click', () => togglePasteModal(false));
+    Elements.cancelPasteBtn.addEventListener('click', () => togglePasteModal(false));
+    Elements.uploadImageBtn.addEventListener('click', uploadPastedImage);
+
+    // Paste Event Listeners
+    Elements.pasteArea.addEventListener('paste', handlePasteEvent);
+    // Also listen on window when modal is open, for better UX
+    window.addEventListener('paste', (e) => {
+        if (Elements.pasteImageModal.style.display === 'block') {
+            handlePasteEvent(e);
+        }
+    });
+
+    // Display Modal
+    Elements.closeImageDisplayBtn.addEventListener('click', () => toggleImageDisplayModal(false));
+    Elements.closeImageDisplayFooterBtn.addEventListener('click', () => toggleImageDisplayModal(false));
+    Elements.changeImageBtn.addEventListener('click', () => {
+        toggleImageDisplayModal(false);
+        openPasteModal();
+    });
+    Elements.removeImageBtn.addEventListener('click', removeWordImage);
 }
 
 // ============================================
@@ -363,6 +430,201 @@ function loadFirstCategory() {
             Elements.categorySelect.dispatchEvent(new Event('change'));
         }
     }, 100);
+}
+
+/**
+ * Show/hide loading indicator
+ */
+function showLoading(show) {
+    Elements.loadingIndicator.style.display = show ? 'block' : 'none';
+}
+
+/**
+ * Show error message as popup alert
+ */
+function showError(message) {
+    // Display as popup alert window
+    alert(message);
+}
+
+/**
+ * Hide error message
+ */
+function hideError() {
+    Elements.errorMessage.style.display = 'none';
+}
+
+/**
+ * Toggle import panel visibility
+ */
+function toggleImportPanel() {
+    const isVisible = Elements.importPanel.style.display === 'block';
+    Elements.importPanel.style.display = isVisible ? 'none' : 'block';
+    Elements.uploadStatus.textContent = '';
+    Elements.uploadStatus.className = 'upload-status';
+
+    if (!isVisible) {
+        Elements.fileInput.value = '';
+    }
+}
+
+// ============================================
+// Image Feature Functions
+// ============================================
+
+let currentPastedFile = null;
+
+/**
+ * Handle Image Button Click
+ */
+function handleImageButtonClick() {
+    const currentImage = AppState.currentWord.image_file;
+
+    if (currentImage) {
+        openImageDisplayModal(currentImage);
+    } else {
+        openPasteModal();
+    }
+}
+
+/**
+ * Toggle Paste Modal
+ */
+function togglePasteModal(show) {
+    Elements.pasteImageModal.style.display = show ? 'block' : 'none';
+    if (show) {
+        // Reset state
+        currentPastedFile = null;
+        Elements.pastePreview.src = '';
+        Elements.pastePreview.style.display = 'none';
+        Elements.pasteArea.querySelector('.paste-placeholder').style.display = 'flex';
+        Elements.uploadImageBtn.disabled = true;
+        Elements.pasteStatus.textContent = '';
+        Elements.pasteArea.focus();
+    }
+}
+
+/**
+ * Open Paste Modal
+ */
+function openPasteModal() {
+    togglePasteModal(true);
+}
+
+/**
+ * Handle Paste Event
+ */
+function handlePasteEvent(event) {
+    // Prevent default paste behavior
+    event.preventDefault();
+
+    const items = (event.clipboardData || event.originalEvent.clipboardData).items;
+    let foundImage = false;
+
+    for (const item of items) {
+        if (item.type.indexOf('image') === 0) {
+            const blob = item.getAsFile();
+            currentPastedFile = blob;
+            foundImage = true;
+
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                Elements.pastePreview.src = e.target.result;
+                Elements.pastePreview.style.display = 'block';
+                Elements.pasteArea.querySelector('.paste-placeholder').style.display = 'none';
+                Elements.uploadImageBtn.disabled = false;
+                Elements.pasteStatus.textContent = '';
+            };
+            reader.readAsDataURL(blob);
+            break;
+        }
+    }
+
+    if (!foundImage) {
+        Elements.pasteStatus.textContent = '❌ No image found in clipboard.';
+        Elements.pasteStatus.style.color = 'var(--error)';
+        setTimeout(() => Elements.pasteStatus.textContent = '', 3000);
+    }
+}
+
+/**
+ * Upload Pasted Image
+ */
+async function uploadPastedImage() {
+    if (!currentPastedFile) return;
+
+    try {
+        Elements.uploadImageBtn.disabled = true;
+        Elements.uploadImageBtn.textContent = 'Uploading...';
+
+        const formData = new FormData();
+        formData.append('image', currentPastedFile);
+
+        const response = await fetch(`/api/words/${AppState.currentWord.id}/image`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            console.log('✅ Image uploaded:', data.filename);
+
+            AppState.currentWord.image_file = data.filename;
+            updateImageButtonState(data.filename);
+            togglePasteModal(false);
+
+            // Show display modal to confirm
+            setTimeout(() => openImageDisplayModal(data.filename), 300);
+        } else {
+            Elements.pasteStatus.textContent = `❌ Error: ${data.error}`;
+            Elements.pasteStatus.style.color = 'var(--error)';
+            Elements.uploadImageBtn.disabled = false;
+        }
+
+    } catch (error) {
+        console.error('Error uploading image:', error);
+        Elements.pasteStatus.textContent = '❌ Network error';
+        Elements.pasteStatus.style.color = 'var(--error)';
+        Elements.uploadImageBtn.disabled = false;
+    } finally {
+        Elements.uploadImageBtn.textContent = 'Save Image';
+    }
+}
+
+/**
+ * Toggle Image Display Modal
+ */
+function toggleImageDisplayModal(show) {
+    Elements.imageDisplayModal.style.display = show ? 'block' : 'none';
+}
+
+/**
+ * Open Image Display Modal
+ */
+function openImageDisplayModal(imageName) {
+    // Add timestamp to prevent caching if image updated
+    Elements.wordImageDisplay.src = `/static/images/word_images/${imageName}?t=${new Date().getTime()}`;
+    Elements.imageDisplayTitle.textContent = AppState.currentWord.word;
+    toggleImageDisplayModal(true);
+}
+
+/**
+ * Remove Image from current word
+ */
+async function removeWordImage() {
+    if (!confirm('Are you sure you want to remove this image link?')) return;
+
+    const success = await updateWord(AppState.currentWord.id, {
+        image_file: '' // Empty string to remove
+    });
+
+    if (success) {
+        AppState.currentWord.image_file = null;
+        updateImageButtonState(null);
+        toggleImageDisplayModal(false);
+    }
 }
 
 // ============================================
@@ -455,6 +717,10 @@ async function updateWord(wordId, updates) {
                 // Redisplay samples with updated content
                 displaySampleSentences(updates.example_sentence);
             }
+            if ('image_file' in updates) {
+                AppState.currentWord.image_file = updates.image_file;
+                updateImageButtonState(updates.image_file);
+            }
 
             // Reload history after update
             loadWordHistory(AppState.currentWord.id);
@@ -521,8 +787,17 @@ function populateCategoryDropdown(categories) {
     // Sort categories by word count (descending - most words first)
     const sortedCategories = [...categories].sort((a, b) => b.word_count - a.word_count);
 
+    // Calculate total word count
+    const totalWords = categories.reduce((sum, cat) => sum + (cat.word_count || 0), 0);
+
     // Populate main category selector
     Elements.categorySelect.innerHTML = '<option value="">-- Select a Category --</option>';
+
+    // Add "All" option
+    const allOption = document.createElement('option');
+    allOption.value = 'All';
+    allOption.textContent = `All (${totalWords})`;
+    Elements.categorySelect.appendChild(allOption);
 
     sortedCategories.forEach(cat => {
         const option = document.createElement('option');
@@ -579,6 +854,24 @@ function displayWord(wordData) {
 
     // Load modification history for this word
     loadWordHistory(wordData.id);
+
+    // Update Image Button State
+    updateImageButtonState(wordData.image_file);
+}
+
+/**
+ * Update Image Button State based on whether image exists
+ */
+function updateImageButtonState(imageFile) {
+    if (imageFile) {
+        Elements.wordImageBtn.textContent = 'Display Image';
+        Elements.wordImageBtn.className = 'btn btn-view-image';
+    } else {
+        Elements.wordImageBtn.textContent = 'Add Image';
+        Elements.wordImageBtn.className = 'btn btn-image';
+    }
+    // Always show button if it was hidden
+    Elements.wordImageBtn.style.display = 'inline-flex';
 }
 
 /**
@@ -618,42 +911,6 @@ function toggleEditMode(type, isEditing) {
         if (isEditing) {
             Elements.sampleInput.focus();
         }
-    }
-}
-
-/**
- * Show/hide loading indicator
- */
-function showLoading(show) {
-    Elements.loadingIndicator.style.display = show ? 'block' : 'none';
-}
-
-/**
- * Show error message as popup alert
- */
-function showError(message) {
-    // Display as popup alert window
-    alert(message);
-}
-
-/**
- * Hide error message
- */
-function hideError() {
-    Elements.errorMessage.style.display = 'none';
-}
-
-/**
- * Toggle import panel visibility
- */
-function toggleImportPanel() {
-    const isVisible = Elements.importPanel.style.display === 'block';
-    Elements.importPanel.style.display = isVisible ? 'none' : 'block';
-    Elements.uploadStatus.textContent = '';
-    Elements.uploadStatus.className = 'upload-status';
-
-    if (!isVisible) {
-        Elements.fileInput.value = '';
     }
 }
 
@@ -1002,8 +1259,13 @@ function openAddWordModal() {
     // Get categories from the main category select
     const mainSelect = Elements.categorySelect;
     for (let i = 1; i < mainSelect.options.length; i++) {  // Skip first "-- Select --" option
+        const optionValue = mainSelect.options[i].value;
+
+        // Skip "All" category as we can't add words to it directly
+        if (optionValue === 'All') continue;
+
         const option = document.createElement('option');
-        option.value = mainSelect.options[i].value;
+        option.value = optionValue;
         option.textContent = mainSelect.options[i].textContent;
         Elements.newCategory.appendChild(option);
     }
@@ -1177,13 +1439,44 @@ async function generateNewWordTranslation() {
 }
 
 /**
+ * Toggle between Select and Input for Category
+ */
+function toggleNewCategoryInput() {
+    const isSelectVisible = Elements.newCategory.style.display !== 'none';
+
+    if (isSelectVisible) {
+        // Switch to Input
+        Elements.newCategory.style.display = 'none';
+        Elements.newCategoryInput.style.display = 'block';
+        Elements.newCategoryInput.focus();
+        Elements.toggleCategoryBtn.textContent = 'Select Existing';
+        Elements.toggleCategoryBtn.classList.replace('btn-secondary', 'btn-primary');
+    } else {
+        // Switch to Select
+        Elements.newCategory.style.display = 'block';
+        Elements.newCategoryInput.style.display = 'none';
+        Elements.newCategoryInput.value = ''; // Clear input
+        Elements.toggleCategoryBtn.textContent = '+ New Category';
+        Elements.toggleCategoryBtn.classList.replace('btn-primary', 'btn-secondary');
+    }
+}
+
+/**
  * Submit new word to backend
  */
 async function submitNewWord() {
     // Get values
     const word = Elements.newWord.value.trim();
     const translation = Elements.newTranslation.value.trim();
-    const category = Elements.newCategory.value.trim();
+
+    // Determine category source
+    let category;
+    if (Elements.newCategory.style.display !== 'none') {
+        category = Elements.newCategory.value.trim();
+    } else {
+        category = Elements.newCategoryInput.value.trim();
+    }
+
     const sample = Elements.newSample.value.trim();
 
     // Validate required fields
