@@ -3,6 +3,14 @@
 
 ## [Unreleased]
 
+
+## [1.4.0] - 2026-01-09
+### Added
+- **Mobile Responsive**: Added mobile responsive design for improved readability in low-light environments. 
+- **Translation Search**: Added translation search function to search words translations in entire MySQL DB. 
+- **New Vocabulary Category**: Added a new vocabulary category for better classification of vocabulary.
+
+
 ## [1.3.0] - 2025-12-28
 ### Added
 - **Dark Mode**: Added dark mode toggle for improved readability in low-light environments.
