@@ -373,12 +373,15 @@ def get_word_by_category(category):
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Get total count in category
-        cursor.execute("""
-            SELECT COUNT(*) as total
-            FROM words
-            WHERE category = %s
-        """, (category,))
+        # Get total count
+        if category == 'All':
+            cursor.execute("SELECT COUNT(*) as total FROM words")
+        else:
+            cursor.execute("""
+                SELECT COUNT(*) as total
+                FROM words
+                WHERE category = %s
+            """, (category,))
 
         count_result = cursor.fetchone()
         total_count = count_result['total'] if count_result else 0
@@ -386,7 +389,7 @@ def get_word_by_category(category):
         if total_count == 0:
             return jsonify({
                 'success': False,
-                'error': 'No words found in this category'
+                'error': 'No words found'
             }), 404
 
         # Ensure index is within bounds
@@ -396,16 +399,25 @@ def get_word_by_category(category):
             index = total_count - 1
 
         # Get the word at the specified index
-        # Using LIMIT with OFFSET for pagination with dynamic sorting
-        query = f"""
-            SELECT id, word, translation, category, example_sentence, image_file,
-                   review_count, last_reviewed, created_at, updated_at
-            FROM words
-            WHERE category = %s
-            {order_clause}
-            LIMIT 1 OFFSET %s
-        """
-        cursor.execute(query, (category, index))
+        if category == 'All':
+             query = f"""
+                SELECT id, word, translation, category, example_sentence, image_file,
+                       review_count, last_reviewed, created_at, updated_at
+                FROM words
+                {order_clause}
+                LIMIT 1 OFFSET %s
+            """
+             cursor.execute(query, (index,))
+        else:
+            query = f"""
+                SELECT id, word, translation, category, example_sentence, image_file,
+                       review_count, last_reviewed, created_at, updated_at
+                FROM words
+                WHERE category = %s
+                {order_clause}
+                LIMIT 1 OFFSET %s
+            """
+            cursor.execute(query, (category, index))
 
         word = cursor.fetchone()
 

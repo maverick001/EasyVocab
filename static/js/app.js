@@ -787,8 +787,17 @@ function populateCategoryDropdown(categories) {
     // Sort categories by word count (descending - most words first)
     const sortedCategories = [...categories].sort((a, b) => b.word_count - a.word_count);
 
+    // Calculate total word count
+    const totalWords = categories.reduce((sum, cat) => sum + (cat.word_count || 0), 0);
+
     // Populate main category selector
     Elements.categorySelect.innerHTML = '<option value="">-- Select a Category --</option>';
+
+    // Add "All" option
+    const allOption = document.createElement('option');
+    allOption.value = 'All';
+    allOption.textContent = `All (${totalWords})`;
+    Elements.categorySelect.appendChild(allOption);
 
     sortedCategories.forEach(cat => {
         const option = document.createElement('option');
@@ -1250,8 +1259,13 @@ function openAddWordModal() {
     // Get categories from the main category select
     const mainSelect = Elements.categorySelect;
     for (let i = 1; i < mainSelect.options.length; i++) {  // Skip first "-- Select --" option
+        const optionValue = mainSelect.options[i].value;
+
+        // Skip "All" category as we can't add words to it directly
+        if (optionValue === 'All') continue;
+
         const option = document.createElement('option');
-        option.value = mainSelect.options[i].value;
+        option.value = optionValue;
         option.textContent = mainSelect.options[i].textContent;
         Elements.newCategory.appendChild(option);
     }
