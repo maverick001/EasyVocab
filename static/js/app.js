@@ -1590,6 +1590,11 @@ async function performSearch() {
             displaySearchResults(data);
             Elements.clearSearchBtn.style.display = 'inline-block';
             console.log(`✅ Found ${data.count} results for "${query}"`);
+
+            // Auto-scroll to search results
+            setTimeout(() => {
+                Elements.searchResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
         } else {
             showError(data.error || 'Search failed');
         }
