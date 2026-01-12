@@ -2176,13 +2176,13 @@ body.dark-mode .search-results-panel {
 
 /* Image Display Modal */
 .modal-image-display {
-    max-width: 400px;
+    max-width: 800px;
     text-align: center;
 }
 
 .word-image-large {
-    width: 256px;
-    height: 256px;
+    width: 512px;
+    height: 512px;
     object-fit: cover;
     border-radius: var(--radius-md);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);

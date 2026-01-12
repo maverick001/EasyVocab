@@ -1868,8 +1868,8 @@ def upload_word_image(word_id):
                 if img.mode != 'RGB':
                     img = img.convert('RGB')
                 
-                # Resize to 256x256 using High Quality resampling
-                img_resized = img.resize((256, 256), Image.Resampling.LANCZOS)
+                # Resize to 512x512 using High Quality resampling
+                img_resized = img.resize((512, 512), Image.Resampling.LANCZOS)
                 
                 # Generate unique filename
                 timestamp = int(time.time())
