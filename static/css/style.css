@@ -2387,3 +2387,142 @@ body.dark-mode .word-image-large {
         margin-top: var(--spacing-xs);
     }
 }
+
+/* ============================================
+   Quiz Styles (Moved from quiz.html)
+   ============================================ */
+.quiz-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+    text-align: center;
+}
+
+.quiz-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.quiz-card {
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 3rem;
+    box-shadow: 0 4px 6px var(--shadow);
+    margin-bottom: 2rem;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid var(--border-color);
+}
+
+.quiz-word {
+    font-size: 3.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 2rem;
+    text-shadow: 2px 2px 4px var(--shadow);
+}
+
+.quiz-sentences {
+    text-align: left;
+    width: 100%;
+    margin-bottom: 2rem;
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.quiz-translation {
+    font-size: 2rem;
+    color: var(--text-primary);
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border-color);
+    width: 100%;
+    display: none;
+}
+
+.quiz-actions {
+    display: flex;
+    gap: 1.5rem;
+    justify-content: center;
+    margin-top: 2rem;
+}
+
+.btn-remember {
+    background-color: var(--success);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 150px;
+}
+
+.btn-remember:hover {
+    background-color: #059669;
+    transform: translateY(-2px);
+}
+
+.btn-not-remember {
+    background-color: var(--error);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 150px;
+}
+
+.btn-not-remember:hover {
+    background-color: #dc2626;
+    transform: translateY(-2px);
+}
+
+.btn-next {
+    background-color: var(--primary-blue);
+    color: white;
+    padding: 1rem 3rem;
+    font-size: 1.2rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    display: none;
+    margin-top: 35px;
+    transition: all 0.2s;
+}
+
+.btn-next:hover {
+    background-color: var(--primary-dark);
+    transform: translateY(-2px);
+}
+
+.quiz-loading,
+.quiz-error,
+.quiz-empty {
+    text-align: center;
+    padding: 4rem;
+}
+
+.quiz-empty-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+/* Dark Mode Quiz Overrides */
+body.dark-mode .quiz-card {
+    background: var(--bg-card);
+    border-color: var(--border-color);
+}
+
+body.dark-mode .quiz-word {
+    color: var(--primary-light);
+}
