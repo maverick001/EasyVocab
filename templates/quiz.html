@@ -141,9 +141,22 @@
 <body>
     <div class="container">
         <!-- Header -->
-        <header class="quiz-header">
-            <h1 class="app-title">🎯 Vocabulary Review</h1>
-            <a href="/" class="btn btn-secondary">Quit Quiz</a>
+        <header class="quiz-header app-header"
+            style="margin-bottom: 2rem; padding: 1.5rem 2rem; display: flex; align-items: center; justify-content: space-between; background: rgba(255, 255, 255, 0.8);">
+            <div class="header-left" style="display: flex; align-items: center; gap: 1rem;">
+                <h1 class="app-title" style="margin: 0; font-size: 2.2rem;">🎯 Vocabulary Review</h1>
+            </div>
+
+            <div class="header-controls" style="display: flex; gap: 1rem; align-items: center;">
+                <div class="select-wrapper" style="position: relative;">
+                    <select id="categorySelect" class="category-select"
+                        style="min-width: 250px; padding: 0.8rem 1.2rem; border-radius: 8px; font-weight: 500; cursor: pointer;">
+                        <option value="All">All Categories</option>
+                    </select>
+                </div>
+                <a href="/" class="btn btn-secondary"
+                    style="padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: 600;">Exit Quiz</a>
+            </div>
         </header>
 
         <!-- Main Quiz Area -->

@@ -1538,29 +1538,44 @@ def get_next_quiz_word():
     """
     Get the next word for quiz (oldest updated word with review_count >= 1)
     
+    Query Parameters:
+        category: Filter by specific category (optional) (default: 'All')
+
     Returns:
         JSON response with word data
     """
     conn = None
     try:
+        category = request.args.get('category', 'All')
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Get oldest updated word with review_count >= 1
-        cursor.execute("""
-            SELECT id, word, translation, example_sentence, review_count
+        # Base query
+        query = """
+            SELECT id, word, translation, example_sentence, review_count, category
             FROM words
             WHERE review_count >= 1
+        """
+        params = []
+
+        # Add category filter if not 'All'
+        if category and category != 'All':
+            query += " AND category = %s"
+            params.append(category)
+
+        # Add ordering and limit
+        query += """
             ORDER BY updated_at ASC
             LIMIT 1
-        """)
+        """
 
+        cursor.execute(query, params)
         word = cursor.fetchone()
 
         if not word:
             return jsonify({
                 'success': False,
-                'error': 'No words found for review. Please review some words first.',
+                'error': 'No words found for review in this category.',
                 'word': None
             }), 404
 
