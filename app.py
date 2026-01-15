@@ -1963,23 +1963,32 @@ def upload_word_image(word_id):
                 # Open image from stream
                 img = Image.open(file.stream)
                 
-                # Convert to RGB (in case of RGBA/P palette)
+                # Convert to RGB (required for JPEG)
                 if img.mode != 'RGB':
                     img = img.convert('RGB')
                 
-                # Resize to 512x512 using High Quality resampling
-                img_resized = img.resize((512, 512), Image.Resampling.LANCZOS)
+                # Compress to ensure size < 500KB without resizing dimensions
+                output_buffer = io.BytesIO()
+                quality = 95
+                img.save(output_buffer, format='JPEG', quality=quality)
                 
-                # Generate unique filename
+                while output_buffer.tell() > 500 * 1024 and quality > 10:
+                    output_buffer.seek(0)
+                    output_buffer.truncate()
+                    quality -= 5
+                    img.save(output_buffer, format='JPEG', quality=quality)
+                
+                # Generate unique filename (using .jpg now)
                 timestamp = int(time.time())
-                filename = f"img_{word_id}_{timestamp}.png"
+                filename = f"img_{word_id}_{timestamp}.jpg"
                 save_path = os.path.join(app.root_path, 'static', 'images', 'word_images', filename)
                 
                 # Ensure directory exists
                 os.makedirs(os.path.dirname(save_path), exist_ok=True)
                 
-                # Save optimized PNG
-                img_resized.save(save_path, 'PNG', optimize=True)
+                # Write to file
+                with open(save_path, 'wb') as f:
+                    f.write(output_buffer.getvalue())
                 
                 # Update Database
                 conn = get_db_connection()

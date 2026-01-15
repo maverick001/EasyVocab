@@ -2181,13 +2181,17 @@ body.dark-mode .search-results-panel {
 }
 
 .word-image-large {
-    width: 512px;
-    height: 512px;
-    object-fit: cover;
+    max-width: 100%;
+    height: auto;
+    max-height: 70vh;
+    /* Limit height to 70% of viewport height to keep it viewable */
+    object-fit: contain;
     border-radius: var(--radius-md);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     border: 3px solid white;
     background: var(--bg-main);
+    display: block;
+    margin: 0 auto;
 }
 
 /* Dark mode adjustments */
