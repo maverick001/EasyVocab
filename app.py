@@ -158,7 +158,7 @@ def ensure_image_file_column():
             print("Adding image_file column to words table...")
             cursor.execute("ALTER TABLE words ADD COLUMN image_file VARCHAR(255) DEFAULT NULL")
             connection.commit()
-            print("✓ image_file column added successfully")
+            print(f"✓ Image file column check completed")
         
         cursor.close()
     except mysql.connector.Error as err:
@@ -166,6 +166,47 @@ def ensure_image_file_column():
     finally:
         if connection:
             connection.close()
+
+
+
+def ensure_srs_columns():
+    """
+    Ensure SRS (Spaced Repetition System) columns exist in words table
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Check if columns exist
+        cursor.execute("SHOW COLUMNS FROM words LIKE 'next_review_date'")
+        if not cursor.fetchone():
+            print("  + Adding next_review_date column...")
+            cursor.execute("ALTER TABLE words ADD COLUMN next_review_date DATETIME DEFAULT NULL")
+            
+        cursor.execute("SHOW COLUMNS FROM words LIKE 'srs_interval'")
+        if not cursor.fetchone():
+            print("  + Adding srs_interval column...")
+            cursor.execute("ALTER TABLE words ADD COLUMN srs_interval INT DEFAULT 0")
+            
+        cursor.execute("SHOW COLUMNS FROM words LIKE 'srs_repetitions'")
+        if not cursor.fetchone():
+            print("  + Adding srs_repetitions column...")
+            cursor.execute("ALTER TABLE words ADD COLUMN srs_repetitions INT DEFAULT 0")
+            
+        cursor.execute("SHOW COLUMNS FROM words LIKE 'srs_ease_factor'")
+        if not cursor.fetchone():
+            print("  + Adding srs_ease_factor column...")
+            cursor.execute("ALTER TABLE words ADD COLUMN srs_ease_factor FLOAT DEFAULT 2.5")
+            
+        conn.commit()
+        print("✓ SRS columns check completed")
+        
+    except Exception as e:
+        print(f"✗ Error checking SRS columns: {e}")
+    finally:
+        if conn:
+            conn.close()
 
 
 def create_history_record(cursor, word_id, word_text, translation, example_sentence, category, modification_type='updated'):
@@ -1538,29 +1579,50 @@ def get_next_quiz_word():
     """
     Get the next word for quiz (oldest updated word with review_count >= 1)
     
+    Query Parameters:
+        category: Filter by specific category (optional) (default: 'All')
+
     Returns:
         JSON response with word data
     """
     conn = None
     try:
+        category = request.args.get('category', 'All')
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Get oldest updated word with review_count >= 1
-        cursor.execute("""
-            SELECT id, word, translation, example_sentence, review_count
+        # Base query
+        query = """
+            SELECT id, word, translation, example_sentence, review_count, category, next_review_date, srs_interval
             FROM words
             WHERE review_count >= 1
-            ORDER BY updated_at ASC
-            LIMIT 1
-        """)
+        """
+        params = []
 
+        # Add category filter if not 'All'
+        if category and category != 'All':
+            query += " AND category = %s"
+            params.append(category)
+
+        # Add SRS logic: Prioritize overdue items (next_review_date <= NOW)
+        query += " AND (next_review_date <= NOW() OR next_review_date IS NULL)"
+
+        # Add ordering and limit
+        query += """
+            ORDER BY 
+                CASE WHEN next_review_date IS NULL THEN 1 ELSE 0 END, -- Null dates last
+                next_review_date ASC, -- Overdue first
+                updated_at ASC -- Tie breaker
+            LIMIT 1
+        """
+
+        cursor.execute(query, params)
         word = cursor.fetchone()
 
         if not word:
             return jsonify({
                 'success': False,
-                'error': 'No words found for review. Please review some words first.',
+                'error': 'No words found for review in this category.',
                 'word': None
             }), 404
 
@@ -1612,8 +1674,11 @@ def submit_quiz_result():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
-        # Get current review count
-        cursor.execute("SELECT review_count FROM words WHERE id = %s", (word_id,))
+        # Get current SRS state
+        cursor.execute("""
+            SELECT review_count, srs_interval, srs_repetitions, srs_ease_factor 
+            FROM words WHERE id = %s
+        """, (word_id,))
         word = cursor.fetchone()
         
         if not word:
@@ -1623,24 +1688,53 @@ def submit_quiz_result():
             }), 404
             
         current_count = word['review_count']
-        new_count = current_count
+        
+        # SRS Algorithm (Simplified SM-2)
+        interval = word['srs_interval'] or 0
+        repetitions = word['srs_repetitions'] or 0
+        ease_factor = word['srs_ease_factor'] or 2.5
         
         if result == 'remember':
-            # Decrement, but min 1
-            if current_count > 1:
-                new_count = current_count - 1
-        else:
-            # Increment
-            new_count = current_count + 1
+            # Correct answer
+            if repetitions == 0:
+                interval = 1
+            elif repetitions == 1:
+                interval = 6
+            else:
+                interval = int(interval * ease_factor)
             
-        # Update review_count and updated_at (to rotate the word in the queue)
-        # But do NOT update last_reviewed
+            repetitions += 1
+            # Update review count (legacy metric: DECREMENT to reduce debt)
+            new_count = max(0, current_count - 1)
+            
+        else:
+            # Incorrect answer
+            repetitions = 0
+            interval = 0
+            # Decrease ease factor slightly for difficult words (min 1.3)
+            ease_factor = max(1.3, ease_factor - 0.15)
+            # Legacy metric: INCREMENT to increase debt
+            new_count = current_count + 1
+
+        # Calculate next review date
+        if interval == 0:
+            # Re-queue immediately (or very short delay like 1 min, but for now just NOW)
+            next_review = datetime.now()
+        else:
+            next_review = datetime.now() + timedelta(days=interval)
+
+        # Update word with new SRS data
         cursor.execute("""
             UPDATE words 
             SET review_count = %s,
-                updated_at = CURRENT_TIMESTAMP
+                updated_at = CURRENT_TIMESTAMP,
+                last_reviewed = CURRENT_TIMESTAMP,
+                srs_interval = %s,
+                srs_repetitions = %s,
+                srs_ease_factor = %s,
+                next_review_date = %s
             WHERE id = %s
-        """, (new_count, word_id))
+        """, (new_count, interval, repetitions, ease_factor, next_review, word_id))
         
         conn.commit()
         
@@ -1648,7 +1742,12 @@ def submit_quiz_result():
             'success': True,
             'word_id': word_id,
             'old_count': current_count,
-            'new_count': new_count
+            'new_count': new_count,
+            'srs': {
+                'interval': interval,
+                'repetitions': repetitions,
+                'next_review': next_review.isoformat()
+            }
         })
 
     except Exception as e:
@@ -1864,23 +1963,32 @@ def upload_word_image(word_id):
                 # Open image from stream
                 img = Image.open(file.stream)
                 
-                # Convert to RGB (in case of RGBA/P palette)
+                # Convert to RGB (required for JPEG)
                 if img.mode != 'RGB':
                     img = img.convert('RGB')
                 
-                # Resize to 512x512 using High Quality resampling
-                img_resized = img.resize((512, 512), Image.Resampling.LANCZOS)
+                # Compress to ensure size < 500KB without resizing dimensions
+                output_buffer = io.BytesIO()
+                quality = 95
+                img.save(output_buffer, format='JPEG', quality=quality)
                 
-                # Generate unique filename
+                while output_buffer.tell() > 500 * 1024 and quality > 10:
+                    output_buffer.seek(0)
+                    output_buffer.truncate()
+                    quality -= 5
+                    img.save(output_buffer, format='JPEG', quality=quality)
+                
+                # Generate unique filename (using .jpg now)
                 timestamp = int(time.time())
-                filename = f"img_{word_id}_{timestamp}.png"
+                filename = f"img_{word_id}_{timestamp}.jpg"
                 save_path = os.path.join(app.root_path, 'static', 'images', 'word_images', filename)
                 
                 # Ensure directory exists
                 os.makedirs(os.path.dirname(save_path), exist_ok=True)
                 
-                # Save optimized PNG
-                img_resized.save(save_path, 'PNG', optimize=True)
+                # Write to file
+                with open(save_path, 'wb') as f:
+                    f.write(output_buffer.getvalue())
                 
                 # Update Database
                 conn = get_db_connection()
@@ -1937,6 +2045,7 @@ if __name__ == '__main__':
     init_db_pool()
     ensure_word_history_table()
     ensure_image_file_column()
+    ensure_srs_columns()
     
     print("🚀 BKDict application starting...")
 

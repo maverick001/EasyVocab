@@ -7,143 +7,35 @@
     <title>Quiz - BKDict</title>
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <style>
-        /* Quiz specific styles */
-        .quiz-container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 2rem;
-            text-align: center;
-        }
 
-        .quiz-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-        }
-
-        .quiz-card {
-            background: white;
-            border-radius: 12px;
-            padding: 3rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            margin-bottom: 2rem;
-            min-height: 400px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .quiz-word {
-            font-size: 3.5rem;
-            font-weight: 700;
-            color: var(--primary-color);
-            margin-bottom: 2rem;
-        }
-
-        .quiz-sentences {
-            text-align: left;
-            width: 100%;
-            margin-bottom: 2rem;
-            font-size: 1.2rem;
-            color: #4b5563;
-            line-height: 1.6;
-        }
-
-        .quiz-translation {
-            font-size: 2rem;
-            color: #1f2937;
-            margin-top: 2rem;
-            padding-top: 2rem;
-            border-top: 1px solid #e5e7eb;
-            width: 100%;
-            display: none;
-            /* Hidden initially */
-        }
-
-        .quiz-actions {
-            display: flex;
-            gap: 1.5rem;
-            justify-content: center;
-            margin-top: 2rem;
-        }
-
-        .btn-remember {
-            background-color: #10b981;
-            /* Green */
-            color: white;
-            padding: 0.75rem 1.5rem;
-            font-size: 1rem;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            min-width: 150px;
-        }
-
-        .btn-remember:hover {
-            background-color: #059669;
-        }
-
-        .btn-not-remember {
-            background-color: #ef4444;
-            /* Red */
-            color: white;
-            padding: 0.75rem 1.5rem;
-            font-size: 1rem;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            min-width: 150px;
-        }
-
-        .btn-not-remember:hover {
-            background-color: #dc2626;
-        }
-
-        .btn-next {
-            background-color: #3b82f6;
-            /* Blue */
-            color: white;
-            padding: 1rem 3rem;
-            font-size: 1.2rem;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            display: none;
-            /* Hidden initially */
-            margin-top: 35px;
-            /* Moved down */
-            transition: background-color 0.2s;
-        }
-
-        .btn-next:hover {
-            background-color: #2563eb;
-        }
-
-        .quiz-loading,
-        .quiz-error,
-        .quiz-empty {
-            text-align: center;
-            padding: 4rem;
-        }
-
-        .quiz-empty-icon {
-            font-size: 4rem;
-            margin-bottom: 1rem;
-        }
-    </style>
 </head>
 
 <body>
     <div class="container">
         <!-- Header -->
-        <header class="quiz-header">
-            <h1 class="app-title">🎯 Vocabulary Review</h1>
-            <a href="/" class="btn btn-secondary">Quit Quiz</a>
+        <header class="quiz-header app-header"
+            style="margin-bottom: 2rem; padding: 1.5rem 2rem; display: flex; align-items: center; justify-content: space-between; background: rgba(255, 255, 255, 0.8);">
+            <div class="header-left" style="display: flex; align-items: center; gap: 1rem;">
+                <h1 class="app-title" style="margin: 0; font-size: 2.2rem;">🎯 Vocabulary Review</h1>
+            </div>
+
+            <div class="header-controls" style="display: flex; gap: 1rem; align-items: center;">
+                <div class="select-wrapper" style="position: relative;">
+                    <select id="categorySelect" class="category-select"
+                        style="min-width: 250px; padding: 0.8rem 1.2rem; border-radius: 8px; font-weight: 500; cursor: pointer;">
+                        <option value="All">All Categories</option>
+                    </select>
+                </div>
+
+                <button id="themeToggle" class="theme-toggle" title="Toggle dark mode"
+                    style="position: static; transform: none; padding: 0.8rem; border-radius: 8px;">
+                    <span class="icon sun-icon">☀️</span>
+                    <span class="icon moon-icon">🌙</span>
+                </button>
+
+                <a href="/" class="btn btn-secondary"
+                    style="padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: 600;">Exit Quiz</a>
+            </div>
         </header>
 
         <!-- Main Quiz Area -->

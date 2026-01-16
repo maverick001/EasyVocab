@@ -11,6 +11,7 @@ const quizError = document.getElementById('quizError');
 const quizErrorText = document.getElementById('quizErrorText');
 const quizEmpty = document.getElementById('quizEmpty');
 const quizCard = document.getElementById('quizCard');
+const categorySelect = document.getElementById('categorySelect');
 
 const wordDisplay = document.getElementById('wordDisplay');
 const sentencesDisplay = document.getElementById('sentencesDisplay');
@@ -25,7 +26,24 @@ const retryBtn = document.getElementById('retryBtn');
 /**
  * Initialize quiz on page load
  */
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize Theme
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    if (savedTheme === 'dark') {
+        document.body.classList.add('dark-mode');
+    }
+
+    // Theme Toggle
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle) {
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            const newTheme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+            localStorage.setItem('theme', newTheme);
+        });
+    }
+
+    await loadCategories();
     loadNextWord();
 
     // Event listeners
@@ -33,7 +51,39 @@ document.addEventListener('DOMContentLoaded', () => {
     notRememberBtn.addEventListener('click', () => handleResult('not_remember'));
     nextBtn.addEventListener('click', loadNextWord);
     retryBtn.addEventListener('click', loadNextWord);
+
+    // Category change listener
+    categorySelect.addEventListener('change', () => {
+        loadNextWord();
+    });
 });
+
+/**
+ * Load categories for dropdown
+ */
+async function loadCategories() {
+    try {
+        const response = await fetch('/api/categories');
+        const data = await response.json();
+
+        if (data.success && data.categories) {
+            // Clear existing options except "All"
+            // (Assumes "All" is the first option in HTML)
+            while (categorySelect.options.length > 1) {
+                categorySelect.remove(1);
+            }
+
+            data.categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat.name;
+                option.textContent = `${cat.name} (${cat.word_count})`;
+                categorySelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error loading categories:', error);
+    }
+}
 
 /**
  * Load the next word for review
@@ -43,7 +93,8 @@ async function loadNextWord() {
         showLoading();
         resetCard();
 
-        const response = await fetch('/api/quiz/next-word');
+        const category = categorySelect.value;
+        const response = await fetch(`/api/quiz/next-word?category=${encodeURIComponent(category)}`);
         const data = await response.json();
 
         if (response.status === 404) {

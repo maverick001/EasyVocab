@@ -1272,6 +1272,9 @@ function openAddWordModal() {
 
     // Show modal
     Elements.addWordModal.style.display = 'flex';
+
+    // Auto-focus the word input
+    Elements.newWord.focus();
 }
 
 /**
