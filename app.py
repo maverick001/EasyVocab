@@ -73,7 +73,11 @@ def get_db_connection():
         Exception if connection pool is not initialized
     """
     if db_pool is None:
-        raise Exception("Database pool not initialized")
+        init_db_pool()
+        # Ensure tables exist (lazy init)
+        ensure_word_history_table()
+        ensure_image_file_column()
+        ensure_srs_columns()
     return db_pool.get_connection()
 
 

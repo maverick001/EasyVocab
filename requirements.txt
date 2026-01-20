@@ -12,6 +12,7 @@ mysql-connector-python==8.2.0
 python-dotenv==1.0.0
 
 # Additional Utilities
+requests>=2.31.0
 # (lxml is optional - Python's built-in xml.etree.ElementTree is used by default)
 # lxml==5.1.0
 
