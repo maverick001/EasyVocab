@@ -1499,10 +1499,10 @@ def generate_translation():
         # Prepare prompt based on mode
         if mode == 'reverse':
             # Chinese -> English
-            prompt = f"What is the English translation for the Chinese word '{word}'? Only list the 2 most common English words or short phrases. Separate them with a semicolon. Do not include any other explanations. Ensure both words begin with lowercase letters."
+            prompt = f"What is the English translation for the Chinese word '{word}'? Only list the 2 most common English words or short phrases. Separate them with a Chinese comma (，). Do not include any other explanations. Ensure both words begin with lowercase letters."
         else:
             # English -> Chinese
-            prompt = f"What's the Chinese translation of '{word}'? Only list the 2 most common translations and ignore others. Only list the translations in Chinese characters, no other explanations or phonetics are needed."
+            prompt = f"What's the Chinese translation of '{word}'? Only list the 2 most common translations and ignore others. Separate them with a Chinese comma (，). Only list the translations in Chinese characters, no other explanations or phonetics are needed."
 
         # Call Poe API via OpenAI SDK
         response = client.chat.completions.create(
