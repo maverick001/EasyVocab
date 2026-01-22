@@ -664,7 +664,7 @@ async function loadWord(category, index) {
         showLoading(true);
         hideError();
 
-        const response = await fetch(`/api/words/${encodeURIComponent(category)}?index=${index}&sort_by=${AppState.currentSortBy}`);
+        const response = await fetch(`/api/words-query?category=${encodeURIComponent(category)}&index=${index}&sort_by=${AppState.currentSortBy}`);
         const data = await response.json();
 
         if (data.success && data.word) {

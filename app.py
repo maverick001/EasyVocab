@@ -367,7 +367,8 @@ def get_available_images():
 
 
 @app.route('/api/words/<category>', methods=['GET'])
-def get_word_by_category(category):
+@app.route('/api/words-query', methods=['GET'])  # Alternative endpoint for Vercel (uses ?category=)
+def get_word_by_category(category=None):
     """
     Get a specific word from a category by index position
 
@@ -398,6 +399,12 @@ def get_word_by_category(category):
     """
     conn = None
     try:
+        # Get category from path param or query param (for Vercel compatibility)
+        if category is None:
+            category = request.args.get('category')
+        if not category:
+            return jsonify({'success': False, 'error': 'Category is required'}), 400
+        
         # Get parameters from query string
         index = int(request.args.get('index', 0))
         sort_by = request.args.get('sort_by', 'updated_at')  # Default to latest edits
