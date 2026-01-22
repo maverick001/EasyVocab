@@ -21,11 +21,12 @@ class Config:
     DEBUG = os.environ.get('DEBUG', 'True').lower() == 'true'
 
     # MySQL Database Configuration
-    DB_HOST = os.environ.get('DB_HOST', 'localhost')
+    # Default to None to ensure we fail visible if .env is not loaded
+    DB_HOST = os.environ.get('DB_HOST')
     DB_PORT = int(os.environ.get('DB_PORT', 3306))
-    DB_USER = os.environ.get('DB_USER', 'root')
-    DB_PASSWORD = os.environ.get('DB_PASSWORD', '')  # Set this in .env file
-    DB_NAME = os.environ.get('DB_NAME', 'bkdict_db')
+    DB_USER = os.environ.get('DB_USER')
+    DB_PASSWORD = os.environ.get('DB_PASSWORD')
+    DB_NAME = os.environ.get('DB_NAME')
 
     # Poe API Configuration (OpenAI-compatible)
     POE_API_KEY = os.environ.get('POE_API_KEY')

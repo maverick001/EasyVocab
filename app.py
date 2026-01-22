@@ -20,6 +20,7 @@ import time
 
 # Initialize Flask application
 app = Flask(__name__)
+
 app.config.from_object(Config)
 
 # Disable caching for development (prevents browser caching issues)
@@ -74,10 +75,8 @@ def get_db_connection():
     """
     if db_pool is None:
         init_db_pool()
-        # Ensure tables exist (lazy init)
-        ensure_word_history_table()
-        ensure_image_file_column()
-        ensure_srs_columns()
+        # Schema is now managed by init_aiven_db.py and migrations
+        # We no longer need to check this on every startup
     return db_pool.get_connection()
 
 
