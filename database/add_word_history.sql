@@ -41,7 +41,7 @@ SELECT
     id,
     word,
     translation,
-    sample_sentence,
+    example_sentence,
     category,
     created_at,
     'created'
