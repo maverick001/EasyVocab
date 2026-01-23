@@ -19,6 +19,9 @@ class Config:
     # Flask Configuration
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
     DEBUG = os.environ.get('DEBUG', 'True').lower() == 'true'
+    
+    # Site Password Protection (set in environment to enable)
+    SITE_PASSWORD = os.environ.get('SITE_PASSWORD')
 
     # MySQL Database Configuration
     # Default to None to ensure we fail visible if .env is not loaded

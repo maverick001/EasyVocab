@@ -4,7 +4,8 @@ Main Flask application with REST API endpoints
 Author: Built for vocabulary learning and management
 """
 
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_from_directory, session, redirect, url_for
+from functools import wraps
 import mysql.connector
 from mysql.connector import pooling
 import os
@@ -33,6 +34,54 @@ def add_header(response):
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '-1'
     return response
+
+
+# ============================================
+# Password Protection
+# ============================================
+
+def login_required(f):
+    """Decorator to require login for protected routes"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Skip if no password is set (allows open access during dev)
+        if not app.config.get('SITE_PASSWORD'):
+            return f(*args, **kwargs)
+        # Check if user is logged in
+        if not session.get('logged_in'):
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Login page - checks password against SITE_PASSWORD env var"""
+    # If no password set, redirect to main app
+    if not app.config.get('SITE_PASSWORD'):
+        return redirect(url_for('index'))
+    
+    # If already logged in, redirect to main app
+    if session.get('logged_in'):
+        return redirect(url_for('index'))
+    
+    error = None
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        if password == app.config['SITE_PASSWORD']:
+            session['logged_in'] = True
+            return redirect(url_for('index'))
+        else:
+            error = 'Incorrect password. Please try again.'
+    
+    return render_template('login.html', error=error)
+
+
+@app.route('/logout')
+def logout():
+    """Logout - clear session and redirect to login"""
+    session.pop('logged_in', None)
+    return redirect(url_for('login'))
 
 # Initialize MySQL connection pool for better performance
 db_pool = None
@@ -250,6 +299,7 @@ def allowed_file(filename):
 # ============================================
 
 @app.route('/')
+@login_required
 def index():
     """
     Serve the main vocabulary web application page
@@ -261,6 +311,7 @@ def index():
 
 
 @app.route('/quiz')
+@login_required
 def quiz():
     """
     Serve the quiz page
