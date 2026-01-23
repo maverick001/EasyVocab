@@ -397,9 +397,12 @@ def get_available_images():
     try:
         images_dir = os.path.join(app.root_path, 'static', 'images', 'word_images')
         
-        # Create directory if it doesn't exist (though user said it does)
+        # Try to create directory if it doesn't exist (fails on Vercel, which is fine)
         if not os.path.exists(images_dir):
-            os.makedirs(images_dir)
+            try:
+                os.makedirs(images_dir)
+            except Exception:
+                pass # Vercel is read-only, we just won't have the directory
             
         images = []
         for filename in os.listdir(images_dir):
