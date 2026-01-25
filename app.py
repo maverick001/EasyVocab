@@ -802,6 +802,58 @@ def get_word_history(word_id):
             conn.close()
 
 
+@app.route('/api/words/<int:word_id>', methods=['GET'])
+def get_word_details(word_id):
+    """
+    Get details for a specific word by ID, including uniqueness check
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Get the word details
+        cursor.execute("""
+            SELECT id, word, translation, example_sentence, category, review_count, last_reviewed
+            FROM words
+            WHERE id = %s
+        """, (word_id,))
+
+        word = cursor.fetchone()
+
+        if not word:
+            return jsonify({
+                'success': False,
+                'error': 'Word not found'
+            }), 404
+
+        # Check for other occurrences of the word string
+        cursor.execute("""
+            SELECT category
+            FROM words
+            WHERE word = %s AND id != %s
+        """, (word['word'], word_id))
+
+        other_occurrences = cursor.fetchall()
+        other_categories = [item['category'] for item in other_occurrences]
+
+        return jsonify({
+            'success': True,
+            'word': word,
+            'other_categories': other_categories,
+            'is_unique': len(other_categories) == 0
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+    finally:
+        if conn:
+            conn.close()
+
+
 @app.route('/api/words/<int:word_id>', methods=['PUT'])
 def update_word(word_id):
     """
