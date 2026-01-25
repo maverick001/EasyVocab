@@ -106,9 +106,9 @@ def init_db_pool():
             charset='utf8mb4',
             collation='utf8mb4_unicode_ci'
         )
-        print("✓ Database connection pool initialized successfully")
+        print("[OK] Database connection pool initialized successfully")
     except mysql.connector.Error as err:
-        print(f"✗ Error initializing database pool: {err}")
+        print(f"[ERROR] Error initializing database pool: {err}")
         raise
 
 
@@ -178,11 +178,11 @@ def ensure_word_history_table():
                 FROM words
             """)
             connection.commit()
-            print("✓ Word history table initialized with existing words")
+            print("[OK] Word history table initialized with existing words")
 
         cursor.close()
     except mysql.connector.Error as err:
-        print(f"✗ Error ensuring word_history table: {err}")
+        print(f"[ERROR] Error ensuring word_history table: {err}")
     finally:
         if connection:
             connection.close()
@@ -210,11 +210,11 @@ def ensure_image_file_column():
             print("Adding image_file column to words table...")
             cursor.execute("ALTER TABLE words ADD COLUMN image_file VARCHAR(255) DEFAULT NULL")
             connection.commit()
-            print(f"✓ Image file column check completed")
+            print(f"[OK] Image file column check completed")
         
         cursor.close()
     except mysql.connector.Error as err:
-        print(f"✗ Error ensuring image_file column: {err}")
+        print(f"[ERROR] Error ensuring image_file column: {err}")
     finally:
         if connection:
             connection.close()
@@ -252,10 +252,10 @@ def ensure_srs_columns():
             cursor.execute("ALTER TABLE words ADD COLUMN srs_ease_factor FLOAT DEFAULT 2.5")
             
         conn.commit()
-        print("✓ SRS columns check completed")
+        print("[OK] SRS columns check completed")
         
     except Exception as e:
-        print(f"✗ Error checking SRS columns: {e}")
+        print(f"[ERROR] Error checking SRS columns: {e}")
     finally:
         if conn:
             conn.close()
@@ -2163,15 +2163,15 @@ if __name__ == '__main__':
     ensure_image_file_column()
     ensure_srs_columns()
     
-    print("🚀 BKDict application starting...")
+    print("[START] BKDict application starting...")
 
     # Run Flask development server
     print("\n" + "="*50)
     print("  BKDict Vocabulary Web Application")
     print("="*50)
-    print(f"  🌐 Server running on: http://localhost:5001")
-    print(f"  📚 Database: {app.config['DB_NAME']}")
-    print(f"  🔧 Debug mode: {app.config['DEBUG']}")
+    print(f"  [URL] Server running on: http://localhost:5001")
+    print(f"  [DB] Database: {app.config['DB_NAME']}")
+    print(f"  [DEBUG] Debug mode: {app.config['DEBUG']}")
     print("="*50 + "\n")
 
     app.run(
