@@ -2130,10 +2130,26 @@ async function changeWordCategory() {
  * Delete current word
  */
 async function deleteCurrentWord() {
+    console.log('🗑️ deleteCurrentWord initiated');
     if (!AppState.currentWord) return;
 
-    // Basic confirmation first
-    if (!confirm(`Are you sure you want to delete "${AppState.currentWord.word}"?`)) {
+    // Check uniqueness before confirmation
+    let confirmationMsg = `Are you sure you want to delete "${AppState.currentWord.word}"?`;
+
+    try {
+        const uniqueCheckResponse = await fetch(`/api/words/${AppState.currentWord.id}`);
+        const uniqueCheckData = await uniqueCheckResponse.json();
+
+        if (uniqueCheckData.success && uniqueCheckData.is_unique) {
+            confirmationMsg = `Are you sure you want to delete "${AppState.currentWord.word}"? It is the only record in the Vocab.`;
+        }
+    } catch (e) {
+        console.error("Error checking word uniqueness:", e);
+        // Fallback to generic message if check fails
+    }
+
+    // Basic confirmation
+    if (!confirm(confirmationMsg)) {
         return;
     }
 

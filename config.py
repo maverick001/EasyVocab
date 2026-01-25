@@ -41,7 +41,11 @@ class Config:
     DB_POOL_RECYCLE = int(os.environ.get('DB_POOL_RECYCLE', 3600))
 
     # File Upload Configuration
-    UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+    # Use /tmp on Vercel because the root is read-only
+    if os.environ.get('VERCEL'):
+        UPLOAD_FOLDER = '/tmp'
+    else:
+        UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
     ALLOWED_EXTENSIONS = {'xml'}
 
@@ -54,7 +58,11 @@ class Config:
         Initialize application with additional configuration if needed
         """
         # Create upload folder if it doesn't exist
-        os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
+        try:
+            os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
+        except Exception:
+            # On Vercel this might fail if not in /tmp, but we handle it elsewhere
+            pass
 
 
 class DevelopmentConfig(Config):

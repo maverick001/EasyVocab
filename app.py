@@ -106,9 +106,9 @@ def init_db_pool():
             charset='utf8mb4',
             collation='utf8mb4_unicode_ci'
         )
-        print("✓ Database connection pool initialized successfully")
+        print("[OK] Database connection pool initialized successfully")
     except mysql.connector.Error as err:
-        print(f"✗ Error initializing database pool: {err}")
+        print(f"[ERROR] Error initializing database pool: {err}")
         raise
 
 
@@ -178,11 +178,11 @@ def ensure_word_history_table():
                 FROM words
             """)
             connection.commit()
-            print("✓ Word history table initialized with existing words")
+            print("[OK] Word history table initialized with existing words")
 
         cursor.close()
     except mysql.connector.Error as err:
-        print(f"✗ Error ensuring word_history table: {err}")
+        print(f"[ERROR] Error ensuring word_history table: {err}")
     finally:
         if connection:
             connection.close()
@@ -210,11 +210,11 @@ def ensure_image_file_column():
             print("Adding image_file column to words table...")
             cursor.execute("ALTER TABLE words ADD COLUMN image_file VARCHAR(255) DEFAULT NULL")
             connection.commit()
-            print(f"✓ Image file column check completed")
+            print(f"[OK] Image file column check completed")
         
         cursor.close()
     except mysql.connector.Error as err:
-        print(f"✗ Error ensuring image_file column: {err}")
+        print(f"[ERROR] Error ensuring image_file column: {err}")
     finally:
         if connection:
             connection.close()
@@ -252,10 +252,10 @@ def ensure_srs_columns():
             cursor.execute("ALTER TABLE words ADD COLUMN srs_ease_factor FLOAT DEFAULT 2.5")
             
         conn.commit()
-        print("✓ SRS columns check completed")
+        print("[OK] SRS columns check completed")
         
     except Exception as e:
-        print(f"✗ Error checking SRS columns: {e}")
+        print(f"[ERROR] Error checking SRS columns: {e}")
     finally:
         if conn:
             conn.close()
@@ -397,9 +397,12 @@ def get_available_images():
     try:
         images_dir = os.path.join(app.root_path, 'static', 'images', 'word_images')
         
-        # Create directory if it doesn't exist (though user said it does)
+        # Try to create directory if it doesn't exist (fails on Vercel, which is fine)
         if not os.path.exists(images_dir):
-            os.makedirs(images_dir)
+            try:
+                os.makedirs(images_dir)
+            except Exception:
+                pass # Vercel is read-only, we just won't have the directory
             
         images = []
         for filename in os.listdir(images_dir):
@@ -787,6 +790,58 @@ def get_word_history(word_id):
             'word_id': word_id,
             'count': len(history_records),
             'history': history_records
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route('/api/words/<int:word_id>', methods=['GET'])
+def get_word_details(word_id):
+    """
+    Get details for a specific word by ID, including uniqueness check
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Get the word details
+        cursor.execute("""
+            SELECT id, word, translation, example_sentence, category, review_count, last_reviewed
+            FROM words
+            WHERE id = %s
+        """, (word_id,))
+
+        word = cursor.fetchone()
+
+        if not word:
+            return jsonify({
+                'success': False,
+                'error': 'Word not found'
+            }), 404
+
+        # Check for other occurrences of the word string
+        cursor.execute("""
+            SELECT category
+            FROM words
+            WHERE word = %s AND id != %s
+        """, (word['word'], word_id))
+
+        other_occurrences = cursor.fetchall()
+        other_categories = [item['category'] for item in other_occurrences]
+
+        return jsonify({
+            'success': True,
+            'word': word,
+            'other_categories': other_categories,
+            'is_unique': len(other_categories) == 0
         })
 
     except Exception as e:
@@ -2108,15 +2163,15 @@ if __name__ == '__main__':
     ensure_image_file_column()
     ensure_srs_columns()
     
-    print("🚀 BKDict application starting...")
+    print("[START] BKDict application starting...")
 
     # Run Flask development server
     print("\n" + "="*50)
     print("  BKDict Vocabulary Web Application")
     print("="*50)
-    print(f"  🌐 Server running on: http://localhost:5001")
-    print(f"  📚 Database: {app.config['DB_NAME']}")
-    print(f"  🔧 Debug mode: {app.config['DEBUG']}")
+    print(f"  [URL] Server running on: http://localhost:5001")
+    print(f"  [DB] Database: {app.config['DB_NAME']}")
+    print(f"  [DEBUG] Debug mode: {app.config['DEBUG']}")
     print("="*50 + "\n")
 
     app.run(
