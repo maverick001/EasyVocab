@@ -12,3 +12,4 @@ services:
     environment:
       - FLASK_ENV=development
       - FLASK_DEBUG=1
+      - ENV_TYPE=Docker

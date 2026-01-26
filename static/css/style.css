@@ -8,6 +8,29 @@
    CSS Variables - Light Blue Theme
    ============================================ */
 :root {
+    --border-color: #B8D4E3;
+    /* Light blue border */
+    --shadow: rgba(70, 130, 180, 0.15);
+    /* Subtle blue shadow */
+    --success: #52C65D;
+    /* Green for success messages */
+    --warning: #F39C12;
+    /* Orange for warnings */
+    --error: #E74C3C;
+    /* Red for errors */
+
+    /* Spacing */
+    --spacing-xs: 0.5rem;
+    --spacing-sm: 1rem;
+    --spacing-md: 1.5rem;
+    --spacing-lg: 2rem;
+    --spacing-xl: 3rem;
+
+    /* Border Radius */
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 15px;
+
     /* Primary Colors - Light Blue Palette */
     --primary-blue: #87CEEB;
     /* Sky blue */
@@ -33,30 +56,12 @@
     /* Medium gray for secondary text */
     --text-light: #7F8C8D;
     /* Light gray for hints */
-
-    /* UI Colors */
-    --border-color: #B8D4E3;
-    /* Light blue border */
-    --shadow: rgba(70, 130, 180, 0.15);
-    /* Subtle blue shadow */
-    --success: #52C65D;
-    /* Green for success messages */
-    --warning: #F39C12;
-    /* Orange for warnings */
-    --error: #E74C3C;
-    /* Red for errors */
-
-    /* Spacing */
-    --spacing-xs: 0.5rem;
-    --spacing-sm: 1rem;
-    --spacing-md: 1.5rem;
-    --spacing-lg: 2rem;
-    --spacing-xl: 3rem;
-
-    /* Border Radius */
-    --radius-sm: 6px;
-    --radius-md: 10px;
-    --radius-lg: 15px;
+    --success-color: #10b981;
+    /* Emerald-500 */
+    --error-color: #ef4444;
+    /* Red-500 */
+    --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --transition-speed: 0.3s;
 }
 
 /* ============================================

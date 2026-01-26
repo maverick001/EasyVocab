@@ -317,6 +317,17 @@
                 Enter
             </button>
         </div>
+
+        <!-- Environment Badge -->
+        <div class="env-badge" title="Current Environment">
+            {% if env_type == 'Docker' %}
+            🐋 Docker
+            {% elif env_type == 'WSL / Linux' %}
+            🐧 WSL / Linux
+            {% else %}
+            🪟 Windows
+            {% endif %}
+        </div>
     </div>
 
     <!-- Loading Indicator -->
