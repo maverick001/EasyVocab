@@ -111,38 +111,6 @@
         <!-- Word Display Card -->
         <div id="wordCard" class="word-card" style="display: none;">
 
-            <!-- Primary Controls (Category/Sort/Search) -->
-            <div class="control-row primary-controls">
-                <!-- Category Selection -->
-                <div class="control-group">
-                    <label for="categorySelect" class="control-label">Category:</label>
-                    <select id="categorySelect" class="category-select">
-                        <option value="">-- Loading categories... --</option>
-                    </select>
-                    <span id="categoryInfo" class="category-info"></span>
-                </div>
-
-                <!-- Sort Toggle -->
-                <div class="control-group sort-group">
-                    <label for="sortSelect" class="control-label">Sort:</label>
-                    <select id="sortSelect" class="sort-select">
-                        <option value="updated_at">Recent Edits (Latest First)</option>
-                        <option value="updated_at_asc">Oldest Edits (Oldest First)</option>
-                        <option value="review_count">Most Reviewed</option>
-                    </select>
-                </div>
-
-                <!-- Search Section -->
-                <div class="control-group search-group">
-                    <label for="searchInput" class="control-label">Search:</label>
-                    <div class="search-container">
-                        <input type="text" id="searchInput" class="search-input" placeholder="Enter word or phrase...">
-                        <button id="searchBtn" class="btn btn-primary btn-sm">Search</button>
-                        <button id="clearSearchBtn" class="btn btn-cancel btn-sm" style="display: none;">Clear</button>
-                    </div>
-                </div>
-            </div>
-
             <!-- Word Section -->
             <div class="word-section">
                 <!-- Status Bar (Top Left) -->
@@ -182,6 +150,38 @@
                     <select id="historySelect" class="history-select">
                         <option value="">Latest</option>
                     </select>
+                </div>
+            </div>
+
+            <!-- Primary Controls (Category/Sort/Search) -->
+            <div class="control-row primary-controls">
+                <!-- Category Selection -->
+                <div class="control-group">
+                    <label for="categorySelect" class="control-label">Category:</label>
+                    <select id="categorySelect" class="category-select">
+                        <option value="">-- Loading categories... --</option>
+                    </select>
+                    <span id="categoryInfo" class="category-info"></span>
+                </div>
+
+                <!-- Sort Toggle -->
+                <div class="control-group sort-group">
+                    <label for="sortSelect" class="control-label">Sort:</label>
+                    <select id="sortSelect" class="sort-select">
+                        <option value="updated_at">Recent Edits (Latest First)</option>
+                        <option value="updated_at_asc">Oldest Edits (Oldest First)</option>
+                        <option value="review_count">Most Reviewed</option>
+                    </select>
+                </div>
+
+                <!-- Search Section -->
+                <div class="control-group search-group">
+                    <label for="searchInput" class="control-label">Search:</label>
+                    <div class="search-container">
+                        <input type="text" id="searchInput" class="search-input" placeholder="Enter word or phrase...">
+                        <button id="searchBtn" class="btn btn-primary btn-sm">Search</button>
+                        <button id="clearSearchBtn" class="btn btn-cancel btn-sm" style="display: none;">Clear</button>
+                    </div>
                 </div>
             </div>
 
