@@ -1636,10 +1636,31 @@ function displaySearchResults(data) {
     if (data.count === 0) {
         Elements.searchResultsList.innerHTML = `
             <div class="search-no-results">
-                <p>No words found containing "${data.query}"</p>
-                <p>Try a different search term</p>
+                <p>No words found containing "${escapeHTML(data.query)}"</p>
+                <div style="margin-top: 15px;">
+                    <button id="addSearchWordBtn" class="btn btn-primary" style="padding: 0.5rem 1rem;">
+                        ✨ Add "${escapeHTML(data.query)}"
+                    </button>
+                </div>
             </div>
         `;
+
+        // Add event listener for the new button
+        setTimeout(() => {
+            const addBtn = document.getElementById('addSearchWordBtn');
+            if (addBtn) {
+                addBtn.addEventListener('click', () => {
+                    closeSearchResults();
+                    openAddWordModal();
+                    // Pre-fill word
+                    Elements.newWord.value = data.query;
+                    // Trigger translation generation automatically for convenience
+                    if (Elements.newWord.value) {
+                        generateNewWordTranslation();
+                    }
+                });
+            }
+        }, 0);
         return;
     }
 

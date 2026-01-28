@@ -10,6 +10,7 @@ import mysql.connector
 from mysql.connector import pooling
 import os
 import requests
+import platform
 from werkzeug.utils import secure_filename
 from config import Config
 from utils import parse_and_import_xml, XMLParserError
@@ -297,6 +298,21 @@ def allowed_file(filename):
 # ============================================
 # Web Routes
 # ============================================
+
+
+@app.context_processor
+def inject_env_info():
+    """
+    Inject environment information into all templates.
+    Checks for ENV_TYPE environment variable (set in Docker) or defaults to 'Windows'.
+    """
+    env_type = os.environ.get('ENV_TYPE', 'Windows')
+    # If not explicitly Docker, but running on Linux, assume WSL/Linux
+    if env_type == 'Windows' and platform.system() == 'Linux':
+        env_type = 'WSL / Linux'
+        
+    return dict(env_type=env_type)
+
 
 @app.route('/')
 @login_required
@@ -625,7 +641,7 @@ def add_word():
         # Insert new word
         cursor.execute("""
             INSERT INTO words (word, translation, example_sentence, category, review_count, last_reviewed)
-            VALUES (%s, %s, %s, %s, 1, NULL)
+            VALUES (%s, %s, %s, %s, 2, NULL)
         """, (word, translation, example_sentence if example_sentence else None, category))
 
         new_word_id = cursor.lastrowid
@@ -2163,7 +2179,7 @@ if __name__ == '__main__':
     ensure_image_file_column()
     ensure_srs_columns()
     
-    print("[START] BKDict application starting...")
+    print(f"[START] BKDict application starting on {platform.system()}...")
 
     # Run Flask development server
     print("\n" + "="*50)
