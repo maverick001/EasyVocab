@@ -1281,6 +1281,7 @@ async function openAddWordModal() {
         Elements.addWordStatus.className = 'form-status error';
     }
 
+
     // Show modal
     Elements.addWordModal.style.display = 'flex';
 
