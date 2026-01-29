@@ -1249,13 +1249,19 @@ async function uploadXMLFile() {
 /**
  * Open the Add Word modal and populate category dropdown
  */
-function openAddWordModal() {
+async function openAddWordModal() {
     // Clear previous values
     Elements.newWord.value = '';
     Elements.newTranslation.value = '';
     Elements.newSample.value = '';
     Elements.addWordStatus.textContent = '';
     Elements.addWordStatus.className = 'form-status';
+
+    // Check if categories need to be fetched
+    if (!AppState.categories || AppState.categories.length === 0) {
+        console.log('📂 Categories not loaded, fetching now...');
+        await loadCategories();
+    }
 
     // Populate category dropdown
     Elements.newCategory.innerHTML = '<option value="">-- Select Category --</option>';
@@ -1269,12 +1275,12 @@ function openAddWordModal() {
             Elements.newCategory.appendChild(option);
         });
     } else {
-        // Fallback or retry loading categories if empty
-        console.warn('⚠️ No categories found in AppState. Trying explicit load...');
-        // If we really have no categories, we might want to trigger loadCategories
-        // But to avoid loops, let's just leave it empty and log
-        // (Or rely on the "New Category" button)
+        // If still no categories after fetching, show an error message
+        console.error('❌ Failed to load categories even after retry');
+        Elements.addWordStatus.textContent = '⚠️ Could not load categories. Please check your connection.';
+        Elements.addWordStatus.className = 'form-status error';
     }
+
 
     // Show modal
     Elements.addWordModal.style.display = 'flex';
@@ -1282,6 +1288,7 @@ function openAddWordModal() {
     // Auto-focus the word input
     Elements.newWord.focus();
 }
+
 
 /**
  * Close the Add Word modal
