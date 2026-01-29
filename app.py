@@ -306,8 +306,8 @@ def inject_env_info():
     Inject environment information into all templates.
     Checks for ENV_TYPE environment variable (set in Docker) or defaults to 'Windows'.
     """
-    # Check for Vercel first (Vercel sets VERCEL=1)
-    if os.environ.get('VERCEL'):
+    # Check for Vercel (multiple env vars for reliability)
+    if os.environ.get('VERCEL') or os.environ.get('VERCEL_ENV') or os.environ.get('VERCEL_URL'):
         env_type = 'Vercel'
     else:
         env_type = os.environ.get('ENV_TYPE', 'Windows')
