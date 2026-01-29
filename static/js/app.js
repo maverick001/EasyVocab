@@ -15,6 +15,7 @@ const AppState = {
     isEditingTranslation: false,
     isEditingSample: false,
     isEditingWord: false,
+    categories: [], // Store categories globally
     wordHistory: [],  // Store modification history for current word
     dailyProgress: 0,  // Daily activity counter (resets at midnight)
     countedWordIds: new Set(),  // Track which words were counted today (max 1 per word per day)
@@ -787,6 +788,9 @@ function populateCategoryDropdown(categories) {
     // Sort categories by word count (descending - most words first)
     const sortedCategories = [...categories].sort((a, b) => b.word_count - a.word_count);
 
+    // Save to AppState for other components (like Add Word modal)
+    AppState.categories = sortedCategories;
+
     // Calculate total word count
     const totalWords = categories.reduce((sum, cat) => sum + (cat.word_count || 0), 0);
 
@@ -1256,18 +1260,20 @@ function openAddWordModal() {
     // Populate category dropdown
     Elements.newCategory.innerHTML = '<option value="">-- Select Category --</option>';
 
-    // Get categories from the main category select
-    const mainSelect = Elements.categorySelect;
-    for (let i = 1; i < mainSelect.options.length; i++) {  // Skip first "-- Select --" option
-        const optionValue = mainSelect.options[i].value;
-
-        // Skip "All" category as we can't add words to it directly
-        if (optionValue === 'All') continue;
-
-        const option = document.createElement('option');
-        option.value = optionValue;
-        option.textContent = mainSelect.options[i].textContent;
-        Elements.newCategory.appendChild(option);
+    // Use stored categories from AppState
+    if (AppState.categories && AppState.categories.length > 0) {
+        AppState.categories.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat.name;
+            option.textContent = `${cat.name} (${cat.word_count})`;
+            Elements.newCategory.appendChild(option);
+        });
+    } else {
+        // Fallback or retry loading categories if empty
+        console.warn('⚠️ No categories found in AppState. Trying explicit load...');
+        // If we really have no categories, we might want to trigger loadCategories
+        // But to avoid loops, let's just leave it empty and log
+        // (Or rely on the "New Category" button)
     }
 
     // Show modal
