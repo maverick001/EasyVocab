@@ -15,6 +15,7 @@ const AppState = {
     isEditingTranslation: false,
     isEditingSample: false,
     isEditingWord: false,
+    categories: [], // Store categories globally
     wordHistory: [],  // Store modification history for current word
     dailyProgress: 0,  // Daily activity counter (resets at midnight)
     countedWordIds: new Set(),  // Track which words were counted today (max 1 per word per day)
@@ -787,6 +788,9 @@ function populateCategoryDropdown(categories) {
     // Sort categories by word count (descending - most words first)
     const sortedCategories = [...categories].sort((a, b) => b.word_count - a.word_count);
 
+    // Save to AppState for other components (like Add Word modal)
+    AppState.categories = sortedCategories;
+
     // Calculate total word count
     const totalWords = categories.reduce((sum, cat) => sum + (cat.word_count || 0), 0);
 
@@ -1245,7 +1249,7 @@ async function uploadXMLFile() {
 /**
  * Open the Add Word modal and populate category dropdown
  */
-function openAddWordModal() {
+async function openAddWordModal() {
     // Clear previous values
     Elements.newWord.value = '';
     Elements.newTranslation.value = '';
@@ -1253,21 +1257,28 @@ function openAddWordModal() {
     Elements.addWordStatus.textContent = '';
     Elements.addWordStatus.className = 'form-status';
 
+    // Check if categories need to be fetched
+    if (!AppState.categories || AppState.categories.length === 0) {
+        console.log('📂 Categories not loaded, fetching now...');
+        await loadCategories();
+    }
+
     // Populate category dropdown
     Elements.newCategory.innerHTML = '<option value="">-- Select Category --</option>';
 
-    // Get categories from the main category select
-    const mainSelect = Elements.categorySelect;
-    for (let i = 1; i < mainSelect.options.length; i++) {  // Skip first "-- Select --" option
-        const optionValue = mainSelect.options[i].value;
-
-        // Skip "All" category as we can't add words to it directly
-        if (optionValue === 'All') continue;
-
-        const option = document.createElement('option');
-        option.value = optionValue;
-        option.textContent = mainSelect.options[i].textContent;
-        Elements.newCategory.appendChild(option);
+    // Use stored categories from AppState
+    if (AppState.categories && AppState.categories.length > 0) {
+        AppState.categories.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat.name;
+            option.textContent = `${cat.name} (${cat.word_count})`;
+            Elements.newCategory.appendChild(option);
+        });
+    } else {
+        // If still no categories after fetching, show an error message
+        console.error('❌ Failed to load categories even after retry');
+        Elements.addWordStatus.textContent = '⚠️ Could not load categories. Please check your connection.';
+        Elements.addWordStatus.className = 'form-status error';
     }
 
     // Show modal
@@ -1276,6 +1287,7 @@ function openAddWordModal() {
     // Auto-focus the word input
     Elements.newWord.focus();
 }
+
 
 /**
  * Close the Add Word modal
