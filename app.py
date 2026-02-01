@@ -295,6 +295,58 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
 
+def increment_daily_counter(cursor, word_id=None):
+    """
+    Increment the daily study counter in daily_study_log.
+    Uses AEST timezone (UTC+10) for consistent date handling.
+    
+    If word_id is provided, checks if this word was already counted today
+    to ensure only 1 increment per word per day.
+    
+    Args:
+        cursor: MySQL cursor object
+        word_id: Optional word ID for deduplication (None = always increment)
+    
+    Returns:
+        Boolean indicating if increment was applied
+    """
+    # Use AEST timezone (UTC+10) for date
+    AEST = timezone(timedelta(hours=10))
+    today_aest = datetime.now(AEST).strftime('%Y-%m-%d')
+    
+    # If word_id provided, try to check if already counted today
+    # Wrapped in try-except in case daily_word_reviews table doesn't exist yet
+    if word_id is not None:
+        try:
+            cursor.execute("""
+                SELECT 1 FROM daily_word_reviews 
+                WHERE word_id = %s AND review_date = %s
+            """, (word_id, today_aest))
+            
+            if cursor.fetchone():
+                # Already counted today
+                return False
+            
+            # Mark this word as reviewed today
+            cursor.execute("""
+                INSERT INTO daily_word_reviews (word_id, review_date)
+                VALUES (%s, %s)
+                ON DUPLICATE KEY UPDATE review_date = review_date
+            """, (word_id, today_aest))
+        except Exception:
+            # Table doesn't exist yet - skip deduplication, just increment
+            pass
+    
+    # Increment the daily counter
+    cursor.execute("""
+        INSERT INTO daily_study_log (date, review_count)
+        VALUES (%s, 1)
+        ON DUPLICATE KEY UPDATE review_count = review_count + 1
+    """, (today_aest,))
+    
+    return True
+
+
 # ============================================
 # Web Routes
 # ============================================
@@ -676,13 +728,8 @@ def add_word():
         try:
             cursor.callproc('update_category_counts')
             
-            # Increment daily review counter for the new word
-            # We treat adding a new word as a "review" activity for today
-            cursor.execute("""
-                INSERT INTO daily_study_log (date, review_count)
-                VALUES (CURDATE(), 1)
-                ON DUPLICATE KEY UPDATE review_count = review_count + 1
-            """)
+            # Increment daily review counter for the new word (AEST timezone)
+            increment_daily_counter(cursor, new_word_id)
             
             conn.commit()
         except Exception:
@@ -1003,6 +1050,9 @@ def update_word(word_id):
             'updated'
         )
 
+        # Log daily review activity for edits (AEST timezone, 1 per word per day)
+        increment_daily_counter(cursor, word_id)
+
         conn.commit()
 
         return jsonify({
@@ -1209,9 +1259,11 @@ def delete_word(word_id):
 
         conn.commit()
 
-        # Update category counts
+        # Update category counts and log daily activity
         try:
             cursor.callproc('update_category_counts')
+            # Log daily review activity for deletes (AEST timezone, 1 per word per day)
+            increment_daily_counter(cursor, word_id)
             conn.commit()
         except Exception:
             pass  # Non-critical
@@ -1285,9 +1337,8 @@ def increment_review_counter(word_id):
                 'updated'
             )
 
-            # Log daily review activity
-            # NOTE: This is now handled by the 'after_review_increment' MySQL trigger
-            # to ensure persistence across git branches/versions.
+            # Log daily review activity (AEST timezone, 1 per word per day)
+            increment_daily_counter(cursor, word_id)
             
             conn.commit()
 
