@@ -1,0 +1,82 @@
+name: CI Test & Auto-Merge
+
+on:
+  push:
+    branches: [development]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  # Job 1: Run tests on Windows and Ubuntu
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.11']
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-flask
+          
+      - name: Run tests
+        run: pytest test/ -v --tb=short
+        env:
+          SKIP_DB: "true"
+
+  # Job 2: Create PR (only runs if tests pass on all platforms)
+  create-pr:
+    needs: test
+    runs-on: windows-latest
+    outputs:
+      pr_number: ${{ steps.create-pr.outputs.pull-request-number }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Create Pull Request
+        id: create-pr
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: development
+          base: main
+          title: "🔄 Auto-merge: Development → Main"
+          body: |
+            ## Automated PR
+            
+            ✅ Tests passed on Windows and Ubuntu
+            
+            This PR was automatically created by GitHub Actions after all tests passed.
+          labels: auto-merge
+
+  # Job 3: Auto-merge the PR
+  auto-merge:
+    needs: create-pr
+    runs-on: windows-latest
+    if: needs.create-pr.outputs.pr_number
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Enable auto-merge
+        run: gh pr merge ${{ needs.create-pr.outputs.pr_number }} --merge --auto
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
