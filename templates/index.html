@@ -306,6 +306,11 @@
 
         <!-- Welcome Message (shown when no category selected) -->
         <div id="welcomeMessage" class="welcome-message">
+            <!-- Loading Indicator (inside welcome message) -->
+            <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+                <div class="spinner"></div>
+                <p>Loading...</p>
+            </div>
             <div class="welcome-icon" id="bookIcon" style="cursor: pointer; margin-top: -30px;"
                 onclick="loadFirstCategory()">📖</div>
             <h2 style="margin-top: -30px;">Welcome to Easy Vocab</h2>
@@ -325,19 +330,19 @@
             {% elif env_type == 'WSL / Linux' %}
             🐧 WSL / Linux
             {% elif env_type == 'Vercel' %}
-            <span style="color: #1e3a8a;">☁️</span> Cloud
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#1e3a8a" style="vertical-align: middle;">
+                <path
+                    d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z" />
+            </svg> Cloud
             {% elif env_type == 'Cloud' %}
-            <span style="color: #1e3a8a;">☁️</span> Cloud
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#1e3a8a" style="vertical-align: middle;">
+                <path
+                    d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z" />
+            </svg> Cloud
             {% else %}
             🪟 {{ env_type }}
             {% endif %}
         </div>
-    </div>
-
-    <!-- Loading Indicator -->
-    <div id="loadingIndicator" class="loading-indicator" style="display: none;">
-        <div class="spinner"></div>
-        <p>Loading...</p>
     </div>
 
     <!-- Error Message -->
