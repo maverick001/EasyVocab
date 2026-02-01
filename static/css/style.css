@@ -156,6 +156,10 @@ body.dark-mode .modal-content {
     border-color: var(--border-color);
 }
 
+body.dark-mode .modal-footer {
+    background: var(--bg-card);
+}
+
 body.dark-mode .search-results {
     background: var(--bg-card);
     border-color: var(--border-color);
@@ -1445,6 +1449,43 @@ body {
 
     .btn-nav {
         width: 100%;
+    }
+
+    /* Mobile Modal Fixes */
+    .modal {
+        align-items: flex-start;
+        padding: 10px;
+        overflow-y: auto;
+    }
+
+    .modal-content {
+        max-height: calc(100vh - 20px);
+        overflow-y: auto;
+        margin: 10px 0;
+        width: 95%;
+    }
+
+    .modal-body {
+        padding: 15px;
+        max-height: calc(100vh - 180px);
+        overflow-y: auto;
+    }
+
+    .modal-footer {
+        position: sticky;
+        bottom: 0;
+        background: white;
+        padding: 12px 15px;
+        border-top: 2px solid #e0e0e0;
+        z-index: 10;
+    }
+
+    .form-group {
+        margin-bottom: 12px;
+    }
+
+    .form-textarea {
+        min-height: 60px;
     }
 }
 
