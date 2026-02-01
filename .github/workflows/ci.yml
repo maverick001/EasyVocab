@@ -37,46 +37,26 @@ jobs:
         env:
           SKIP_DB: "true"
 
-  # Job 2: Create PR (only runs if tests pass on all platforms)
-  create-pr:
+  # Job 2: Merge development to main (only runs if tests pass)
+  merge-to-main:
     needs: test
     runs-on: windows-latest
-    outputs:
-      pr_number: ${{ steps.create-pr.outputs.pull-request-number }}
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          
-      - name: Create Pull Request
-        id: create-pr
-        uses: peter-evans/create-pull-request@v6
-        with:
+          ref: main
           token: ${{ secrets.GITHUB_TOKEN }}
-          branch: development
-          base: main
-          title: "🔄 Auto-merge: Development → Main"
-          body: |
-            ## Automated PR
-            
-            ✅ Tests passed on Windows and Ubuntu
-            
-            This PR was automatically created by GitHub Actions after all tests passed.
-          labels: auto-merge
-
-  # Job 3: Auto-merge the PR
-  auto-merge:
-    needs: create-pr
-    runs-on: windows-latest
-    if: needs.create-pr.outputs.pr_number
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        
-      - name: Enable auto-merge
-        run: gh pr merge ${{ needs.create-pr.outputs.pr_number }} --merge --auto
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+      - name: Merge development into main
+        run: |
+          git fetch origin development
+          git merge origin/development --no-edit -m "🔄 Auto-merge: Development → Main (CI passed)"
+          git push origin main
