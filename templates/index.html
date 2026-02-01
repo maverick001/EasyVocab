@@ -321,11 +321,15 @@
         <!-- Environment Badge -->
         <div class="env-badge" title="Current Environment">
             {% if env_type == 'Docker' %}
-            🐋 Docker
+            🐧 WSL / Linux
             {% elif env_type == 'WSL / Linux' %}
             🐧 WSL / Linux
+            {% elif env_type == 'Vercel' %}
+            ☁️ Cloud
+            {% elif env_type == 'Cloud' %}
+            ☁️ Cloud
             {% else %}
-            🪟 Windows
+            🪟 {{ env_type }}
             {% endif %}
         </div>
     </div>

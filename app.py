@@ -304,18 +304,27 @@ def allowed_file(filename):
 def inject_env_info():
     """
     Inject environment information into all templates.
-    Checks for ENV_TYPE environment variable (set in Docker) or defaults to 'Windows'.
+    Priority: ENV_TYPE (explicit) > Vercel detection > platform detection
     """
-    # Check for Vercel (multiple env vars for reliability)
+    # Explicit ENV_TYPE takes highest priority (set in Docker or Vercel dashboard)
+    env_type = os.environ.get('ENV_TYPE')
+    
+    if env_type:
+        return dict(env_type=env_type)
+    
+    # Check for Vercel-specific environment variables
     if os.environ.get('VERCEL') or os.environ.get('VERCEL_ENV') or os.environ.get('VERCEL_URL'):
-        env_type = 'Vercel'
+        return dict(env_type='Vercel')
+    
+    # Platform-based detection
+    system = platform.system()
+    if system == 'Windows':
+        return dict(env_type='Windows')
+    elif system == 'Linux':
+        # Linux without explicit ENV_TYPE = Cloud deployment (Vercel, Railway, etc.)
+        return dict(env_type='Cloud')
     else:
-        env_type = os.environ.get('ENV_TYPE', 'Windows')
-        # If not explicitly Docker, but running on Linux, assume WSL/Linux
-        if env_type == 'Windows' and platform.system() == 'Linux':
-            env_type = 'WSL / Linux'
-        
-    return dict(env_type=env_type)
+        return dict(env_type=system)
 
 
 @app.route('/')
