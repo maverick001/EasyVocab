@@ -14,7 +14,7 @@ import platform
 from werkzeug.utils import secure_filename
 from config import Config
 from utils import parse_and_import_xml, XMLParserError
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from openai import OpenAI
 from PIL import Image
 import io
@@ -1360,7 +1360,9 @@ def get_word_debt():
                 log_date = log_date.date()
             daily_counts[log_date] = log['review_count']
         
-        today = date.today()
+        # Use AEST timezone (UTC+10) for consistent date handling
+        AEST = timezone(timedelta(hours=10))
+        today = datetime.now(AEST).date()
         total_debt = 0
         debt_breakdown = []
         
