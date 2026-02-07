@@ -688,18 +688,18 @@ def add_word():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Check if word already exists in this category
+        # Check if word already exists in ANY category (global duplicate check)
         cursor.execute("""
-            SELECT id FROM words
-            WHERE word = %s AND category = %s
-        """, (word, category))
+            SELECT id, category FROM words
+            WHERE word = %s
+        """, (word,))
 
         existing_word = cursor.fetchone()
 
         if existing_word:
             return jsonify({
                 'success': False,
-                'error': f'Word "{word}" already exists in category "{category}"',
+                'error': f'Word "{word}" already exists in category "{existing_word["category"]}"',
                 'duplicate': True
             }), 409
 
