@@ -1298,6 +1298,60 @@ function closeAddWordModal() {
 }
 
 /**
+ * Navigate to an existing word when duplicate detected
+ * Called when user clicks "Go to Word" button in duplicate error
+ * @param {string} category - The category of the existing word
+ * @param {number} wordId - The ID of the existing word
+ */
+async function navigateToExistingWord(category, wordId) {
+    // Close the Add Word modal immediately
+    closeAddWordModal();
+
+    try {
+        // Set the category in the dropdown and trigger change
+        Elements.categorySelect.value = category;
+        AppState.currentCategory = category;
+        AppState.currentIndex = 0;
+
+        // Fetch the word details by ID
+        const response = await fetch(`/api/words/${wordId}`);
+        const data = await response.json();
+
+        if (data.success && data.word) {
+            // Show the word card and hide welcome message
+            Elements.wordCard.style.display = 'block';
+            Elements.welcomeMessage.style.display = 'none';
+
+            // Update app state
+            AppState.currentWord = data.word;
+
+            // Display the word using existing displayWord logic
+            Elements.wordDisplay.textContent = data.word.word;
+            Elements.translationDisplay.textContent = data.word.translation || '';
+            displaySampleSentences(data.word.example_sentence);
+            Elements.reviewCount.textContent = data.word.review_count || 0;
+            Elements.wordInput.value = data.word.word;
+            updateImageButtonState(data.word.image_file);
+
+            // Load word history
+            loadWordHistory(wordId);
+
+            // Update position info if element exists
+            if (Elements.positionInfo) {
+                Elements.positionInfo.textContent = `Jumped to existing word`;
+            }
+
+            console.log(`✅ Navigated to existing word: ${data.word.word}`);
+        } else {
+            showError('Failed to load the existing word');
+        }
+    } catch (error) {
+        console.error('Error navigating to existing word:', error);
+        showError('Network error while navigating to word');
+    }
+}
+
+/**
  * Generate sample sentence for new word using Poe API
  */
 async function generateNewWordSample() {
@@ -1559,7 +1613,12 @@ async function submitNewWord() {
             console.log(`✅ Word "${word}" added successfully`);
         } else {
             if (data.duplicate) {
-                Elements.addWordStatus.textContent = `⚠️ ${data.error}`;
+                // Show error message with "Go to Word" button for duplicates
+                Elements.addWordStatus.innerHTML = `⚠️ ${data.error} 
+                    <button class="btn btn-sm btn-primary" style="margin-left: 10px;" 
+                            onclick="navigateToExistingWord('${data.existing_category}', ${data.existing_word_id})">
+                        Go to Word
+                    </button>`;
             } else {
                 Elements.addWordStatus.textContent = `❌ ${data.error}`;
             }
