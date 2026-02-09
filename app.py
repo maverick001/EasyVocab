@@ -28,11 +28,22 @@ from openai import OpenAI
 from PIL import Image
 import io
 import time
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 # Initialize Flask application
 app = Flask(__name__)
 
 app.config.from_object(Config)
+
+# Initialize rate limiter for login protection
+# 5 attempts per minute per IP - prevents brute force attacks
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=[],  # No default limit on other routes
+    storage_uri="memory://",  # In-memory storage (resets on restart - OK for Vercel)
+)
 
 # Disable caching for development (prevents browser caching issues)
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
@@ -71,6 +82,7 @@ def login_required(f):
 
 
 @app.route("/login", methods=["GET", "POST"])
+@limiter.limit("5 per minute", error_message="Too many login attempts. Please wait a minute before trying again.")
 def login():
     """Login page - checks password against SITE_PASSWORD env var"""
     # If no password set, redirect to main app

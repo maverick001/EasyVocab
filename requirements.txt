@@ -25,3 +25,6 @@ openai>=1.0.0
 
 # Image Processing
 Pillow==10.1.0
+
+# Security - Rate Limiting
+Flask-Limiter==3.5.0
