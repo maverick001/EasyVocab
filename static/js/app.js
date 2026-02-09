@@ -896,6 +896,8 @@ function toggleEditMode(type, isEditing) {
         Elements.wordEdit.style.display = isEditing ? 'flex' : 'none';
 
         if (isEditing) {
+            // Sync input value from current word state before entering edit mode
+            Elements.wordInput.value = AppState.currentWord?.word || '';
             Elements.wordInput.focus();
             Elements.wordInput.select();
         }
@@ -905,6 +907,8 @@ function toggleEditMode(type, isEditing) {
         Elements.translationEdit.style.display = isEditing ? 'block' : 'none';
 
         if (isEditing) {
+            // Sync input value from current word state before entering edit mode
+            Elements.translationInput.value = AppState.currentWord?.translation || '';
             Elements.translationInput.focus();
         }
     } else if (type === 'sample') {
@@ -913,6 +917,8 @@ function toggleEditMode(type, isEditing) {
         Elements.sampleEdit.style.display = isEditing ? 'block' : 'none';
 
         if (isEditing) {
+            // Sync input value from current word state before entering edit mode
+            Elements.sampleInput.value = AppState.currentWord?.example_sentence || '';
             Elements.sampleInput.focus();
         }
     }
