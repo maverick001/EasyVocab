@@ -4,6 +4,14 @@
 ## [Unreleased]
 
 
+## [1.6.1] - 2026-02-09
+### Added
+- **Login Rate Limiting**: Added brute force protection on login page (5 attempts/minute per IP) using Flask-Limiter.
+
+### Security
+- Prevents password guessing attacks by temporarily blocking IPs after failed login attempts.
+
+
 ## [1.6.0] - 2026-02-02
 ### Fixed
 - **Word Debt Timezone**: Fixed word debt calculation to use AEST timezone (UTC+10) instead of server time, ensuring consistent dates between local and Vercel deployments.

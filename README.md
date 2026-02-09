@@ -14,13 +14,19 @@
 
 ## 🌟 Features
 
+- **Cloud Hosted**: Deployed on Vercel with Aiven MySQL database for access anywhere
+- **Secure Access**: Password-protected site with login rate limiting to prevent brute force attacks
+- **AI-Powered Word Entry**: Auto-generate translations and example sentences using Claude AI
+- **Smart Quiz Mode**: Spaced repetition quiz based on Ebbinghaus forgetting curve for optimal retention
 - **Browse by Category**: Organize and review vocabulary by 20+ categories
 - **Interactive Word Cards**: Clean, card-based UI showing word, translation, and sample sentences
 - **Keyboard Navigation**: Use left/right arrow keys to quickly navigate between words
 - **In-Place Editing**: Edit translations and add sample sentences directly in the interface
 - **XML Import**: Bulk import vocabulary from XML files with validation and duplicate handling
 - **Performance Optimized**: Handles 30,000+ words efficiently with database indexing
-- **Beautiful UI**: Light blue theme optimized for comfortable long-term study sessions
+- **Beautiful UI**: Light blue theme with dark mode, optimized for comfortable long-term study sessions
+
+![Add New Word Modal](static/images/addWordModal.png)
 
 ![EasyVocab Interface](static/images/app-interface.png)
 
