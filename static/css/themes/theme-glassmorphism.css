@@ -58,6 +58,22 @@
     --transition-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
+/* Fix: dropdowns with hardcoded white backgrounds need dark text */
+.category-select,
+.sort-select,
+.model-select,
+.history-select,
+.category-change-select,
+.theme-select {
+    color: #1a1a2e;
+}
+
+/* Fix: labels should match section-title color (--primary-dark) */
+.control-label,
+.action-label {
+    color: var(--primary-dark);
+}
+
 /* Dark Mode Overrides */
 body.dark-mode {
     --primary-blue: #5B9BD5;

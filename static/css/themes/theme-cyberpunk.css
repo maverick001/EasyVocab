@@ -66,7 +66,8 @@
 .sort-select,
 .model-select,
 .history-select,
-.category-change-select {
+.category-change-select,
+.theme-select {
     color: #1a1a2e;
 }
 
