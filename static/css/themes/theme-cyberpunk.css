@@ -61,6 +61,15 @@
     --transition-glow: 0.3s ease;
 }
 
+/* Fix: dropdowns with hardcoded white backgrounds need dark text */
+.category-select,
+.sort-select,
+.model-select,
+.history-select,
+.category-change-select {
+    color: #1a1a2e;
+}
+
 /* Dark Mode Overrides */
 body.dark-mode {
     --primary-blue: #5B9BD5;
