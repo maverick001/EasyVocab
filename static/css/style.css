@@ -215,6 +215,20 @@ body.dark-mode .file-input {
     z-index: 10;
 }
 
+/* Quiz Header Controls Override - use normal flow instead of absolute */
+.quiz-header .header-controls {
+    position: static;
+    transform: none;
+}
+
+.quiz-header {
+    text-align: left;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.8rem 1rem;
+}
+
 /* GUI Theme Switcher Dropdown */
 .theme-select {
     padding: 0.5rem 0.8rem;

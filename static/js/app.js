@@ -121,6 +121,9 @@ const Elements = {
     // GUI Theme Switcher
     themeSwitcher: null,
 
+    // Header Controls (theme switcher + dark mode toggle)
+    headerControls: null,
+
     // Image Feature
     wordImageBtn: null,
     // Selection Modal
@@ -323,6 +326,7 @@ function cacheDOMElements() {
 
     // GUI Theme Switcher
     Elements.themeSwitcher = document.getElementById('themeSwitcher');
+    Elements.headerControls = document.querySelector('.header-controls');
 
     // Image Feature
     Elements.wordImageBtn = document.getElementById('wordImageBtn');
@@ -482,6 +486,16 @@ function loadFirstCategory() {
             Elements.categorySelect.dispatchEvent(new Event('change'));
         }
     }, 100);
+}
+
+/**
+ * Show or hide the header controls (theme switcher & dark mode toggle).
+ * Hidden on the welcome page, visible when viewing words.
+ */
+function setHeaderControlsVisible(visible) {
+    if (Elements.headerControls) {
+        Elements.headerControls.style.display = visible ? '' : 'none';
+    }
 }
 
 /**
@@ -884,6 +898,7 @@ function displayWord(wordData) {
     // Show word card, hide welcome message
     Elements.wordCard.style.display = 'block';
     Elements.welcomeMessage.style.display = 'none';
+    setHeaderControlsVisible(true);
 
     // Display word
     Elements.wordDisplay.textContent = wordData.word;
@@ -995,6 +1010,7 @@ function handleCategoryChange(event) {
         // No category selected - show welcome message
         Elements.wordCard.style.display = 'none';
         Elements.welcomeMessage.style.display = 'block';
+        setHeaderControlsVisible(false);
         AppState.currentCategory = null;
     }
 }
@@ -1378,6 +1394,7 @@ async function navigateToExistingWord(category, wordId) {
             // Show the word card and hide welcome message
             Elements.wordCard.style.display = 'block';
             Elements.welcomeMessage.style.display = 'none';
+            setHeaderControlsVisible(true);
 
             // Update app state
             AppState.currentWord = data.word;
@@ -1869,6 +1886,7 @@ function clearSearch() {
         Elements.wordCard.style.display = 'block';
     } else {
         Elements.welcomeMessage.style.display = 'block';
+        setHeaderControlsVisible(false);
     }
 }
 
@@ -2398,6 +2416,7 @@ async function handleDeleteSuccess(message) {
         // No more words in this category
         Elements.wordCard.style.display = 'none';
         Elements.welcomeMessage.style.display = 'block';
+        setHeaderControlsVisible(false);
         AppState.currentCategory = null;
         Elements.categorySelect.value = '';
     }
