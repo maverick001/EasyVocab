@@ -118,6 +118,9 @@ const Elements = {
     // Theme Toggle
     themeToggle: null,
 
+    // GUI Theme Switcher
+    themeSwitcher: null,
+
     // Image Feature
     wordImageBtn: null,
     // Selection Modal
@@ -150,6 +153,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initialize theme from localStorage
     initializeTheme();
 
+    // Initialize GUI theme from localStorage
+    initializeGuiTheme();
+
     // Initialize daily progress counter
     initializeDailyCounter();
 
@@ -180,6 +186,41 @@ function toggleTheme() {
     const isDark = document.body.classList.toggle('dark-mode');
     localStorage.setItem('bkdict-theme', isDark ? 'dark' : 'light');
     console.log(`🌓 Theme switched to: ${isDark ? 'dark' : 'light'}`);
+}
+
+/**
+ * Initialize GUI theme from localStorage
+ */
+function initializeGuiTheme() {
+    const savedGuiTheme = localStorage.getItem('bkdict-gui-theme') || 'default';
+    applyGuiTheme(savedGuiTheme);
+    if (Elements.themeSwitcher) {
+        Elements.themeSwitcher.value = savedGuiTheme;
+    }
+    console.log(`🎨 GUI theme initialized: ${savedGuiTheme}`);
+}
+
+/**
+ * Switch GUI theme and persist selection
+ */
+function switchGuiTheme(themeName) {
+    applyGuiTheme(themeName);
+    localStorage.setItem('bkdict-gui-theme', themeName);
+    console.log(`🎨 GUI theme switched to: ${themeName}`);
+}
+
+/**
+ * Apply a GUI theme by setting the theme stylesheet href
+ */
+function applyGuiTheme(themeName) {
+    const themeLink = document.getElementById('themeStylesheet');
+    if (!themeLink) return;
+
+    if (themeName === 'default') {
+        themeLink.href = '';
+    } else {
+        themeLink.href = `/static/css/themes/theme-${themeName}.css`;
+    }
 }
 
 /**
@@ -279,6 +320,9 @@ function cacheDOMElements() {
 
     // Theme Toggle
     Elements.themeToggle = document.getElementById('themeToggle');
+
+    // GUI Theme Switcher
+    Elements.themeSwitcher = document.getElementById('themeSwitcher');
 
     // Image Feature
     Elements.wordImageBtn = document.getElementById('wordImageBtn');
@@ -388,6 +432,13 @@ function setupEventListeners() {
 
     // Theme toggle
     Elements.themeToggle.addEventListener('click', toggleTheme);
+
+    // GUI Theme Switcher
+    if (Elements.themeSwitcher) {
+        Elements.themeSwitcher.addEventListener('change', (e) => {
+            switchGuiTheme(e.target.value);
+        });
+    }
 
     // Image Feature
     Elements.wordImageBtn.addEventListener('click', handleImageButtonClick);

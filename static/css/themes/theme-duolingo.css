@@ -1,0 +1,78 @@
+/*
+ * Theme: Duolingo-like (Bold & Playful)
+ * Chunky, vibrant UI with 3D shadow effects
+ * Nunito font for friendly, rounded aesthetic
+ */
+
+:root {
+    /* Brand Colors - Chunky & Vibrant */
+    --primary-blue: #3B82F6;
+    --primary-dark: #2563EB;
+    --primary-light: #93C5FD;
+
+    --accent-color: #F59E0B;
+    --accent-dark: #D97706;
+
+    --success: #22C55E;
+    --success-dark: #16A34A;
+
+    --error: #EF4444;
+    --error-dark: #DC2626;
+
+    --warning: #F59E0B;
+
+    /* Backgrounds */
+    --bg-main: #F3F4F6;
+    --bg-card: #FFFFFF;
+    --bg-hover: #F9FAFB;
+
+    /* Typography */
+    --font-main: 'Nunito', 'Segoe UI', sans-serif;
+    --text-primary: #374151;
+    --text-secondary: #6B7280;
+    --text-light: #9CA3AF;
+
+    /* Borders & Shadows */
+    --border-color: #E5E7EB;
+    --border-width: 2px;
+    --radius-sm: 12px;
+    --radius-md: 16px;
+    --radius-lg: 24px;
+
+    /* 3D Effects */
+    --shadow-sm: 0 2px 0 var(--border-color);
+    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-floating: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+    --transition-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --transition-speed: 0.2s;
+}
+
+/* Dark Mode Overrides */
+body.dark-mode {
+    --primary-blue: #60A5FA;
+    --primary-dark: #3B82F6;
+    --primary-light: #BFDBFE;
+
+    --accent-color: #FBBF24;
+    --accent-dark: #D97706;
+
+    --success: #4ADE80;
+    --success-dark: #16A34A;
+
+    --error: #F87171;
+    --error-dark: #DC2626;
+
+    --bg-main: #111827;
+    --bg-card: #1F2937;
+    --bg-hover: #374151;
+
+    --text-primary: #F9FAFB;
+    --text-secondary: #D1D5DB;
+    --text-light: #9CA3AF;
+
+    --border-color: #374151;
+    --shadow-sm: 0 2px 0 #1f2937;
+    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+    --shadow-floating: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+}

@@ -203,12 +203,43 @@ body.dark-mode .file-input {
     border-color: var(--border-color);
 }
 
-/* Dark Mode Toggle Button */
-.theme-toggle {
+/* Header Controls Container */
+.header-controls {
     position: absolute;
     top: 50%;
     right: var(--spacing-lg);
     transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    z-index: 10;
+}
+
+/* GUI Theme Switcher Dropdown */
+.theme-select {
+    padding: 0.5rem 0.8rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    outline: none;
+}
+
+.theme-select:hover {
+    border-color: var(--primary-blue);
+}
+
+.theme-select:focus {
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 3px rgba(135, 206, 235, 0.2);
+}
+
+/* Dark Mode Toggle Button */
+.theme-toggle {
     background: linear-gradient(135deg, var(--primary-blue), var(--accent-blue));
     border: none;
     border-radius: 50%;
@@ -221,16 +252,15 @@ body.dark-mode .file-input {
     font-size: 1.4rem;
     box-shadow: 0 3px 10px rgba(70, 130, 180, 0.3);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 10;
 }
 
 .theme-toggle:hover {
-    transform: translateY(-50%) scale(1.1);
+    transform: scale(1.1);
     box-shadow: 0 5px 15px rgba(70, 130, 180, 0.4);
 }
 
 .theme-toggle:active {
-    transform: translateY(-50%) scale(0.95);
+    transform: scale(0.95);
 }
 
 .theme-toggle .icon {
@@ -260,10 +290,6 @@ body.dark-mode .theme-toggle .sun-icon {
 
 body.dark-mode .theme-toggle .moon-icon {
     display: block;
-}
-
-.app-header {
-    position: relative;
 }
 
 /* ============================================
@@ -305,6 +331,7 @@ body {
    Header Section
    ============================================ */
 .app-header {
+    position: relative;
     text-align: center;
     padding: var(--spacing-md) 0;
     margin-bottom: var(--spacing-lg);

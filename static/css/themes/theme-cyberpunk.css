@@ -1,0 +1,84 @@
+/*
+ * Theme: Cyberpunk / Dark Neon
+ * Dark backgrounds, high-contrast neon accents, sharp edges
+ * Monospace font for terminal aesthetic
+ */
+
+:root {
+    /* Neon Color Palette */
+    --neon-cyan: #00ffff;
+    --neon-magenta: #ff00ff;
+    --neon-blue: #0affff;
+    --neon-pink: #ff006e;
+    --neon-green: #39ff14;
+
+    /* Primary Colors */
+    --primary-blue: var(--neon-cyan);
+    --primary-light: var(--neon-blue);
+    --primary-dark: #00cccc;
+
+    --success: var(--neon-green);
+    --warning: #ffdd00;
+    --error: var(--neon-pink);
+
+    /* Dark Backgrounds */
+    --bg-main: #0a0a0f;
+    --bg-card: #151520;
+    --bg-hover: #1f1f2e;
+
+    /* Typography */
+    --font-main: 'Courier New', 'Consolas', monospace;
+    --text-primary: #ffffff;
+    --text-secondary: #b0b0b0;
+    --text-light: #707070;
+
+    /* Borders & Glows */
+    --border-color: var(--neon-cyan);
+    --border-width: 2px;
+    --glow-cyan: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #00ffff;
+    --glow-magenta: 0 0 10px #ff00ff, 0 0 20px #ff00ff, 0 0 30px #ff00ff;
+    --glow-pink: 0 0 10px #ff006e, 0 0 20px #ff006e;
+
+    /* Spacing */
+    --spacing-xs: 0.5rem;
+    --spacing-sm: 1rem;
+    --spacing-md: 1.5rem;
+    --spacing-lg: 2rem;
+    --spacing-xl: 3rem;
+
+    /* Border Radius - Sharp */
+    --radius-sm: 2px;
+    --radius-md: 4px;
+    --radius-lg: 6px;
+
+    /* Shadows - Neon Glows */
+    --shadow-sm: 0 0 10px rgba(0, 255, 255, 0.5);
+    --shadow-card: 0 0 20px rgba(0, 255, 255, 0.3);
+    --shadow-floating: 0 0 30px rgba(0, 255, 255, 0.4);
+
+    /* Transitions */
+    --transition-speed: 0.2s;
+    --transition-glow: 0.3s ease;
+}
+
+/* Dark Mode Overrides */
+body.dark-mode {
+    --primary-blue: #5B9BD5;
+    --primary-light: #3E5C76;
+    --primary-dark: #8BB8E8;
+    --accent-blue: #79A8C9;
+
+    --bg-main: #1A1D23;
+    --bg-card: #242830;
+    --bg-hover: #2D323C;
+
+    --text-primary: #E8ECF1;
+    --text-secondary: #A8B2C1;
+    --text-light: #6E7A8A;
+
+    --border-color: #3A4150;
+    --shadow: rgba(0, 0, 0, 0.4);
+    --success: #52C65D;
+    --warning: #F39C12;
+    --error: #E74C3C;
+}

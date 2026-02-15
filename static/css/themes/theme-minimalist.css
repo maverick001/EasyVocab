@@ -1,0 +1,69 @@
+/*
+ * Theme: Modern Minimalist (Apple-like)
+ * Clean, flat design with generous whitespace
+ * Inter font for professional, modern aesthetic
+ */
+
+:root {
+    /* Typography */
+    --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+    /* Colors - Minimalist Palette */
+    --primary-blue: #3B82F6;
+    --primary-dark: #2563EB;
+    --border-color: #E5E7EB;
+    --shadow: rgba(0, 0, 0, 0.04);
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    --success: #10B981;
+    --warning: #F59E0B;
+    --error: #EF4444;
+
+    /* Spacing - Generous for minimalist feel */
+    --spacing-xs: 0.5rem;
+    --spacing-sm: 1rem;
+    --spacing-md: 2rem;
+    --spacing-lg: 3rem;
+    --spacing-xl: 4rem;
+
+    /* Border Radius - Subtle */
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+
+    /* Background Colors */
+    --bg-main: #FAFAFA;
+    --bg-card: #FFFFFF;
+    --bg-hover: #F5F5F5;
+
+    /* Text Colors */
+    --text-primary: #1F2937;
+    --text-secondary: #6B7280;
+    --text-light: #9CA3AF;
+    --success-color: #10B981;
+    --error-color: #EF4444;
+    --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    --transition-speed: 0.2s;
+}
+
+/* Dark Mode Overrides */
+body.dark-mode {
+    --primary-blue: #60A5FA;
+    --primary-dark: #3B82F6;
+    --border-color: #374151;
+    --shadow: rgba(0, 0, 0, 0.2);
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 1px 3px 0 rgba(0, 0, 0, 0.2);
+    --success: #10B981;
+    --warning: #F59E0B;
+    --error: #EF4444;
+
+    --bg-main: #111827;
+    --bg-card: #1F2937;
+    --bg-hover: #374151;
+
+    --text-primary: #F9FAFB;
+    --text-secondary: #D1D5DB;
+    --text-light: #9CA3AF;
+    --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+}
