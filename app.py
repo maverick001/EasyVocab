@@ -1779,21 +1779,25 @@ def get_category_count(category):
 @app.route("/api/quiz/next-word", methods=["GET"])
 def get_next_quiz_word():
     """
-    Get the next word for quiz (oldest updated word with review_count >= 1)
-
+    Get the next word for quiz.
+    
     Query Parameters:
         category: Filter by specific category (optional) (default: 'All')
-
+        mode: 'flashcard' or 'quiz' (default: 'flashcard')
+    
     Returns:
-        JSON response with word data
+        JSON response with word data. 
+        If mode='quiz', includes 'options' (list of 4 strings).
     """
     conn = None
     try:
         category = request.args.get("category", "All")
+        mode = request.args.get("mode", "flashcard")
+        
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Base query
+        # Base query for the target word
         query = """
             SELECT id, word, translation, example_sentence, review_count, category, next_review_date, srs_interval
             FROM words
@@ -1806,17 +1810,23 @@ def get_next_quiz_word():
             query += " AND category = %s"
             params.append(category)
 
-        # Add SRS logic: Prioritize overdue items (next_review_date <= NOW)
-        query += " AND (next_review_date <= NOW() OR next_review_date IS NULL)"
-
-        # Add ordering and limit
-        query += """
-            ORDER BY 
-                CASE WHEN next_review_date IS NULL THEN 1 ELSE 0 END, -- Null dates last
-                next_review_date ASC, -- Overdue first
-                updated_at ASC -- Tie breaker
-            LIMIT 1
-        """
+        if mode == 'quiz':
+            # In quiz mode, we want random practice regardless of SRS schedule
+            # since we don't update the schedule on completion
+            query += " ORDER BY RAND() LIMIT 1"
+        else:
+            # Flashcard mode: Strict SRS priority
+            # Add SRS logic: Prioritize overdue items (next_review_date <= NOW)
+            query += " AND (next_review_date <= NOW() OR next_review_date IS NULL)"
+            
+            # Add ordering and limit
+            query += """
+                ORDER BY 
+                    CASE WHEN next_review_date IS NULL THEN 1 ELSE 0 END, -- Null dates last
+                    next_review_date ASC, -- Overdue first
+                    updated_at ASC -- Tie breaker
+                LIMIT 1
+            """
 
         cursor.execute(query, params)
         word = cursor.fetchone()
@@ -1830,6 +1840,55 @@ def get_next_quiz_word():
                 }
             ), 404
 
+        # If mode is quiz, generate distractors
+        if mode == 'quiz':
+            # Get 3 distractors
+            # Try to get from same category first
+            distractor_query = """
+                SELECT translation FROM words 
+                WHERE id != %s 
+                AND translation != %s
+            """
+            distractor_params = [word['id'], word['translation']]
+            
+            if category and category != "All":
+                distractor_query += " AND category = %s"
+                distractor_params.append(category)
+                
+            distractor_query += " ORDER BY RAND() LIMIT 3"
+            
+            cursor.execute(distractor_query, distractor_params)
+            distractors = [row['translation'] for row in cursor.fetchall()]
+            
+            # If not enough, fetch from any category
+            if len(distractors) < 3:
+                needed = 3 - len(distractors)
+                
+                fallback_query = f"""
+                    SELECT translation FROM words 
+                    WHERE id != %s
+                    AND translation != %s
+                """
+                if distractors:
+                     fallback_query += f" AND translation NOT IN ({', '.join(['%s'] * len(distractors))})"
+                
+                fallback_query += " ORDER BY RAND() LIMIT %s"
+                
+                fallback_params = [word['id'], word['translation']] 
+                if distractors:
+                    fallback_params.extend(distractors)
+                fallback_params.append(needed)
+                
+                cursor.execute(fallback_query, fallback_params)
+                more_distractors = [row['translation'] for row in cursor.fetchall()]
+                distractors.extend(more_distractors)
+            
+            # Combine and shuffle
+            import random
+            options = distractors + [word['translation']]
+            random.shuffle(options)
+            word['options'] = options
+
         return jsonify({"success": True, "word": word})
 
     except Exception as e:
@@ -1842,12 +1901,13 @@ def get_next_quiz_word():
 @app.route("/api/quiz/result", methods=["POST"])
 def submit_quiz_result():
     """
-    Submit quiz result for a word
-
+    Submit quiz result for a word.
+    
     Request Body:
         {
             "word_id": 123,
-            "result": "remember" | "not_remember"
+            "result": "remember" | "not_remember" | "correct" | "incorrect",
+            "mode": "flashcard" | "quiz"  (default: "flashcard")
         }
     """
     conn = None
@@ -1861,99 +1921,92 @@ def submit_quiz_result():
 
         word_id = data["word_id"]
         result = data["result"]
-
-        if result not in ["remember", "not_remember"]:
-            return jsonify({"success": False, "error": "Invalid result value"}), 400
-
+        mode = data.get("mode", "flashcard")
+        
         conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
+        
+        # Helper for AEST date
+        AEST = timezone(timedelta(hours=10))
+        today_aest = datetime.now(AEST).strftime("%Y-%m-%d")
 
-        # Get current SRS state
-        cursor.execute(
-            """
-            SELECT review_count, srs_interval, srs_repetitions, srs_ease_factor 
-            FROM words WHERE id = %s
-        """,
-            (word_id,),
-        )
-        word = cursor.fetchone()
-
-        if not word:
-            return jsonify({"success": False, "error": "Word not found"}), 404
-
-        current_count = word["review_count"]
-
-        # SRS Algorithm (Simplified SM-2)
-        interval = word["srs_interval"] or 0
-        repetitions = word["srs_repetitions"] or 0
-        ease_factor = word["srs_ease_factor"] or 2.5
-
-        if result == "remember":
-            # Correct answer
-            if repetitions == 0:
-                interval = 1
-            elif repetitions == 1:
-                interval = 6
-            else:
-                interval = int(interval * ease_factor)
-
-            repetitions += 1
-            # Update review count (legacy metric: DECREMENT to reduce debt)
-            new_count = max(0, current_count - 1)
+        if mode == 'quiz':
+            # In Quiz Mode:
+            # 1. We do NOT update SRS / next_review_date
+            # 2. We DO update daily quiz_score if correct
+            
+            if result == 'correct':
+                # Increment quiz_score for today
+                 cursor.execute("""
+                    INSERT INTO daily_study_log (date, quiz_score)
+                    VALUES (%s, 1)
+                    ON DUPLICATE KEY UPDATE quiz_score = quiz_score + 1
+                """, (today_aest,))
+                 conn.commit()
+                 
+            return jsonify({"success": True, "message": "Quiz result recorded"})
 
         else:
-            # Incorrect answer
-            repetitions = 0
-            interval = 0
-            # Decrease ease factor slightly for difficult words (min 1.3)
-            ease_factor = max(1.3, ease_factor - 0.15)
-            # Legacy metric: INCREMENT to increase debt
-            new_count = current_count + 1
+            # Flashcard Mode (Existing Logic)
+            if result not in ["remember", "not_remember"]:
+                return jsonify({"success": False, "error": "Invalid result value for flashcard mode"}), 400
+            
+            cursor = conn.cursor(dictionary=True)
+            # Get current SRS state
+            cursor.execute(
+                "SELECT review_count, next_review_date, srs_interval FROM words WHERE id = %s",
+                (word_id,),
+            )
+            word = cursor.fetchone()
 
-        # Calculate next review date
-        if interval == 0:
-            # Re-queue immediately (or very short delay like 1 min, but for now just NOW)
-            next_review = datetime.now()
-        else:
-            next_review = datetime.now() + timedelta(days=interval)
+            if not word:
+                return jsonify({"success": False, "error": "Word not found"}), 404
 
-        # Update word with new SRS data
-        cursor.execute(
-            """
-            UPDATE words 
-            SET review_count = %s,
-                updated_at = CURRENT_TIMESTAMP,
-                last_reviewed = CURRENT_TIMESTAMP,
-                srs_interval = %s,
-                srs_repetitions = %s,
-                srs_ease_factor = %s,
-                next_review_date = %s
-            WHERE id = %s
-        """,
-            (new_count, interval, repetitions, ease_factor, next_review, word_id),
-        )
+            current_interval = word["srs_interval"]
 
-        conn.commit()
+            # Calculate new interval
+            if result == "remember":
+                if current_interval == 0:
+                    new_interval = 1
+                elif current_interval == 1:
+                    new_interval = 3
+                else:
+                    new_interval = int(current_interval * 2)  # Double the interval
+            else:  # not_remember
+                new_interval = 0  # Reset to 0 (daily review)
 
-        return jsonify(
-            {
-                "success": True,
-                "word_id": word_id,
-                "old_count": current_count,
-                "new_count": new_count,
-                "srs": {
-                    "interval": interval,
-                    "repetitions": repetitions,
-                    "next_review": next_review.isoformat(),
-                },
-            }
-        )
+            # Calculate next review date (AEST)
+            next_date = datetime.now(AEST) + timedelta(days=new_interval)
+
+            # Update DB
+            cursor.execute(
+                """
+                UPDATE words 
+                SET next_review_date = %s, srs_interval = %s, updated_at = NOW()
+                WHERE id = %s
+            """,
+                (next_date, new_interval, word_id),
+            )
+
+            # Increment daily counter
+            increment_daily_counter("reviewed", conn)
+
+            conn.commit()
+
+            return jsonify(
+                {
+                    "success": True,
+                    "new_interval": new_interval,
+                    "next_review_date": next_date.strftime("%Y-%m-%d %H:%M:%S"),
+                }
+            )
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
             conn.close()
+
 
 
 @app.route("/api/upload", methods=["POST"])
@@ -2221,8 +2274,73 @@ def create_app():
     return app
 
 
+@app.route("/api/quiz/stats", methods=["GET"])
+def get_quiz_stats():
+    """
+    Get quiz stats for the last 7 days.
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        query = """
+            SELECT date, quiz_score 
+            FROM daily_study_log 
+            ORDER BY date DESC 
+            LIMIT 7
+        """
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        
+        # Sort back to ascending for chart
+        rows.sort(key=lambda x: x['date'])
+        
+        # Format dates as strings
+        stats = []
+        for row in rows:
+            stats.append({
+                "date": row['date'].strftime("%Y-%m-%d"),
+                "score": row['quiz_score']
+            })
+            
+        return jsonify({"success": True, "stats": stats})
+        
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+def ensure_daily_score_column():
+    """
+    Ensure quiz_score column exists in daily_study_log table
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Check if column exists
+        cursor.execute("SHOW COLUMNS FROM daily_study_log LIKE 'quiz_score'")
+        if not cursor.fetchone():
+            print("  + Adding quiz_score column to daily_study_log...")
+            cursor.execute(
+                "ALTER TABLE daily_study_log ADD COLUMN quiz_score INT DEFAULT 0"
+            )
+            conn.commit()
+            print("[OK] Daily score column check completed")
+
+    except Exception as e:
+        print(f"[ERROR] Error checking daily score column: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+
 # ============================================
-# Main Entry Point
+# Main Execution
 # ============================================
 
 if __name__ == "__main__":
@@ -2234,6 +2352,8 @@ if __name__ == "__main__":
     ensure_word_history_table()
     ensure_image_file_column()
     ensure_srs_columns()
+    ensure_daily_score_column()
+
 
     print(f"[START] BKDict application starting on {platform.system()}...")
 

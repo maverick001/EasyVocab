@@ -34,6 +34,15 @@
             </div>
         </header>
 
+        <!-- Mode Toggle -->
+        <div class="quiz-mode-toggle">
+            <label class="switch">
+                <input type="checkbox" id="modeToggle">
+                <span class="slider round"></span>
+            </label>
+            <span id="modeLabel">Flashcard Mode</span>
+        </div>
+
         <!-- Main Quiz Area -->
         <div id="quizContainer" class="quiz-container">
 
@@ -58,22 +67,39 @@
                 <a href="/" class="btn btn-primary" style="margin-top: 1rem;">Back to Vocabulary</a>
             </div>
 
-            <!-- Quiz Card -->
+            <!-- Quiz Card (Shared for both modes) -->
             <div id="quizCard" class="quiz-card" style="display: none;">
                 <div id="wordDisplay" class="quiz-word"></div>
 
                 <div id="sentencesDisplay" class="quiz-sentences"></div>
 
-                <div id="translationDisplay" class="quiz-translation"></div>
-
-                <div id="actionButtons" class="quiz-actions">
-                    <button id="rememberBtn" class="btn btn-remember">Remember</button>
-                    <button id="notRememberBtn" class="btn btn-not-remember">Not Remember</button>
+                <!-- Flashcard Mode Elements -->
+                <div id="flashcardArea">
+                    <div id="translationDisplay" class="quiz-translation"></div>
+                    <div id="actionButtons" class="quiz-actions">
+                        <button id="rememberBtn" class="btn btn-remember">Remember</button>
+                        <button id="notRememberBtn" class="btn btn-not-remember">Not Remember</button>
+                    </div>
                 </div>
 
-                <button id="nextBtn" class="btn btn-next">Next Word →</button>
+                <!-- Quiz Mode Elements -->
+                <div id="quizArea" style="display: none; width: 100%;">
+                     <div id="choicesContainer" class="quiz-choices">
+                        <!-- Choices injected here -->
+                     </div>
+                </div>
+
+                <div id="feedbackArea" class="quiz-feedback" style="display: none; margin-top: 1rem; font-weight: bold;"></div>
+
+                <button id="nextBtn" class="btn btn-next" style="display: none;">Next Word →</button>
             </div>
 
+            <!-- Chart Section -->
+            <div id="chartContainer" class="quiz-chart-container" style="display: none; margin-top: 2rem; width: 100%; max-width: 600px;">
+                <h3>Daily Quiz Progress</h3>
+                <canvas id="quizChart"></canvas>
+            </div>
+            
             <!-- Exit Quiz Button -->
             <div style="display: flex; justify-content: flex-end; margin-top: 1.5rem;">
                 <a href="/" class="btn btn-secondary"
@@ -82,6 +108,9 @@
 
         </div>
     </div>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script src="{{ url_for('static', filename='js/quiz.js') }}"></script>
 </body>
