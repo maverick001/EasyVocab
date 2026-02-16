@@ -13,8 +13,7 @@
 <body>
     <div class="container">
         <!-- Header -->
-        <header class="quiz-header app-header"
-            style="margin-bottom: 2rem; padding: 1.5rem 2rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.8rem 1rem; background: rgba(255, 255, 255, 0.8);">
+        <header class="quiz-header app-header">
             <h1 class="app-title" style="margin: 0; font-size: 2.2rem; flex: 1 1 100%;">🎯 Vocabulary Review</h1>
 
             <div class="header-controls" style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; margin-left: auto;">
@@ -25,6 +24,14 @@
                     </select>
                 </div>
 
+                <!-- Simple Mode Toggle -->
+                <div class="quiz-mode-toggle" title="Toggle Quiz Mode">
+                    <label class="switch compact">
+                        <input type="checkbox" id="modeToggle">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+
                 <button id="themeToggle" class="theme-toggle" title="Toggle dark mode"
                     style="position: static; transform: none; padding: 0.8rem; border-radius: 8px;">
                     <span class="icon sun-icon">☀️</span>
@@ -33,15 +40,6 @@
 
             </div>
         </header>
-
-        <!-- Mode Toggle -->
-        <div class="quiz-mode-toggle">
-            <label class="switch">
-                <input type="checkbox" id="modeToggle">
-                <span class="slider round"></span>
-            </label>
-            <span id="modeLabel">Flashcard Mode</span>
-        </div>
 
         <!-- Main Quiz Area -->
         <div id="quizContainer" class="quiz-container">

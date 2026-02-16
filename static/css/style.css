@@ -2595,23 +2595,34 @@ body.dark-mode .word-image-large {
     background-color: var(--primary-dark);
 }
 
-/* Toggle Switch */
+/* Quiz Header (Aligned with Container) */
+.quiz-header {
+    max-width: 800px;
+    margin: 0 auto 2rem auto;
+    padding: 1.5rem 2rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 12px;
+    box-shadow: 0 4px 6px var(--shadow);
+}
+
+/* Toggle Switch (Simple & Compact) */
 .quiz-mode-toggle {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 20px;
-    background: var(--bg-card);
-    padding: 10px 20px;
-    border-radius: 20px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    justify-content: center;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
 }
 
 .switch {
   position: relative;
   display: inline-block;
-  width: 50px;
+  width: 44px;
   height: 24px;
 }
 
@@ -2635,20 +2646,20 @@ body.dark-mode .word-image-large {
 .slider:before {
   position: absolute;
   content: "";
-  height: 16px;
-  width: 16px;
-  left: 4px;
-  bottom: 4px;
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
   background-color: white;
   transition: .4s;
 }
 
 input:checked + .slider {
-  background-color: var(--primary-color);
+  background-color: var(--primary-dark);
 }
 
 input:checked + .slider:before {
-  transform: translateX(26px);
+  transform: translateX(20px);
 }
 
 .slider.round {

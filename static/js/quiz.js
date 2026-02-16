@@ -15,7 +15,6 @@ const quizEmpty = document.getElementById('quizEmpty');
 const quizCard = document.getElementById('quizCard');
 const categorySelect = document.getElementById('categorySelect');
 const modeToggle = document.getElementById('modeToggle');
-const modeLabel = document.getElementById('modeLabel');
 
 // Card Elements
 const wordDisplay = document.getElementById('wordDisplay');
@@ -64,7 +63,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Mode Toggle
     modeToggle.addEventListener('change', (e) => {
         currentMode = e.target.checked ? 'quiz' : 'flashcard';
-        modeLabel.textContent = currentMode === 'quiz' ? 'Multiple Choice Mode' : 'Flashcard Mode';
         
         // Setup UI for mode
         if (currentMode === 'quiz') {
