@@ -69,6 +69,20 @@
 .category-change-select,
 .theme-select {
     color: #1a1a2e;
+    background-color: #ffffff !important;
+}
+
+/* Fix: search result items have white background, so text must be dark */
+.search-result-word {
+    color: #1a1a2e;
+}
+
+.search-result-translation {
+    color: #555;
+}
+
+.search-result-meta {
+    color: #777;
 }
 
 /* Dark Mode Overrides */

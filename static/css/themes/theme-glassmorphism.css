@@ -68,6 +68,19 @@
     color: #1a1a2e;
 }
 
+/* Fix: search result items have white background, so text must be dark */
+.search-result-word {
+    color: #1a1a2e;
+}
+
+.search-result-translation {
+    color: #555;
+}
+
+.search-result-meta {
+    color: #777;
+}
+
 /* Fix: labels should match section-title color (--primary-dark) */
 .control-label,
 .action-label {
