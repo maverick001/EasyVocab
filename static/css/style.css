@@ -1164,6 +1164,7 @@ body {
     padding: var(--spacing-md);
     background: var(--bg-main);
     border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
     border-left: 4px solid var(--primary-blue);
     font-size: 1.1rem;
     line-height: 1.8;

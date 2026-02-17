@@ -117,3 +117,8 @@ body.dark-mode {
     background: var(--bg-hover);
     border-color: var(--primary-blue);
 }
+
+/* Remove horizontal line above navigation buttons */
+.navigation-buttons {
+    border-top: none;
+}
