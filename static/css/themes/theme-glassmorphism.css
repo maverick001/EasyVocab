@@ -68,6 +68,16 @@
     color: #1a1a2e;
 }
 
+body.dark-mode .category-select,
+body.dark-mode .sort-select,
+body.dark-mode .model-select,
+body.dark-mode .history-select,
+body.dark-mode .category-change-select,
+body.dark-mode .theme-select {
+    color: var(--text-primary);
+
+}
+
 /* Fix: search result items have white background, so text must be dark */
 .search-result-word {
     color: #1a1a2e;
@@ -113,6 +123,20 @@ body.dark-mode {
 .content-display {
     background: transparent;
     border-color: var(--border-color);
+    color: #1a1a2e;
+}
+
+body.dark-mode .content-display {
+    color: var(--text-primary);
+}
+
+/* Fix: sample sentences need dark text too */
+.sentence-item {
+    color: #1a1a2e;
+}
+
+body.dark-mode .sentence-item {
+    color: var(--text-primary);
 }
 
 .content-display.editable-field:hover {
