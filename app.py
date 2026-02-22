@@ -880,6 +880,7 @@ def get_word_history(word_id):
         cursor = conn.cursor(dictionary=True)
 
         # Get history records grouped by date (one record per day, latest from each day)
+        # Use AEST (UTC+10) for date grouping
         cursor.execute(
             """
             SELECT
@@ -888,7 +889,7 @@ def get_word_history(word_id):
                 translation,
                 example_sentence,
                 category,
-                DATE(modified_at) as modified_date,
+                DATE(DATE_ADD(modified_at, INTERVAL 10 HOUR)) as modified_date,
                 modification_type
             FROM word_history
             WHERE word_id = %s
@@ -896,7 +897,7 @@ def get_word_history(word_id):
                 SELECT MAX(id)
                 FROM word_history
                 WHERE word_id = %s
-                GROUP BY DATE(modified_at)
+                GROUP BY DATE(DATE_ADD(modified_at, INTERVAL 10 HOUR))
             )
             ORDER BY modified_date DESC
         """,
@@ -1057,7 +1058,7 @@ def update_word(word_id):
 
                     if last_sample_date != today:
                         shared_update_fields.append("review_count = review_count + 1")
-                        shared_update_fields.append("last_reviewed = NOW()")
+                        shared_update_fields.append("last_reviewed = DATE_ADD(NOW(), INTERVAL 10 HOUR)")
                         shared_update_fields.append(
                             "last_sample_review_date = CURDATE()"
                         )
@@ -1354,8 +1355,8 @@ def increment_review_counter(word_id):
             """
             UPDATE words
             SET review_count = review_count + 1,
-                last_reviewed = CURRENT_TIMESTAMP,
-                updated_at = CURRENT_TIMESTAMP
+                last_reviewed = DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 10 HOUR),
+                updated_at = DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 10 HOUR)
             WHERE id = %s
         """,
             (word_id,),
@@ -1510,7 +1511,8 @@ def get_daily_count():
     """
     Get today's word review count from the database
     This ensures the daily counter is consistent across all browsers
-
+    Uses AEST (UTC+10) to match increment_daily_counter logic
+    
     Returns:
         JSON response:
         {
@@ -1523,11 +1525,16 @@ def get_daily_count():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
+        # Use AEST timezone (UTC+10) for consistency
+        AEST = timezone(timedelta(hours=10))
+        today_aest = datetime.now(AEST).strftime("%Y-%m-%d")
+
         cursor.execute("""
             SELECT review_count 
             FROM daily_study_log 
-            WHERE date = CURDATE()
-        """)
+            WHERE date = %s
+        """, (today_aest,))
+        
         result = cursor.fetchone()
 
         count = result["review_count"] if result else 0
