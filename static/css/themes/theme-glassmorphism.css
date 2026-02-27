@@ -122,7 +122,7 @@ body.dark-mode {
 /* Remove background highlight from content display */
 .content-display {
     background: transparent;
-    border-color: var(--border-color);
+    border-color: var(--primary-blue);
     color: #1a1a2e;
 }
 
@@ -142,4 +142,19 @@ body.dark-mode .sentence-item {
 .content-display.editable-field:hover {
     background: var(--bg-hover);
     border-color: var(--primary-blue);
+}
+
+/* Make 'No sample sentences yet...' text blue */
+#sampleDisplay .empty-hint {
+    color: var(--primary-blue);
+}
+
+body.dark-mode #sampleDisplay .empty-hint {
+    color: var(--primary-light);
+}
+
+/* Make the cancelSampleBtn show a light green background */
+#cancelSampleBtn {
+    background-color: #90EE90;
+    color: #1a1a2e;
 }
