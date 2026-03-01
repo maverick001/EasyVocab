@@ -1800,13 +1800,14 @@ def get_next_quiz_word():
     try:
         category = request.args.get("category", "All")
         mode = request.args.get("mode", "flashcard")
+        image_only = request.args.get("image_only", "false").lower() == "true"
         
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
         # Base query for the target word
         query = """
-            SELECT id, word, translation, example_sentence, review_count, category, next_review_date, srs_interval
+            SELECT id, word, translation, example_sentence, review_count, category, next_review_date, srs_interval, image_file
             FROM words
             WHERE review_count >= 1
         """
@@ -1816,6 +1817,10 @@ def get_next_quiz_word():
         if category and category != "All":
             query += " AND category = %s"
             params.append(category)
+
+        # Add image_only filter
+        if image_only:
+            query += " AND image_file IS NOT NULL AND image_file != ''"
 
         if mode == 'quiz':
             # In quiz mode, we want random practice regardless of SRS schedule

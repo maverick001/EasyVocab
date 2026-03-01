@@ -32,6 +32,15 @@
                     </label>
                 </div>
 
+                <!-- Image Only Toggle -->
+                <div class="quiz-mode-toggle" title="Images Only" style="display: flex; align-items: center; gap: 0.5rem; background: var(--surface, #fff); padding: 0.5rem 0.8rem; border-radius: 8px; border: 1px solid var(--border, #e2e8f0); box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));">
+                    <span style="font-size: 0.9rem; font-weight: 500;">🖼️ Images Only</span>
+                    <label class="switch compact" style="margin: 0;">
+                        <input type="checkbox" id="imageOnlyToggle">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+
                 <button id="themeToggle" class="theme-toggle" title="Toggle dark mode"
                     style="position: static; transform: none; padding: 0.8rem; border-radius: 8px;">
                     <span class="icon sun-icon">☀️</span>
@@ -90,6 +99,11 @@
                 <div id="feedbackArea" class="quiz-feedback" style="display: none; margin-top: 1rem; font-weight: bold;"></div>
 
                 <button id="nextBtn" class="btn btn-next" style="display: none;">Next Word →</button>
+            </div>
+
+            <!-- Image Container -->
+            <div id="quizImageContainer" style="display: none; margin-top: 1.5rem; text-align: center; width: 100%; max-width: 600px; background: var(--surface, #fff); border-radius: 12px; padding: 1rem; border: 1px solid var(--border, #e2e8f0); box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));">
+                <img id="quizImage" src="" alt="Word Image" style="max-width: 100%; max-height: 250px; border-radius: 8px; object-fit: contain;">
             </div>
 
             <!-- Chart Section -->

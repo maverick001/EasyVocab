@@ -15,6 +15,7 @@ const quizEmpty = document.getElementById('quizEmpty');
 const quizCard = document.getElementById('quizCard');
 const categorySelect = document.getElementById('categorySelect');
 const modeToggle = document.getElementById('modeToggle');
+const imageOnlyToggle = document.getElementById('imageOnlyToggle');
 
 // Card Elements
 const wordDisplay = document.getElementById('wordDisplay');
@@ -28,6 +29,8 @@ const quizArea = document.getElementById('quizArea');
 const choicesContainer = document.getElementById('choicesContainer');
 const feedbackArea = document.getElementById('feedbackArea');
 const chartContainer = document.getElementById('chartContainer');
+const quizImageContainer = document.getElementById('quizImageContainer');
+const quizImage = document.getElementById('quizImage');
 
 // Buttons
 const rememberBtn = document.getElementById('rememberBtn');
@@ -93,6 +96,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     categorySelect.addEventListener('change', () => {
         loadNextWord();
     });
+
+    // Image Only Toggle
+    if (imageOnlyToggle) {
+        imageOnlyToggle.addEventListener('change', () => {
+            loadNextWord();
+        });
+    }
 });
 
 /**
@@ -129,7 +139,8 @@ async function loadNextWord() {
         resetCard();
 
         const category = categorySelect.value;
-        const response = await fetch(`/api/quiz/next-word?category=${encodeURIComponent(category)}&mode=${currentMode}`);
+        const imageOnly = imageOnlyToggle ? imageOnlyToggle.checked : false;
+        const response = await fetch(`/api/quiz/next-word?category=${encodeURIComponent(category)}&mode=${currentMode}&image_only=${imageOnly}`);
         const data = await response.json();
 
         if (response.status === 404) {
@@ -232,6 +243,7 @@ function handleChoiceSelection(btn, selectedText) {
     feedbackArea.style.display = 'block';
     nextBtn.style.display = 'block';
     nextBtn.focus();
+    showWordImage();
 }
 
 /**
@@ -245,6 +257,7 @@ async function handleResult(result) {
         actionButtons.style.display = 'none';
         nextBtn.style.display = 'block';
         nextBtn.focus(); 
+        showWordImage();
 
         await submitResult(result);
 
@@ -292,6 +305,23 @@ function resetCard() {
     sentencesDisplay.innerHTML = '';
     translationDisplay.textContent = '';
     choicesContainer.innerHTML = '';
+    
+    if (quizImageContainer) {
+        quizImageContainer.style.display = 'none';
+        quizImage.src = '';
+    }
+}
+
+/**
+ * Show word image if available
+ */
+function showWordImage() {
+    if (currentWord && currentWord.image_file && quizImageContainer && quizImage) {
+        quizImage.src = `/static/images/word_images/${currentWord.image_file}`;
+        quizImageContainer.style.display = 'block';
+        // Smooth scroll to the next button to ensure it and the image are visible
+        nextBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
 }
 
 /**
