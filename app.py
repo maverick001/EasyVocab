@@ -382,7 +382,9 @@ def increment_daily_counter(cursor, word_id=None):
                 (word_id, today_aest),
             )
 
-            if cursor.fetchone():
+            results = cursor.fetchall()
+
+            if results:
                 # Already counted today
                 return False
 
@@ -734,6 +736,9 @@ def add_word():
         )
 
         existing_word = cursor.fetchone()
+        
+        # Consume any remaining results to avoid 'Unread result found' error
+        cursor.fetchall()
 
         if existing_word:
             return jsonify(
@@ -778,6 +783,11 @@ def add_word():
         # Update category counts
         try:
             cursor.callproc("update_category_counts")
+
+            # Consume any result sets from the stored procedure
+            # to prevent 'Unread result found' when connection closes
+            for result in cursor.stored_results():
+                result.fetchall()
 
             # Increment daily review counter for the new word (AEST timezone)
             increment_daily_counter(cursor, new_word_id)
