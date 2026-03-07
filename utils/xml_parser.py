@@ -180,37 +180,47 @@ class VocabularyXMLParser:
 
         cursor = db_connection.cursor()
 
-        # SQL for inserting words (ignore duplicates based on unique constraint)
-        # On duplicate: update timestamp to mark it was seen, but keep existing data
+        # Get all existing words from the database to prevent cross-category duplicates
+        cursor.execute("SELECT DISTINCT word FROM words")
+        existing_words = {row[0] for row in cursor.fetchall()}
+
+        # SQL for inserting words
         insert_sql = """
             INSERT INTO words (word, translation, category, example_sentence, review_count)
             VALUES (%s, %s, %s, NULL, 1)
-            ON DUPLICATE KEY UPDATE updated_at=updated_at
         """
 
         # Process in batches for better performance
         for i in range(0, len(words_data), batch_size):
             batch = words_data[i:i + batch_size]
             batch_values = []
+            skipped_in_batch = 0
 
             for word_data in batch:
-                batch_values.append((
-                    word_data['word'],
-                    word_data['translation'],
-                    word_data['category']
-                ))
+                word_text = word_data['word']
+                if word_text not in existing_words:
+                    batch_values.append((
+                        word_text,
+                        word_data['translation'],
+                        word_data['category']
+                    ))
+                    # Add to our local set to prevent duplicates within the XML file itself
+                    existing_words.add(word_text)
+                else:
+                    skipped_in_batch += 1
+
+            if not batch_values:
+                stats['skipped_duplicates'] += skipped_in_batch
+                continue
 
             try:
                 # Execute batch insert
-                rows_before = self._get_word_count(cursor)
                 cursor.executemany(insert_sql, batch_values)
                 db_connection.commit()
-                rows_after = self._get_word_count(cursor)
 
                 # Calculate how many were actually added
-                added_in_batch = rows_after - rows_before
-                stats['added'] += added_in_batch
-                stats['skipped_duplicates'] += len(batch) - added_in_batch
+                stats['added'] += len(batch_values)
+                stats['skipped_duplicates'] += skipped_in_batch
 
             except Exception as e:
                 db_connection.rollback()

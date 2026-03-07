@@ -97,16 +97,29 @@ def main():
                 (cat,)
             )
         
-        # 2. Insert words
+        # Get all existing words from the database
+        cursor.execute("SELECT DISTINCT word FROM words")
+        existing_words = {row[0] for row in cursor.fetchall()}
+        
+        # 2. Insert words (only those that don't already exist globally)
         batch_size = 1000
         total_inserted = 0
+        skipped_count = 0
         
         insert_query = """
         INSERT IGNORE INTO words (word, translation, category) 
         VALUES (%s, %s, %s)
         """
         
-        word_data = [(w['word'], w['translation'], w['category']) for w in words]
+        word_data = []
+        for w in words:
+            if w['word'] not in existing_words:
+                word_data.append((w['word'], w['translation'], w['category']))
+                existing_words.add(w['word'])  # add to our local set to prevent duplicates within the XML file itself
+            else:
+                skipped_count += 1
+                
+        print(f"Skipped {skipped_count} words that already exist in the database.")
         
         for i in range(0, len(word_data), batch_size):
             batch = word_data[i:i + batch_size]
