@@ -629,6 +629,68 @@ body {
     color: white;
 }
 
+.btn-edit-word {
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0 0.5rem;
+    color: var(--text-light);
+    transition: all 0.2s;
+}
+
+.btn-edit-word:hover {
+    color: var(--primary-blue);
+    transform: scale(1.1);
+}
+
+.btn-ipa-word {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.2rem 0.5rem;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+    height: 28px;
+    margin: 0 0.2rem;
+}
+
+.btn-ipa-word:hover {
+    color: var(--primary-blue);
+    border-color: var(--primary-blue);
+}
+
+.btn-ipa-has-content {
+    background: limegreen !important;
+    border: 2px solid gold !important;
+    color: white !important;
+}
+
+.ipa-dropdown {
+    position: absolute;
+    top: 50px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 0.5rem;
+    z-index: 100;
+    display: none;
+}
+
+.ipa-input {
+    padding: 0.4rem;
+    font-size: 0.9rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    width: 150px;
+    background: var(--bg-main);
+    color: var(--text-primary);
+}
+
 .btn-save {
     background: linear-gradient(135deg, var(--success), #46B356);
     color: white;

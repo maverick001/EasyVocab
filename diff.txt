@@ -1,0 +1,343 @@
+﻿diff --git a/app.py b/app.py
+index 65b9b1e..37247c4 100644
+--- a/app.py
++++ b/app.py
+@@ -254,6 +254,43 @@ def ensure_image_file_column():
+             connection.close()
+ 
+ 
++def ensure_ipa_column():
++    """
++    Ensure ipa column exists in words table
++    """
++    connection = None
++    try:
++        connection = get_db_connection()
++        cursor = connection.cursor()
++
++        # Check if column exists
++        cursor.execute(
++            """
++            SELECT COUNT(*)
++            FROM information_schema.COLUMNS
++            WHERE TABLE_SCHEMA = %s
++            AND TABLE_NAME = 'words'
++            AND COLUMN_NAME = 'ipa'
++        """,
++            (app.config["DB_NAME"],),
++        )
++
++        if cursor.fetchone()[0] == 0:
++            print("Adding ipa column to words table...")
++            cursor.execute(
++                "ALTER TABLE words ADD COLUMN ipa VARCHAR(255) DEFAULT NULL"
++            )
++            connection.commit()
++            print(f"[OK] IPA column check completed")
++
++        cursor.close()
++    except mysql.connector.Error as err:
++        print(f"[ERROR] Error ensuring ipa column: {err}")
++    finally:
++        if connection:
++            connection.close()
++
++
+ def ensure_srs_columns():
+     """
+     Ensure SRS (Spaced Repetition System) columns exist in words table
+@@ -649,7 +686,7 @@ def get_word_by_category(category=None):
+         # Get the word at the specified index
+         if category == "All":
+             query = f"""
+-                SELECT id, word, translation, category, example_sentence, image_file,
++                SELECT id, word, translation, category, example_sentence, image_file, ipa,
+                        review_count, last_reviewed, created_at, updated_at
+                 FROM words
+                 {order_clause}
+@@ -658,7 +695,7 @@ def get_word_by_category(category=None):
+             cursor.execute(query, (index,))
+         else:
+             query = f"""
+-                SELECT id, word, translation, category, example_sentence, image_file,
++                SELECT id, word, translation, category, example_sentence, image_file, ipa,
+                        review_count, last_reviewed, created_at, updated_at
+                 FROM words
+                 WHERE category = %s
+@@ -1061,6 +1098,10 @@ def update_word(word_id):
+                 shared_update_fields.append("example_sentence = %s")
+                 shared_params.append(data["example_sentence"])
+ 
++            if "ipa" in data:
++                shared_update_fields.append("ipa = %s")
++                shared_params.append(data["ipa"])
++
+                 # Check if sample sentence actually changed to trigger review increment
+                 if new_sample.strip() != current_sample.strip():
+                     # Check daily cap
+@@ -1097,7 +1138,7 @@ def update_word(word_id):
+         # Get the updated word data for history record
+         cursor.execute(
+             """
+-            SELECT word, translation, example_sentence, category
++            SELECT word, translation, example_sentence, category, ipa
+             FROM words
+             WHERE id = %s
+         """,
+@@ -2293,6 +2334,8 @@ def create_app():
+     """
+     Config.init_app(app)
+     init_db_pool()
++    ensure_image_file_column()
++    ensure_ipa_column()
+     return app
+ 
+ 
+@@ -2373,6 +2416,7 @@ if __name__ == "__main__":
+     init_db_pool()
+     ensure_word_history_table()
+     ensure_image_file_column()
++    ensure_ipa_column()
+     ensure_srs_columns()
+     ensure_daily_score_column()
+ 
+diff --git a/static/css/style.css b/static/css/style.css
+index 670ca7b..9c261c9 100644
+--- a/static/css/style.css
++++ b/static/css/style.css
+@@ -629,6 +629,68 @@ body {
+     color: white;
+ }
+ 
++.btn-edit-word {
++    background: transparent;
++    border: none;
++    font-size: 1.2rem;
++    cursor: pointer;
++    padding: 0 0.5rem;
++    color: var(--text-light);
++    transition: all 0.2s;
++}
++
++.btn-edit-word:hover {
++    color: var(--primary-blue);
++    transform: scale(1.1);
++}
++
++.btn-ipa-word {
++    background: transparent;
++    border: 1px solid var(--border-color);
++    border-radius: var(--radius-sm);
++    font-size: 0.85rem;
++    font-weight: 600;
++    cursor: pointer;
++    padding: 0.2rem 0.5rem;
++    color: var(--text-secondary);
++    transition: all 0.2s;
++    height: 28px;
++    margin: 0 0.2rem;
++}
++
++.btn-ipa-word:hover {
++    color: var(--primary-blue);
++    border-color: var(--primary-blue);
++}
++
++.btn-ipa-has-content {
++    background: limegreen !important;
++    border: 2px solid gold !important;
++    color: white !important;
++}
++
++.ipa-dropdown {
++    position: absolute;
++    top: 50px;
++    background: var(--bg-card);
++    border: 1px solid var(--border-color);
++    border-radius: var(--radius-sm);
++    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
++    padding: 0.5rem;
++    z-index: 100;
++    display: none;
++}
++
++.ipa-input {
++    padding: 0.4rem;
++    font-size: 0.9rem;
++    border: 1px solid var(--border-color);
++    border-radius: var(--radius-sm);
++    width: 150px;
++    background: var(--bg-main);
++    color: var(--text-primary);
++}
++
+ .btn-save {
+     background: linear-gradient(135deg, var(--success), #46B356);
+     color: white;
+diff --git a/static/js/app.js b/static/js/app.js
+index 61ea64a..371afe1 100644
+--- a/static/js/app.js
++++ b/static/js/app.js
+@@ -300,6 +300,12 @@ function cacheDOMElements() {
+     Elements.searchInput = document.getElementById('searchInput');
+     Elements.searchBtn = document.getElementById('searchBtn');
+     Elements.clearSearchBtn = document.getElementById('clearSearchBtn');
++
++    // IPA Elements
++    Elements.ipaWordBtn = document.getElementById('ipaWordBtn');
++    Elements.ipaEditDropdown = document.getElementById('ipaEditDropdown');
++    Elements.ipaInput = document.getElementById('ipaInput');
++
+     Elements.searchResults = document.getElementById('searchResults');
+     Elements.searchResultsCount = document.getElementById('searchResultsCount');
+     Elements.searchResultsList = document.getElementById('searchResultsList');
+@@ -420,6 +426,19 @@ function setupEventListeners() {
+         }
+     });
+ 
++    // IPA Events
++    Elements.ipaWordBtn.addEventListener('click', toggleIpaDropdown);
++    Elements.ipaInput.addEventListener('keypress', (e) => {
++        if (e.key === 'Enter') saveIpa();
++    });
++    // Close dropdown when clicking outside
++    document.addEventListener('click', (e) => {
++        if (Elements.ipaEditDropdown && Elements.ipaEditDropdown.style.display === 'block' &&
++            !Elements.ipaWordBtn.contains(e.target) && !Elements.ipaEditDropdown.contains(e.target)) {
++            Elements.ipaEditDropdown.style.display = 'none';
++        }
++    });
++
+     // History functionality
+     Elements.historySelect.addEventListener('change', handleHistoryChange);
+ 
+@@ -793,6 +812,10 @@ async function updateWord(wordId, updates) {
+                 AppState.currentWord.image_file = updates.image_file;
+                 updateImageButtonState(updates.image_file);
+             }
++            if ('ipa' in updates) {
++                AppState.currentWord.ipa = updates.ipa;
++                // No direct display element, but button state might change
++            }
+ 
+             // Reload history after update
+             loadWordHistory(AppState.currentWord.id);
+@@ -906,9 +929,20 @@ function displayWord(wordData) {
+     Elements.welcomeMessage.style.display = 'none';
+     setHeaderControlsVisible(true);
+ 
+-    // Display word
++    // Set word content
+     Elements.wordDisplay.textContent = wordData.word;
+ 
++    // Check if IPA exists and update button styling
++    if (wordData.ipa && wordData.ipa.trim() !== '') {
++        Elements.ipaWordBtn.classList.add('btn-ipa-has-content');
++        Elements.ipaWordBtn.title = `IPA: ${wordData.ipa}`;
++        Elements.ipaInput.value = wordData.ipa;
++    } else {
++        Elements.ipaWordBtn.classList.remove('btn-ipa-has-content');
++        Elements.ipaWordBtn.title = "Add IPA";
++        Elements.ipaInput.value = '';
++    }
++
+     // Display review count
+     const reviewCount = wordData.review_count || 0;
+     Elements.reviewCount.textContent = reviewCount;
+@@ -1137,6 +1171,53 @@ async function saveSample() {
+     }
+ }
+ 
++/**
++ * Toggle the visibility of the IPA dropdown
++ */
++function toggleIpaDropdown() {
++    const isVisible = Elements.ipaEditDropdown.style.display === 'block';
++    
++    // Position dropdown below the button dynamically via CSS or adjusting here if needed.
++    // CSS handles top offset currently.
++    Elements.ipaEditDropdown.style.display = isVisible ? 'none' : 'block';
++    
++    if (!isVisible) {
++        // Automatically fetch current ipa value to input
++        Elements.ipaInput.value = AppState.currentWord?.ipa || '';
++        Elements.ipaInput.focus();
++    }
++}
++
++/**
++ * Save IPA changes
++ */
++async function saveIpa() {
++    if (!AppState.currentWord) return;
++
++    const newIpa = Elements.ipaInput.value.trim();
++
++    const success = await updateWord(AppState.currentWord.id, {
++        ipa: newIpa
++    });
++
++    if (success) {
++        // Hide dropdown
++        Elements.ipaEditDropdown.style.display = 'none';
++        
++        // Update local state
++        AppState.currentWord.ipa = newIpa;
++        
++        // Update styling
++        if (newIpa) {
++            Elements.ipaWordBtn.classList.add('btn-ipa-has-content');
++            Elements.ipaWordBtn.title = `IPA: ${newIpa}`;
++        } else {
++            Elements.ipaWordBtn.classList.remove('btn-ipa-has-content');
++            Elements.ipaWordBtn.title = "Add IPA";
++        }
++    }
++}
++
+ /**
+  * Generate sample sentence using Ollama AI
+  */
+@@ -1406,7 +1487,21 @@ async function navigateToExistingWord(category, wordId) {
+             AppState.currentWord = data.word;
+ 
+             // Display the word using existing displayWord logic
++            // Set word content
+             Elements.wordDisplay.textContent = data.word.word;
++
++            // Check if IPA exists and update button styling
++            if (data.word.ipa && data.word.ipa.trim() !== '') {
++                Elements.ipaWordBtn.classList.add('btn-ipa-has-content');
++                Elements.ipaWordBtn.title = `IPA: ${data.word.ipa}`;
++                Elements.ipaInput.value = data.word.ipa;
++            } else {
++                Elements.ipaWordBtn.classList.remove('btn-ipa-has-content');
++                Elements.ipaWordBtn.title = "Add IPA";
++                Elements.ipaInput.value = '';
++            }
++
++            // Set translation content - preserve formatting
+             Elements.translationDisplay.textContent = data.word.translation || '';
+             displaySampleSentences(data.word.example_sentence);
+             Elements.reviewCount.textContent = data.word.review_count || 0;
+diff --git a/templates/index.html b/templates/index.html
+index e32a9b6..c667ba4 100644
+--- a/templates/index.html
++++ b/templates/index.html
+@@ -143,11 +143,16 @@
+                     <div id="wordDisplayContainer">
+                         <h2 id="wordDisplay" class="word-display">Loading...</h2>
+                         <button id="editWordBtn" class="btn btn-edit-word" title="Edit word">Γ£Å∩╕Å</button>
++                        <button id="ipaWordBtn" class="btn btn-ipa-word" title="Edit IPA">IPA</button>
+                         <!-- Review Counter Badge -->
+                         <div id="reviewCounter" class="review-counter-badge" title="Click to mark as reviewed">
+                             <span id="reviewCount">0</span>
+                         </div>
+                     </div>
++                    
++                    <div id="ipaEditDropdown" class="ipa-dropdown" style="display: none;">
++                        <input type="text" id="ipaInput" class="ipa-input" placeholder="Enter IPA..." />
++                    </div>
+                     <div id="wordEdit" class="word-edit" style="display: none;">
+                         <input type="text" id="wordInput" class="word-input" placeholder="Edit word..." />
+                         <div class="edit-actions-inline">

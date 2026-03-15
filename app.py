@@ -254,6 +254,43 @@ def ensure_image_file_column():
             connection.close()
 
 
+def ensure_ipa_column():
+    """
+    Ensure ipa column exists in words table
+    """
+    connection = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        # Check if column exists
+        cursor.execute(
+            """
+            SELECT COUNT(*)
+            FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = %s
+            AND TABLE_NAME = 'words'
+            AND COLUMN_NAME = 'ipa'
+        """,
+            (app.config["DB_NAME"],),
+        )
+
+        if cursor.fetchone()[0] == 0:
+            print("Adding ipa column to words table...")
+            cursor.execute(
+                "ALTER TABLE words ADD COLUMN ipa VARCHAR(255) DEFAULT NULL"
+            )
+            connection.commit()
+            print(f"[OK] IPA column check completed")
+
+        cursor.close()
+    except mysql.connector.Error as err:
+        print(f"[ERROR] Error ensuring ipa column: {err}")
+    finally:
+        if connection:
+            connection.close()
+
+
 def ensure_srs_columns():
     """
     Ensure SRS (Spaced Repetition System) columns exist in words table
@@ -649,7 +686,7 @@ def get_word_by_category(category=None):
         # Get the word at the specified index
         if category == "All":
             query = f"""
-                SELECT id, word, translation, category, example_sentence, image_file,
+                SELECT id, word, translation, category, example_sentence, image_file, ipa,
                        review_count, last_reviewed, created_at, updated_at
                 FROM words
                 {order_clause}
@@ -658,7 +695,7 @@ def get_word_by_category(category=None):
             cursor.execute(query, (index,))
         else:
             query = f"""
-                SELECT id, word, translation, category, example_sentence, image_file,
+                SELECT id, word, translation, category, example_sentence, image_file, ipa,
                        review_count, last_reviewed, created_at, updated_at
                 FROM words
                 WHERE category = %s
@@ -846,7 +883,7 @@ def search_words():
         # Prioritize matches in 'word' column over 'translation' column
         cursor.execute(
             """
-            SELECT id, word, translation, category, review_count, example_sentence
+            SELECT id, word, translation, category, review_count, example_sentence, ipa
             FROM words
             WHERE word LIKE %s OR translation LIKE %s
             ORDER BY 
@@ -950,7 +987,7 @@ def get_word_details(word_id):
         # Get the word details
         cursor.execute(
             """
-            SELECT id, word, translation, example_sentence, category, review_count, last_reviewed, image_file, created_at, updated_at
+            SELECT id, word, translation, example_sentence, category, review_count, last_reviewed, image_file, created_at, updated_at, ipa
             FROM words
             WHERE id = %s
         """,
@@ -1061,6 +1098,10 @@ def update_word(word_id):
                 shared_update_fields.append("example_sentence = %s")
                 shared_params.append(data["example_sentence"])
 
+            if "ipa" in data:
+                shared_update_fields.append("ipa = %s")
+                shared_params.append(data["ipa"])
+
                 # Check if sample sentence actually changed to trigger review increment
                 if new_sample.strip() != current_sample.strip():
                     # Check daily cap
@@ -1097,7 +1138,7 @@ def update_word(word_id):
         # Get the updated word data for history record
         cursor.execute(
             """
-            SELECT word, translation, example_sentence, category
+            SELECT word, translation, example_sentence, category, ipa
             FROM words
             WHERE id = %s
         """,
@@ -1817,7 +1858,7 @@ def get_next_quiz_word():
 
         # Base query for the target word
         query = """
-            SELECT id, word, translation, example_sentence, review_count, category, next_review_date, srs_interval, image_file
+            SELECT id, word, translation, example_sentence, review_count, category, next_review_date, srs_interval, image_file, ipa
             FROM words
             WHERE review_count >= 1
         """
@@ -2293,6 +2334,8 @@ def create_app():
     """
     Config.init_app(app)
     init_db_pool()
+    ensure_image_file_column()
+    ensure_ipa_column()
     return app
 
 
@@ -2373,6 +2416,7 @@ if __name__ == "__main__":
     init_db_pool()
     ensure_word_history_table()
     ensure_image_file_column()
+    ensure_ipa_column()
     ensure_srs_columns()
     ensure_daily_score_column()
 

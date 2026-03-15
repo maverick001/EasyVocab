@@ -300,6 +300,12 @@ function cacheDOMElements() {
     Elements.searchInput = document.getElementById('searchInput');
     Elements.searchBtn = document.getElementById('searchBtn');
     Elements.clearSearchBtn = document.getElementById('clearSearchBtn');
+
+    // IPA Elements
+    Elements.ipaWordBtn = document.getElementById('ipaWordBtn');
+    Elements.ipaEditDropdown = document.getElementById('ipaEditDropdown');
+    Elements.ipaInput = document.getElementById('ipaInput');
+
     Elements.searchResults = document.getElementById('searchResults');
     Elements.searchResultsCount = document.getElementById('searchResultsCount');
     Elements.searchResultsList = document.getElementById('searchResultsList');
@@ -417,6 +423,19 @@ function setupEventListeners() {
     Elements.searchInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             performSearch();
+        }
+    });
+
+    // IPA Events
+    Elements.ipaWordBtn.addEventListener('click', toggleIpaDropdown);
+    Elements.ipaInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') saveIpa();
+    });
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (Elements.ipaEditDropdown && Elements.ipaEditDropdown.style.display === 'block' &&
+            !Elements.ipaWordBtn.contains(e.target) && !Elements.ipaEditDropdown.contains(e.target)) {
+            Elements.ipaEditDropdown.style.display = 'none';
         }
     });
 
@@ -793,6 +812,10 @@ async function updateWord(wordId, updates) {
                 AppState.currentWord.image_file = updates.image_file;
                 updateImageButtonState(updates.image_file);
             }
+            if ('ipa' in updates) {
+                AppState.currentWord.ipa = updates.ipa;
+                // No direct display element, but button state might change
+            }
 
             // Reload history after update
             loadWordHistory(AppState.currentWord.id);
@@ -906,8 +929,19 @@ function displayWord(wordData) {
     Elements.welcomeMessage.style.display = 'none';
     setHeaderControlsVisible(true);
 
-    // Display word
+    // Set word content
     Elements.wordDisplay.textContent = wordData.word;
+
+    // Check if IPA exists and update button styling
+    if (wordData.ipa && wordData.ipa.trim() !== '') {
+        Elements.ipaWordBtn.classList.add('btn-ipa-has-content');
+        Elements.ipaWordBtn.title = `IPA: ${wordData.ipa}`;
+        Elements.ipaInput.value = wordData.ipa;
+    } else {
+        Elements.ipaWordBtn.classList.remove('btn-ipa-has-content');
+        Elements.ipaWordBtn.title = "Add IPA";
+        Elements.ipaInput.value = '';
+    }
 
     // Display review count
     const reviewCount = wordData.review_count || 0;
@@ -1134,6 +1168,53 @@ async function saveSample() {
         toggleEditMode('sample', false);
         // Increment daily progress counter (max once per word per day)
         incrementDailyCounter(AppState.currentWord.id);
+    }
+}
+
+/**
+ * Toggle the visibility of the IPA dropdown
+ */
+function toggleIpaDropdown() {
+    const isVisible = Elements.ipaEditDropdown.style.display === 'block';
+    
+    // Position dropdown below the button dynamically via CSS or adjusting here if needed.
+    // CSS handles top offset currently.
+    Elements.ipaEditDropdown.style.display = isVisible ? 'none' : 'block';
+    
+    if (!isVisible) {
+        // Automatically fetch current ipa value to input
+        Elements.ipaInput.value = AppState.currentWord?.ipa || '';
+        Elements.ipaInput.focus();
+    }
+}
+
+/**
+ * Save IPA changes
+ */
+async function saveIpa() {
+    if (!AppState.currentWord) return;
+
+    const newIpa = Elements.ipaInput.value.trim();
+
+    const success = await updateWord(AppState.currentWord.id, {
+        ipa: newIpa
+    });
+
+    if (success) {
+        // Hide dropdown
+        Elements.ipaEditDropdown.style.display = 'none';
+        
+        // Update local state
+        AppState.currentWord.ipa = newIpa;
+        
+        // Update styling
+        if (newIpa) {
+            Elements.ipaWordBtn.classList.add('btn-ipa-has-content');
+            Elements.ipaWordBtn.title = `IPA: ${newIpa}`;
+        } else {
+            Elements.ipaWordBtn.classList.remove('btn-ipa-has-content');
+            Elements.ipaWordBtn.title = "Add IPA";
+        }
     }
 }
 
@@ -1406,7 +1487,21 @@ async function navigateToExistingWord(category, wordId) {
             AppState.currentWord = data.word;
 
             // Display the word using existing displayWord logic
+            // Set word content
             Elements.wordDisplay.textContent = data.word.word;
+
+            // Check if IPA exists and update button styling
+            if (data.word.ipa && data.word.ipa.trim() !== '') {
+                Elements.ipaWordBtn.classList.add('btn-ipa-has-content');
+                Elements.ipaWordBtn.title = `IPA: ${data.word.ipa}`;
+                Elements.ipaInput.value = data.word.ipa;
+            } else {
+                Elements.ipaWordBtn.classList.remove('btn-ipa-has-content');
+                Elements.ipaWordBtn.title = "Add IPA";
+                Elements.ipaInput.value = '';
+            }
+
+            // Set translation content - preserve formatting
             Elements.translationDisplay.textContent = data.word.translation || '';
             displaySampleSentences(data.word.example_sentence);
             Elements.reviewCount.textContent = data.word.review_count || 0;
