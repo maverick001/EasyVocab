@@ -408,6 +408,12 @@ function setupEventListeners() {
     Elements.searchBtn.addEventListener('click', performSearch);
     Elements.clearSearchBtn.addEventListener('click', clearSearch);
     Elements.closeSearchResultsBtn.addEventListener('click', closeSearchResults);
+    Elements.searchInput.addEventListener('click', function() {
+        if (this.value.length > 0) {
+            this.select();
+            this.setSelectionRange(0, 9999); // Ensures it works on mobile devices
+        }
+    });
     Elements.searchInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             performSearch();
