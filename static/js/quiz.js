@@ -15,7 +15,7 @@ const quizEmpty = document.getElementById('quizEmpty');
 const quizCard = document.getElementById('quizCard');
 const categorySelect = document.getElementById('categorySelect');
 const modeToggle = document.getElementById('modeToggle');
-const imageOnlyToggle = document.getElementById('imageOnlyToggle');
+const quizFilterSelect = document.getElementById('quizFilterSelect');
 
 // Card Elements
 const wordDisplay = document.getElementById('wordDisplay');
@@ -97,9 +97,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         loadNextWord();
     });
 
-    // Image Only Toggle
-    if (imageOnlyToggle) {
-        imageOnlyToggle.addEventListener('change', () => {
+    // Quiz Filter Dropdown
+    if (quizFilterSelect) {
+        quizFilterSelect.addEventListener('change', () => {
             loadNextWord();
         });
     }
@@ -139,8 +139,8 @@ async function loadNextWord() {
         resetCard();
 
         const category = categorySelect.value;
-        const imageOnly = imageOnlyToggle ? imageOnlyToggle.checked : false;
-        const response = await fetch(`/api/quiz/next-word?category=${encodeURIComponent(category)}&mode=${currentMode}&image_only=${imageOnly}`);
+        const filter = quizFilterSelect ? quizFilterSelect.value : 'none';
+        const response = await fetch(`/api/quiz/next-word?category=${encodeURIComponent(category)}&mode=${currentMode}&filter=${filter}`);
         const data = await response.json();
 
         if (response.status === 404) {

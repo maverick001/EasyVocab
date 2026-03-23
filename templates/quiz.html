@@ -33,13 +33,14 @@
                     </label>
                 </div>
 
-                <!-- Image Only Toggle -->
-                <div class="quiz-mode-toggle" title="Images Only" style="display: flex; align-items: center; gap: 0.5rem; background: var(--surface, #fff); padding: 0.5rem 0.8rem; border-radius: 8px; border: 1px solid var(--border, #e2e8f0); box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));">
-                    <span style="font-size: 0.9rem; font-weight: 500;">🖼️ Images Only</span>
-                    <label class="switch compact" style="margin: 0;">
-                        <input type="checkbox" id="imageOnlyToggle">
-                        <span class="slider round"></span>
-                    </label>
+                <!-- Quiz Filter Dropdown -->
+                <div class="select-wrapper" style="position: relative;">
+                    <select id="quizFilterSelect" class="category-select"
+                        style="min-width: 140px; padding: 0.8rem 1.2rem; border-radius: 8px; font-weight: 500; cursor: pointer; background: var(--surface, #fff); border: 1px solid var(--border, #e2e8f0); box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));">
+                        <option value="none">All Words</option>
+                        <option value="image_only">🖼️ Image Only</option>
+                        <option value="ipa_only">🗣️ IPA Only</option>
+                    </select>
                 </div>
 
                 <button id="themeToggle" class="theme-toggle" title="Toggle dark mode"

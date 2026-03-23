@@ -1087,6 +1087,10 @@ def update_word(word_id):
             image_val = data["image_file"].strip() if data["image_file"] else None
             shared_params.append(image_val)
 
+        if "ipa" in data:
+            shared_update_fields.append("ipa = %s")
+            shared_params.append(data["ipa"])
+
         if "translation" in data or "example_sentence" in data:
             if "translation" in data:
                 shared_update_fields.append("translation = %s")
@@ -1097,10 +1101,6 @@ def update_word(word_id):
 
                 shared_update_fields.append("example_sentence = %s")
                 shared_params.append(data["example_sentence"])
-
-            if "ipa" in data:
-                shared_update_fields.append("ipa = %s")
-                shared_params.append(data["ipa"])
 
                 # Check if sample sentence actually changed to trigger review increment
                 if new_sample.strip() != current_sample.strip():
@@ -1851,8 +1851,11 @@ def get_next_quiz_word():
     try:
         category = request.args.get("category", "All")
         mode = request.args.get("mode", "flashcard")
-        image_only = request.args.get("image_only", "false").lower() == "true"
-        
+        filter_mode = request.args.get("filter", "none")
+        # Legacy support: treat image_only=true as filter=image_only
+        if filter_mode == "none" and request.args.get("image_only", "false").lower() == "true":
+            filter_mode = "image_only"
+
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
@@ -1869,9 +1872,11 @@ def get_next_quiz_word():
             query += " AND category = %s"
             params.append(category)
 
-        # Add image_only filter
-        if image_only:
+        # Add filter mode
+        if filter_mode == "image_only":
             query += " AND image_file IS NOT NULL AND image_file != ''"
+        elif filter_mode == "ipa_only":
+            query += " AND ipa IS NOT NULL AND ipa != ''"
 
         if mode == 'quiz':
             # In quiz mode, we want random practice regardless of SRS schedule
