@@ -31,6 +31,7 @@ const feedbackArea = document.getElementById('feedbackArea');
 const chartContainer = document.getElementById('chartContainer');
 const quizImageContainer = document.getElementById('quizImageContainer');
 const quizImage = document.getElementById('quizImage');
+const quizIpaDisplay = document.getElementById('quizIpaDisplay');
 
 // Buttons
 const rememberBtn = document.getElementById('rememberBtn');
@@ -244,6 +245,7 @@ function handleChoiceSelection(btn, selectedText) {
     nextBtn.style.display = 'block';
     nextBtn.focus();
     showWordImage();
+    showIpa();
 }
 
 /**
@@ -256,8 +258,9 @@ async function handleResult(result) {
         translationDisplay.style.display = 'block';
         actionButtons.style.display = 'none';
         nextBtn.style.display = 'block';
-        nextBtn.focus(); 
+        nextBtn.focus();
         showWordImage();
+        showIpa();
 
         await submitResult(result);
 
@@ -310,6 +313,11 @@ function resetCard() {
         quizImageContainer.style.display = 'none';
         quizImage.src = '';
     }
+
+    if (quizIpaDisplay) {
+        quizIpaDisplay.style.display = 'none';
+        quizIpaDisplay.textContent = '';
+    }
 }
 
 /**
@@ -321,6 +329,16 @@ function showWordImage() {
         quizImageContainer.style.display = 'block';
         // Smooth scroll to the next button to ensure it and the image are visible
         nextBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
+
+/**
+ * Show IPA pronunciation if available for the current word
+ */
+function showIpa() {
+    if (currentWord && currentWord.ipa && currentWord.ipa.trim() && quizIpaDisplay) {
+        quizIpaDisplay.textContent = currentWord.ipa.trim();
+        quizIpaDisplay.style.display = 'inline-block';
     }
 }
 
