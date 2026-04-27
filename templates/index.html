@@ -224,9 +224,8 @@
                             style="display: none; padding: 0.4rem 0.8rem; font-size: 0.9rem; margin-right: 10px;">Add
                             Image</button>
                         <select id="transModelSelect" class="model-select">
-                            <option value="Claude-Haiku-4.5">Haiku-4.5</option>
-                            <option value="gemini-3-flash">Gemini-3-Flash</option>
-                            <option value="gpt-4o">GPT-4o</option>
+                            <option value="gemini-3-flash-preview">Gemini-3-Flash</option>
+                            <option value="gemini-2.5-flash">Gemini-2.5-Flash</option>
                         </select>
                         <button id="generateTransBtn" class="btn btn-generate">✨ Generate</button>
                     </div>
@@ -247,9 +246,8 @@
                     <h3 class="section-title">Example Sentences:</h3>
                     <div class="generate-controls">
                         <select id="modelSelect" class="model-select">
-                            <option value="Claude-Haiku-4.5">Haiku-4.5</option>
-                            <option value="gemini-3-flash">Gemini-3-Flash</option>
-                            <option value="gpt-4o">GPT-4o</option>
+                            <option value="gemini-3-flash-preview">Gemini-3-Flash</option>
+                            <option value="gemini-2.5-flash">Gemini-2.5-Flash</option>
                         </select>
                         <button id="generateSampleBtn" class="btn btn-generate">✨ Generate</button>
                     </div>
@@ -372,7 +370,7 @@
     </div>
 
     <!-- JavaScript -->
-    <script src="{{ url_for('static', filename='js/app.js') }}?v=2"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}?v=3"></script>
 </body>
 
 </html>

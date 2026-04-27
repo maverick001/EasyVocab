@@ -31,10 +31,10 @@ class Config:
     DB_PASSWORD = os.environ.get('DB_PASSWORD')
     DB_NAME = os.environ.get('DB_NAME')
 
-    # Poe API Configuration (OpenAI-compatible)
-    POE_API_KEY = os.environ.get('POE_API_KEY')
-    POE_MODEL = os.environ.get('POE_MODEL', 'Claude-Haiku-4.5')
-    POE_TEMPERATURE = float(os.environ.get('POE_TEMPERATURE', 0.7))
+    # Gemini API Configuration (OpenAI-compatible)
+    GEMINI_API_KEY = os.environ.get('GOOGLE_API_KEY')
+    GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-3-flash-preview')
+    GEMINI_TEMPERATURE = float(os.environ.get('GEMINI_TEMPERATURE', 0.9))
 
     # Database connection pool settings (for performance with large dataset)
     DB_POOL_SIZE = int(os.environ.get('DB_POOL_SIZE', 5))

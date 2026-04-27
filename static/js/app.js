@@ -1231,7 +1231,7 @@ async function generateSampleSentence() {
 
         // Get selected model from dropdown
         const modelSelect = document.getElementById('modelSelect');
-        const selectedModel = modelSelect ? modelSelect.value : 'Claude-Haiku-4.5';
+        const selectedModel = modelSelect ? modelSelect.value : 'gemini-3-flash-preview';
 
         const response = await fetch('/api/generate-sample', {
             method: 'POST',
@@ -1293,7 +1293,7 @@ async function generateTranslation() {
 
         // Get selected model from translation dropdown
         const modelSelect = document.getElementById('transModelSelect');
-        const selectedModel = modelSelect ? modelSelect.value : 'Claude-Haiku-4.5';
+        const selectedModel = modelSelect ? modelSelect.value : 'gemini-3-flash-preview';
 
         const response = await fetch('/api/generate-translation', {
             method: 'POST',
@@ -1619,8 +1619,9 @@ async function generateNewWordTranslation() {
             : '⏳ Generating English matching words...';
         Elements.addWordStatus.className = 'form-status';
 
-        // Default to Claude-Haiku-4.5
-        const selectedModel = 'Claude-Haiku-4.5';
+        // Get selected model from translation dropdown or default to gemini-3-flash-preview
+        const modelSelect = document.getElementById('transModelSelect');
+        const selectedModel = modelSelect ? modelSelect.value : 'gemini-3-flash-preview';
 
         const response = await fetch('/api/generate-translation', {
             method: 'POST',

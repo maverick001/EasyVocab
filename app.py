@@ -1603,9 +1603,9 @@ import re
 # ... existing code ...
 
 
-def clean_poe_response(text):
+def clean_gemini_response(text):
     """
-    Remove "Thinking..." blocks from Poe/Gemini output.
+    Remove "Thinking..." blocks from Gemini output.
     Strategy:
     1. Identify the *last* line that looks like a blockquote (>).
     2. Discard everything up to that line.
@@ -1657,7 +1657,7 @@ def clean_poe_response(text):
 @app.route("/api/generate-sample", methods=["POST"])
 def generate_sample_sentence():
     """
-    Generate a example sentence using Poe API (OpenAI-compatible)
+    Generate a example sentence using Gemini API (OpenAI-compatible)
 
     Request Body (JSON):
         {
@@ -1675,44 +1675,44 @@ def generate_sample_sentence():
 
         word = data["word"].strip()
         # Get model from request, fallback to config default
-        model = data.get("model", app.config["POE_MODEL"])
+        model = data.get("model", app.config["GEMINI_MODEL"])
 
         if not word:
             return jsonify({"success": False, "error": "Word cannot be empty"}), 400
 
-        # Check Poe API Key
-        if not app.config["POE_API_KEY"]:
+        # Check Gemini API Key
+        if not app.config["GEMINI_API_KEY"]:
             return jsonify(
                 {
                     "success": False,
-                    "error": "Poe API Key not configured. Please set POE_API_KEY in .env file.",
+                    "error": "Gemini API Key not configured. Please set GOOGLE_API_KEY in .env file.",
                 }
             ), 500
 
-        # Initialize OpenAI client with Poe API endpoint
+        # Initialize OpenAI client with Gemini API endpoint
         client = OpenAI(
-            api_key=app.config["POE_API_KEY"], base_url="https://api.poe.com/v1/"
+            api_key=app.config["GEMINI_API_KEY"], base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
         )
 
         # Prepare prompt
         prompt = f'Create a simple, natural English sentence that uses the EXACT word or phrase "{word}" (including all words as shown). You must use "{word}" exactly as written, not variations or partial matches. Use simple language and vocabulary suitable for a high school student. Keep the sentence short and easy to understand. Only output the sentence, nothing else.'
 
-        # Call Poe API via OpenAI SDK
+        # Call Gemini API via OpenAI SDK
         response = client.chat.completions.create(
             model=model,
             messages=[{"role": "user", "content": prompt}],
-            temperature=app.config.get("POE_TEMPERATURE", 0.7),
+            temperature=app.config.get("GEMINI_TEMPERATURE", 0.9),
         )
 
         if response.choices and response.choices[0].message.content:
             raw_content = response.choices[0].message.content.strip()
             # Clean up potential thinking process output
-            generated_sentence = clean_poe_response(raw_content)
+            generated_sentence = clean_gemini_response(raw_content)
 
             return jsonify({"success": True, "sentence": generated_sentence})
         else:
             return jsonify(
-                {"success": False, "error": "Poe returned empty response"}
+                {"success": False, "error": "Gemini returned empty response"}
             ), 500
 
     except Exception as e:
@@ -1722,7 +1722,7 @@ def generate_sample_sentence():
 @app.route("/api/generate-translation", methods=["POST"])
 def generate_translation():
     """
-    Generate Chinese translation for a word using Poe API (OpenAI-compatible)
+    Generate Chinese translation for a word using Gemini API (OpenAI-compatible)
     Also supports reverse generation (Chinese -> English) via 'mode' parameter.
 
     Request Body (JSON):
@@ -1743,24 +1743,24 @@ def generate_translation():
 
         word = data["word"].strip()
         # Get model from request, fallback to config default
-        model = data.get("model", app.config["POE_MODEL"])
+        model = data.get("model", app.config["GEMINI_MODEL"])
         mode = data.get("mode", "normal")
 
         if not word:
             return jsonify({"success": False, "error": "Text cannot be empty"}), 400
 
-        # Check Poe API Key
-        if not app.config["POE_API_KEY"]:
+        # Check Gemini API Key
+        if not app.config["GEMINI_API_KEY"]:
             return jsonify(
                 {
                     "success": False,
-                    "error": "Poe API Key not configured. Please set POE_API_KEY in .env file.",
+                    "error": "Gemini API Key not configured. Please set GOOGLE_API_KEY in .env file.",
                 }
             ), 500
 
-        # Initialize OpenAI client with Poe API endpoint
+        # Initialize OpenAI client with Gemini API endpoint
         client = OpenAI(
-            api_key=app.config["POE_API_KEY"], base_url="https://api.poe.com/v1/"
+            api_key=app.config["GEMINI_API_KEY"], base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
         )
 
         # Prepare prompt based on mode
@@ -1771,22 +1771,22 @@ def generate_translation():
             # English -> Chinese
             prompt = f"What's the Chinese translation of '{word}'? Only list the 2 most common translations and ignore others. Separate them with a Chinese comma (，). Only list the translations in Chinese characters, no other explanations or phonetics are needed."
 
-        # Call Poe API via OpenAI SDK
+        # Call Gemini API via OpenAI SDK
         response = client.chat.completions.create(
             model=model,
             messages=[{"role": "user", "content": prompt}],
-            temperature=app.config.get("POE_TEMPERATURE", 0.7),
+            temperature=app.config.get("GEMINI_TEMPERATURE", 0.9),
         )
 
         if response.choices and response.choices[0].message.content:
             raw_content = response.choices[0].message.content.strip()
             # Clean up potential thinking process output
-            generated_text = clean_poe_response(raw_content)
+            generated_text = clean_gemini_response(raw_content)
 
             return jsonify({"success": True, "translation": generated_text})
         else:
             return jsonify(
-                {"success": False, "error": "Poe returned empty response"}
+                {"success": False, "error": "Gemini returned empty response"}
             ), 500
 
     except Exception as e:
