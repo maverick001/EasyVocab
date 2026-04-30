@@ -868,11 +868,11 @@ def search_words():
         if not query:
             return jsonify({"success": False, "error": "Search query is required"}), 400
 
-        if len(query) < 2:
+        if len(query) < 1:
             return jsonify(
                 {
                     "success": False,
-                    "error": "Search query must be at least 2 characters",
+                    "error": "Search query must be at least 1 character",
                 }
             ), 400
 

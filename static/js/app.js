@@ -1825,8 +1825,8 @@ async function performSearch() {
         return;
     }
 
-    if (query.length < 2) {
-        showError('Search query must be at least 2 characters');
+    if (query.length < 1) {
+        showError('Search query must be at least 1 character');
         return;
     }
 
