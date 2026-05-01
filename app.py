@@ -881,14 +881,16 @@ def search_words():
 
         # Search for words containing the query in word OR translation
         # Prioritize matches in 'word' column over 'translation' column
+        # Using COLLATE utf8mb4_unicode_ci ensures case-insensitive search on binary columns
         cursor.execute(
             """
             SELECT id, word, translation, category, review_count, example_sentence, ipa
             FROM words
-            WHERE word LIKE %s OR translation LIKE %s
+            WHERE word COLLATE utf8mb4_unicode_ci LIKE %s 
+               OR translation COLLATE utf8mb4_unicode_ci LIKE %s
             ORDER BY 
                 CASE 
-                    WHEN word LIKE %s THEN 1 
+                    WHEN word COLLATE utf8mb4_unicode_ci LIKE %s THEN 1 
                     ELSE 2 
                 END,
                 word ASC
