@@ -180,9 +180,9 @@ class VocabularyXMLParser:
 
         cursor = db_connection.cursor()
 
-        # Get all existing words from the database to prevent cross-category duplicates
-        cursor.execute("SELECT DISTINCT word FROM words")
-        existing_words = {row[0] for row in cursor.fetchall()}
+        # Get all existing words from the database to prevent same-category duplicates
+        cursor.execute("SELECT DISTINCT word, category FROM words")
+        existing_words = {(row[0], row[1]) for row in cursor.fetchall()}
 
         # SQL for inserting words
         insert_sql = """
@@ -198,14 +198,17 @@ class VocabularyXMLParser:
 
             for word_data in batch:
                 word_text = word_data['word']
-                if word_text not in existing_words:
+                category_text = word_data['category']
+                
+                # Check for uniqueness based on both word and category
+                if (word_text, category_text) not in existing_words:
                     batch_values.append((
                         word_text,
                         word_data['translation'],
-                        word_data['category']
+                        category_text
                     ))
                     # Add to our local set to prevent duplicates within the XML file itself
-                    existing_words.add(word_text)
+                    existing_words.add((word_text, category_text))
                 else:
                     skipped_in_batch += 1
 

@@ -44,7 +44,10 @@
                 <button id="addWordBtn" class="btn btn-add-word">✨ Add New Word</button>
                 <a href="/quiz" class="btn btn-quiz">🎯 Quiz Me</a>
                 <div id="importPanel" class="import-panel" style="display: none;">
-                    <input type="file" id="fileInput" accept=".xml" class="file-input">
+                    <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                        <button type="button" id="browseFileBtn" style="background-color: #efefef; border: 1px solid #767676; border-radius: 2px; padding: 1px 6px; font-family: system-ui, -apple-system, sans-serif; font-size: 13.3333px; color: black; line-height: normal; cursor: default; min-height: auto;">Choose File</button>
+                        <span id="selectedFilePath" style="font-size: 13.3333px; color: var(--text-color); font-family: system-ui, -apple-system, sans-serif;">No file chosen</span>
+                    </div>
                     <button id="uploadBtn" class="btn btn-primary">Upload</button>
                     <button id="cancelUploadBtn" class="btn btn-cancel">Cancel</button>
                     <div id="uploadStatus" class="upload-status"></div>

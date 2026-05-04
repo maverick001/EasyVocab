@@ -20,7 +20,8 @@ const AppState = {
     dailyProgress: 0,  // Daily activity counter (resets at midnight)
     countedWordIds: new Set(),  // Track which words were counted today (max 1 per word per day)
     totalDebt: 0,
-    debtBreakdown: []
+    debtBreakdown: [],
+    currentLocalFilePath: null
 };
 
 // ============================================
@@ -72,7 +73,8 @@ const Elements = {
     // Import section
     importBtn: null,
     importPanel: null,
-    fileInput: null,
+    browseFileBtn: null,
+    selectedFilePath: null,
     uploadBtn: null,
     cancelUploadBtn: null,
     uploadStatus: null,
@@ -275,7 +277,8 @@ function cacheDOMElements() {
     // Import
     Elements.importBtn = document.getElementById('importBtn');
     Elements.importPanel = document.getElementById('importPanel');
-    Elements.fileInput = document.getElementById('fileInput');
+    Elements.browseFileBtn = document.getElementById('browseFileBtn');
+    Elements.selectedFilePath = document.getElementById('selectedFilePath');
     Elements.uploadBtn = document.getElementById('uploadBtn');
     Elements.cancelUploadBtn = document.getElementById('cancelUploadBtn');
     Elements.uploadStatus = document.getElementById('uploadStatus');
@@ -397,6 +400,7 @@ function setupEventListeners() {
 
     // Import functionality
     Elements.importBtn.addEventListener('click', toggleImportPanel);
+    Elements.browseFileBtn.addEventListener('click', openBackendFileDialog);
     Elements.uploadBtn.addEventListener('click', uploadXMLFile);
     Elements.cancelUploadBtn.addEventListener('click', toggleImportPanel);
 
@@ -555,7 +559,34 @@ function toggleImportPanel() {
     Elements.uploadStatus.className = 'upload-status';
 
     if (!isVisible) {
-        Elements.fileInput.value = '';
+        AppState.currentLocalFilePath = null;
+        Elements.selectedFilePath.textContent = 'No file chosen';
+    }
+}
+
+/**
+ * Open file dialog via backend
+ */
+async function openBackendFileDialog() {
+    try {
+        Elements.browseFileBtn.disabled = true;
+        Elements.browseFileBtn.textContent = 'Opening...';
+        
+        const response = await fetch('/api/open-file-dialog');
+        const data = await response.json();
+        
+        if (data.success && data.file_path) {
+            AppState.currentLocalFilePath = data.file_path;
+            Elements.selectedFilePath.textContent = data.file_path;
+        } else if (!data.success && data.error !== 'No file selected') {
+            showError(data.error);
+        }
+    } catch (error) {
+        console.error('Error opening file dialog:', error);
+        showError('Network error while opening file dialog');
+    } finally {
+        Elements.browseFileBtn.disabled = false;
+        Elements.browseFileBtn.textContent = 'Choose File';
     }
 }
 
@@ -1347,17 +1378,10 @@ async function generateTranslation() {
  * Upload XML file
  */
 async function uploadXMLFile() {
-    const file = Elements.fileInput.files[0];
+    const filePath = AppState.currentLocalFilePath;
 
-    if (!file) {
+    if (!filePath) {
         Elements.uploadStatus.textContent = '⚠️ Please select a file first';
-        Elements.uploadStatus.className = 'upload-status error';
-        return;
-    }
-
-    // Validate file type
-    if (!file.name.toLowerCase().endsWith('.xml')) {
-        Elements.uploadStatus.textContent = '⚠️ Please select an XML file';
         Elements.uploadStatus.className = 'upload-status error';
         return;
     }
@@ -1367,12 +1391,12 @@ async function uploadXMLFile() {
         Elements.uploadStatus.className = 'upload-status';
         Elements.uploadBtn.disabled = true;
 
-        const formData = new FormData();
-        formData.append('file', file);
-
-        const response = await fetch('/api/upload', {
+        const response = await fetch('/api/upload-local', {
             method: 'POST',
-            body: formData
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ file_path: filePath })
         });
 
         const data = await response.json();

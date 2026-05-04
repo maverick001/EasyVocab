@@ -763,13 +763,13 @@ def add_word():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Check if word already exists in ANY category (global duplicate check)
+        # Check if word already exists in the SAME category
         cursor.execute(
             """
             SELECT id, category FROM words
-            WHERE word = %s
+            WHERE word = %s AND category = %s
         """,
-            (word,),
+            (word, category),
         )
 
         existing_word = cursor.fetchone()
@@ -1065,9 +1065,9 @@ def update_word(word_id):
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # First, get the current word text and sample_sentence
+        # First, get the current word text, sample_sentence, and category
         cursor.execute(
-            "SELECT word, example_sentence, last_sample_review_date FROM words WHERE id = %s",
+            "SELECT word, example_sentence, last_sample_review_date, category FROM words WHERE id = %s",
             (word_id,),
         )
         current_word_data = cursor.fetchone()
@@ -1078,6 +1078,7 @@ def update_word(word_id):
         current_word_text = current_word_data["word"]
         current_sample = current_word_data.get("example_sentence") or ""
         last_sample_date = current_word_data.get("last_sample_review_date")
+        current_category = current_word_data["category"]
 
         # Update fields across ALL instances of this word
         shared_update_fields = []
@@ -1128,13 +1129,32 @@ def update_word(word_id):
 
         # Update the word text itself only for this specific row
         if "word" in data:
+            new_word = data["word"].strip()
+            # Check if this new word already exists elsewhere in the same category
+            cursor.execute(
+                """
+                SELECT id, category FROM words
+                WHERE word = %s AND category = %s AND id != %s
+                """,
+                (new_word, current_category, word_id),
+            )
+            existing = cursor.fetchone()
+            if existing:
+                return jsonify(
+                    {
+                        "success": False,
+                        "error": f'Word "{new_word}" already exists in category "{existing["category"]}"',
+                        "duplicate": True,
+                    }
+                ), 409
+
             cursor.execute(
                 """
                 UPDATE words
                 SET word = %s
                 WHERE id = %s
             """,
-                (data["word"], word_id),
+                (new_word, word_id),
             )
 
         # Get the updated word data for history record
@@ -2077,6 +2097,86 @@ def submit_quiz_result():
         if conn:
             conn.close()
 
+
+@app.route("/api/open-file-dialog", methods=["GET"])
+def open_file_dialog():
+    """
+    Open a server-side file dialog to select an XML file.
+    Only works if the server runs locally with access to the UI.
+    """
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+        
+        root = tk.Tk()
+        root.withdraw() # Hide the main window
+        root.attributes('-topmost', True) # Bring to front
+        
+        default_dir = r"C:\Users\bbcba\Downloads\BKDict\data"
+        if not os.path.exists(default_dir):
+            default_dir = os.path.expanduser("~")
+            
+        file_path = filedialog.askopenfilename(
+            initialdir=default_dir,
+            title="Select XML File",
+            filetypes=(("XML files", "*.xml"), ("All files", "*.*"))
+        )
+        
+        root.destroy()
+        
+        if file_path:
+            return jsonify({"success": True, "file_path": file_path})
+        else:
+            return jsonify({"success": False, "error": "No file selected"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route("/api/upload-local", methods=["POST"])
+def upload_local_xml():
+    """
+    Import an XML file directly from a local path
+    """
+    try:
+        data = request.get_json()
+        if not data or "file_path" not in data:
+            return jsonify({"success": False, "error": "No file path provided"}), 400
+            
+        filepath = data["file_path"]
+        
+        if not os.path.exists(filepath):
+            return jsonify({"success": False, "error": "File not found at specified path"}), 400
+            
+        if not filepath.lower().endswith('.xml'):
+            return jsonify({"success": False, "error": "Invalid file type. Only XML files are allowed."}), 400
+
+        # Parse and import XML
+        conn = None
+        try:
+            conn = get_db_connection()
+            stats = parse_and_import_xml(
+                filepath, conn, batch_size=app.config.get("XML_BATCH_SIZE", 500)
+            )
+
+            # Build response message
+            message = f"Import completed: {stats['added']} words added"
+            if stats.get("skipped_duplicates", 0) > 0:
+                message += f", {stats['skipped_duplicates']} duplicates skipped"
+            if stats.get("errors", 0) > 0:
+                message += f", {stats['errors']} errors encountered"
+
+            return jsonify({"success": True, "stats": stats, "message": message})
+
+        except XMLParserError as e:
+            return jsonify(
+                {"success": False, "error": f"XML parsing error: {str(e)}"}
+            ), 400
+        finally:
+            if conn:
+                conn.close()
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route("/api/upload", methods=["POST"])
