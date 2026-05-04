@@ -1262,7 +1262,7 @@ async function generateSampleSentence() {
 
         // Get selected model from dropdown
         const modelSelect = document.getElementById('modelSelect');
-        const selectedModel = modelSelect ? modelSelect.value : 'gemini-3-flash-preview';
+        const selectedModel = modelSelect ? modelSelect.value : 'gemini-2.5-flash';
 
         const response = await fetch('/api/generate-sample', {
             method: 'POST',
@@ -1324,7 +1324,7 @@ async function generateTranslation() {
 
         // Get selected model from translation dropdown
         const modelSelect = document.getElementById('transModelSelect');
-        const selectedModel = modelSelect ? modelSelect.value : 'gemini-3-flash-preview';
+        const selectedModel = modelSelect ? modelSelect.value : 'gemini-2.5-flash';
 
         const response = await fetch('/api/generate-translation', {
             method: 'POST',
@@ -1645,7 +1645,7 @@ async function generateNewWordTranslation() {
 
         // Get selected model from translation dropdown or default to gemini-3-flash-preview
         const modelSelect = document.getElementById('transModelSelect');
-        const selectedModel = modelSelect ? modelSelect.value : 'gemini-3-flash-preview';
+        const selectedModel = modelSelect ? modelSelect.value : 'gemini-2.5-flash';
 
         const response = await fetch('/api/generate-translation', {
             method: 'POST',

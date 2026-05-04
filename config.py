@@ -33,7 +33,7 @@ class Config:
 
     # Gemini API Configuration (OpenAI-compatible)
     GEMINI_API_KEY = os.environ.get('GOOGLE_API_KEY')
-    GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-3-flash-preview')
+    GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash')
     GEMINI_TEMPERATURE = float(os.environ.get('GEMINI_TEMPERATURE', 0.9))
 
     # Database connection pool settings (for performance with large dataset)
