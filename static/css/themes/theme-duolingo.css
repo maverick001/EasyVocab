@@ -6,15 +6,15 @@
 
 :root {
     /* Brand Colors - Chunky & Vibrant */
-    --primary-blue: #3B82F6;
-    --primary-dark: #2563EB;
-    --primary-light: #93C5FD;
+    --primary-blue: #3730A3; /* Deep Indigo for high contrast against lime */
+    --primary-dark: #312E81;
+    --primary-light: #6366F1;
 
     --accent-color: #F59E0B;
     --accent-dark: #D97706;
 
-    --success: #22C55E;
-    --success-dark: #16A34A;
+    --success: #15803D; /* Darker green to stand out from background */
+    --success-dark: #166534;
 
     --error: #EF4444;
     --error-dark: #DC2626;
@@ -22,27 +22,27 @@
     --warning: #F59E0B;
 
     /* Backgrounds */
-    --bg-main: #F3F4F6;
+    --bg-main: #CBF55C; /* Bright Lime Green */
     --bg-card: #FFFFFF;
-    --bg-hover: #F9FAFB;
+    --bg-hover: #EAF9C4;
 
     /* Typography */
     --font-main: 'Nunito', 'Segoe UI', sans-serif;
-    --text-primary: #374151;
-    --text-secondary: #6B7280;
+    --text-primary: #111827; /* Dark Charcoal for readability */
+    --text-secondary: #4B5563; /* Medium Dark Gray */
     --text-light: #9CA3AF;
 
     /* Borders & Shadows */
-    --border-color: #E5E7EB;
-    --border-width: 2px;
-    --radius-sm: 12px;
-    --radius-md: 16px;
-    --radius-lg: 24px;
+    --border-color: #A3D822; /* Darker lime green for chunky borders */
+    --border-width: 3px;
+    --radius-sm: 16px; /* Even rounder for Duolingo feel */
+    --radius-md: 20px;
+    --radius-lg: 32px;
 
     /* 3D Effects */
-    --shadow-sm: 0 2px 0 var(--border-color);
-    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    --shadow-floating: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-sm: 0 4px 0 var(--border-color); /* Thicker, solid 3D shadow */
+    --shadow-card: 0 6px 0 var(--border-color); /* Chunky solid shadow for cards */
+    --shadow-floating: 0 10px 15px -3px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
 
     --transition-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
     --transition-speed: 0.2s;
@@ -50,9 +50,10 @@
 
 /* Dark Mode Overrides */
 body.dark-mode {
-    --primary-blue: #60A5FA;
-    --primary-dark: #3B82F6;
-    --primary-light: #BFDBFE;
+    /* Use the Lime Green as the accent in dark mode */
+    --primary-blue: #CBF55C; 
+    --primary-dark: #B2D947;
+    --primary-light: #E0FA8F;
 
     --accent-color: #FBBF24;
     --accent-dark: #D97706;
@@ -71,8 +72,8 @@ body.dark-mode {
     --text-secondary: #D1D5DB;
     --text-light: #9CA3AF;
 
-    --border-color: #374151;
-    --shadow-sm: 0 2px 0 #1f2937;
-    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+    --border-color: #0F172A;
+    --shadow-sm: 0 4px 0 #000000;
+    --shadow-card: 0 6px 0 #000000;
     --shadow-floating: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
 }
