@@ -8,6 +8,9 @@
    CSS Variables - Light Blue Theme
    ============================================ */
 :root {
+    /* Typography */
+    --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
     --border-color: #B8D4E3;
     /* Light blue border */
     --shadow: rgba(70, 130, 180, 0.15);
@@ -312,7 +315,7 @@ body.dark-mode .theme-toggle .moon-icon {
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: var(--font-main);
     background: var(--bg-main);
     background-attachment: fixed;
     color: var(--text-primary);
@@ -320,6 +323,14 @@ body {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+}
+
+/* Form controls don't inherit font-family — apply the theme font explicitly */
+input,
+select,
+textarea,
+button {
+    font-family: var(--font-main);
 }
 
 /* ============================================

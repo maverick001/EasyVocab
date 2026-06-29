@@ -2,6 +2,10 @@
  * Theme: Modern Minimalist (Apple-like)
  * Clean, flat design with generous whitespace
  * Inter font for professional, modern aesthetic
+ *
+ * NOTE: This file loads AFTER style.css, so its rules override the base
+ * component styling. Everything here only applies when the Minimalist
+ * theme is active. Main-page surfaces only; quiz/login untouched.
  */
 
 :root {
@@ -18,6 +22,11 @@
     --success: #10B981;
     --warning: #F59E0B;
     --error: #EF4444;
+
+    /* Soft, neutral elevation (replaces heavy blue drop-shadows) */
+    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-card-hover: 0 6px 20px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
+    --focus-ring: 0 0 0 3px rgba(59, 130, 246, 0.15);
 
     /* Spacing - Generous for minimalist feel */
     --spacing-xs: 0.5rem;
@@ -58,6 +67,10 @@ body.dark-mode {
     --warning: #F59E0B;
     --error: #EF4444;
 
+    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-card-hover: 0 6px 20px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.4);
+    --focus-ring: 0 0 0 3px rgba(96, 165, 250, 0.25);
+
     --bg-main: #111827;
     --bg-card: #1F2937;
     --bg-hover: #374151;
@@ -66,4 +79,330 @@ body.dark-mode {
     --text-secondary: #D1D5DB;
     --text-light: #9CA3AF;
     --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* ============================================
+   Typography — drop text shadows
+   (Inter is applied globally via style.css using var(--font-main))
+   ============================================ */
+.app-title,
+.word-display {
+    text-shadow: none;
+}
+
+.app-title {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+.word-display {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+.section-title {
+    font-weight: 600;
+}
+
+.control-label {
+    letter-spacing: 0.04em;
+}
+
+/* ============================================
+   Surfaces — soft neutral elevation, light borders
+   ============================================ */
+.app-header {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-card);
+    backdrop-filter: none;
+}
+
+.control-panel,
+.search-results-panel,
+.welcome-message {
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-card);
+}
+
+.word-card {
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-card);
+    transition: box-shadow var(--transition-speed) ease;
+}
+
+.word-card:hover {
+    box-shadow: var(--shadow-card-hover);
+}
+
+.app-footer {
+    background: var(--bg-card);
+    border-top: 1px solid var(--border-color);
+}
+
+.primary-controls {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.navigation-buttons {
+    border-top: 1px solid var(--border-color);
+}
+
+.word-section {
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* ============================================
+   Buttons — flat fills, no shimmer, no bounce
+   ============================================ */
+.btn {
+    transition: background var(--transition-speed) ease,
+        box-shadow var(--transition-speed) ease,
+        color var(--transition-speed) ease;
+}
+
+/* Remove the diagonal shimmer sweep */
+.btn::before {
+    content: none;
+}
+
+/* Calm hover: no vertical jump, subtle shadow only */
+.btn:hover {
+    transform: none;
+}
+
+.btn:active {
+    transform: none;
+}
+
+.btn-primary,
+.btn-generate,
+.btn-nav {
+    background: var(--primary-blue);
+    color: #fff;
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-primary:hover,
+.btn-generate:hover,
+.btn-nav:hover {
+    background: var(--primary-dark);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-import {
+    background: #3B82F6;
+    color: #fff;
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-import:hover {
+    background: #2563EB;
+    box-shadow: var(--shadow-md);
+}
+
+.btn-add-word {
+    background: #10B981;
+    color: #fff;
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-add-word:hover {
+    background: #059669;
+    box-shadow: var(--shadow-md);
+}
+
+.btn-quiz {
+    background: #8B5CF6;
+    color: #fff;
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-quiz:hover {
+    background: #7C3AED;
+    box-shadow: var(--shadow-md);
+}
+
+.btn-save {
+    background: var(--success);
+    color: #fff;
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-save:hover {
+    background: #059669;
+    box-shadow: var(--shadow-md);
+}
+
+.btn-cancel {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.btn-cancel:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.btn-delete {
+    background: var(--error);
+    color: #fff;
+}
+
+.btn-delete:hover {
+    background: #DC2626;
+}
+
+/* Dark-mode toggle — flatten gradient to a quiet surface */
+.theme-toggle {
+    background: var(--bg-hover);
+    box-shadow: var(--shadow-sm);
+}
+
+.theme-toggle:hover {
+    transform: none;
+    box-shadow: var(--shadow-md);
+}
+
+body.dark-mode .theme-toggle {
+    background: var(--bg-hover);
+    box-shadow: var(--shadow-sm);
+}
+
+/* ============================================
+   Inputs & selects — 1px borders, crisp focus ring
+   ============================================ */
+.category-select,
+.sort-select,
+.model-select,
+.history-select,
+.category-change-select,
+.theme-select,
+.form-input,
+.form-textarea,
+.content-textarea,
+.search-input,
+.word-input,
+.file-input,
+.ipa-input {
+    border: 1px solid var(--border-color);
+}
+
+.category-select:focus,
+.sort-select:focus,
+.model-select:focus,
+.history-select:focus,
+.category-change-select:focus,
+.theme-select:focus,
+.form-input:focus,
+.form-textarea:focus,
+.content-textarea:focus,
+.search-input:focus,
+.word-input:focus {
+    outline: none;
+    border-color: var(--primary-blue);
+    box-shadow: var(--focus-ring);
+}
+
+/* ============================================
+   Content display — thinner accent, no slide
+   ============================================ */
+.content-display {
+    border: 1px solid var(--border-color);
+    border-left: 3px solid var(--primary-blue);
+}
+
+.content-display.editable-field:hover {
+    background: var(--bg-hover);
+    transform: none;
+}
+
+.sentence-edit-item {
+    border-left: 3px solid var(--primary-blue);
+}
+
+/* ============================================
+   Word actions strip & modal — quiet borders
+   ============================================ */
+.word-actions {
+    background: var(--bg-hover);
+    border: 1px solid var(--border-color);
+}
+
+.modal-content {
+    box-shadow: var(--shadow-card-hover);
+}
+
+.modal-header,
+.modal-footer {
+    border-color: var(--border-color);
+}
+
+/* ============================================
+   Badges — flat tints, keep semantic meaning
+   ============================================ */
+.status-badge {
+    box-shadow: none;
+}
+
+.position-badge {
+    color: var(--primary-dark);
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.daily-badge {
+    color: #92400E;
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    box-shadow: none;
+}
+
+.daily-badge:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.daily-badge.completed {
+    color: #065F46;
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.35);
+    box-shadow: none;
+}
+
+.debt-badge {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--primary-dark);
+    border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.debt-badge:hover {
+    background: rgba(59, 130, 246, 0.18);
+    transform: none;
+    box-shadow: none;
+}
+
+.review-counter-badge {
+    background: rgba(139, 92, 246, 0.12);
+    color: #6D28D9;
+    box-shadow: none;
+}
+
+.review-counter-badge:hover {
+    background: rgba(139, 92, 246, 0.2);
+    transform: none;
+    box-shadow: none;
+}
+
+body.dark-mode .review-counter-badge {
+    color: #C4B5FD;
+}
+
+body.dark-mode .daily-badge {
+    color: #FCD34D;
+}
+
+body.dark-mode .daily-badge.completed {
+    color: #6EE7B7;
 }
