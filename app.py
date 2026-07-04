@@ -2112,7 +2112,7 @@ def open_file_dialog():
         root.withdraw() # Hide the main window
         root.attributes('-topmost', True) # Bring to front
         
-        default_dir = r"C:\Users\bbcba\Downloads\BKDict\data"
+        default_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
         if not os.path.exists(default_dir):
             default_dir = os.path.expanduser("~")
             
