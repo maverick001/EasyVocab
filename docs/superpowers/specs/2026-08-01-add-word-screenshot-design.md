@@ -37,6 +37,7 @@ repository.
 
 - A "Screenshot (optional)" control inside the Add New Word modal.
 - Clipboard paste (Ctrl+V) as the only input method.
+- Strict image-only validation of pasted content.
 - Thumbnail preview and a remove action, before the word is submitted.
 - Uploading the pasted image immediately after the word is created.
 
@@ -61,6 +62,8 @@ These were settled during brainstorming and are fixed:
 4. **The attach button must be clicked before Ctrl+V works.** There is no
    document-level or modal-level paste handler.
 5. **The word is kept if the image upload fails**, with a visible warning.
+6. **Only image data is ever accepted.** Pasting text into the armed zone must
+   attach nothing and insert nothing. See "Rejecting non-image content".
 
 ## Approach
 
@@ -121,13 +124,59 @@ avoid implicit form submission.
    the zone holds focus, Ctrl+V inside the Word, Translation, or Example
    Sentences fields keeps pasting text normally. This is a structural guarantee,
    not a focus check that could be got wrong.
-3. On paste, the handler scans `clipboardData.items` for an `image/*` item. If
-   found, the blob is stored, a `FileReader` renders it into `#newWordThumb`,
-   the placeholder hides, and `#removeScreenshotBtn` appears. If no image is
-   found, the hint reads `❌ No image found in clipboard.` and clears after
-   3 seconds, matching the wording and timing of the existing paste modal.
+3. On paste, the handler calls `event.preventDefault()` and scans
+   `clipboardData.items` for a qualifying image (see below). If one is found,
+   the blob is stored, a `FileReader` renders it into `#newWordThumb`, the
+   placeholder hides, and `#removeScreenshotBtn` appears. If nothing qualifies,
+   the hint reads `❌ No image found in clipboard.` and clears after 3 seconds,
+   matching the wording and timing of the existing paste modal.
 4. `#removeScreenshotBtn` discards the blob and returns the control to its empty
    state.
+
+### Rejecting non-image content
+
+Pasting text into the armed zone must attach nothing and insert nothing. Three
+independent guards enforce this:
+
+1. **`event.preventDefault()` runs first, unconditionally** — before any
+   inspection of the clipboard, and regardless of whether the paste is later
+   accepted. No default paste behaviour of any kind occurs.
+2. **`#newWordPasteZone` is a plain `div`, not an input or a
+   `contenteditable`.** Text pasted into it has nowhere to render even if a
+   future edit dropped the `preventDefault()` call. The zone is focusable only
+   because `tabindex="0"` is needed to receive paste events at all.
+3. **An explicit allowlist decides what is accepted.** A clipboard item
+   qualifies only when *both* hold:
+   - `item.kind === 'file'`, and
+   - `item.type` is one of `image/png`, `image/jpeg`, `image/gif`,
+     `image/webp`, `image/bmp`.
+
+   The blob is used only if `item.getAsFile()` also returns non-null.
+
+Why each half of the allowlist matters:
+
+- **`kind === 'file'`** rejects copied text. Text from an editor or browser
+  arrives as `kind: 'string'` with type `text/plain`, and rich text adds a
+  second `text/html` item. Neither is a file, so neither is considered.
+- **The type allowlist** rejects non-image *files*. A file copied in Windows
+  Explorer arrives as `kind: 'file'` carrying its own MIME type, so a copied
+  `.pdf` or `.docx` would pass a `kind` check alone.
+
+The allowlist is used in preference to a `type.startsWith('image/')` test
+because `image/svg+xml` passes a prefix test but Pillow cannot open SVG. That
+would produce a 500 `Image processing failed` from `app.py:2423` *after* the
+word had already been created — precisely the failure this filtering exists to
+prevent. Screenshots are always PNG (Win+Shift+S) or JPEG, so the allowlist
+costs nothing in practice.
+
+**Mixed clipboards prefer the image.** Copying an image from a web page
+typically yields a `text/html` item alongside an `image/png` item. The scan
+takes the first qualifying image and ignores every other item, so this case
+attaches the image rather than falling through to the "no image" message.
+
+Server-side rejection remains as a last line of defence — `Image.open()` raises
+for anything it cannot decode — but it is never expected to fire, and the client
+filtering exists so that it does not, since by then the word already exists.
 
 ### State
 
@@ -160,7 +209,12 @@ could close before the outcome is known.
 
 | Case | Behaviour |
 | --- | --- |
-| Clipboard holds text, not an image | Hint shows the "no image" message; nothing is attached |
+| Clipboard holds plain text | Nothing attached, nothing inserted; "no image" hint |
+| Clipboard holds rich text (`text/html`) | Nothing attached, nothing inserted; "no image" hint |
+| Clipboard holds a non-image file (`.pdf`, `.docx`) | Rejected by the type allowlist; "no image" hint |
+| Clipboard holds an image *and* text | Image attached, text ignored |
+| Clipboard holds an SVG (`image/svg+xml`) | Rejected client-side, before any word is created |
+| Clipboard is empty | Nothing attached; "no image" hint |
 | Duplicate word (409) | No word created, existing error shown, pending image stays attached so the user can change category and resubmit |
 | Validation fails (missing word/translation/category) | Existing early return; image stays attached |
 | Modal cancelled, then reopened | Image cleared |
@@ -189,10 +243,16 @@ Run in the `bkdict` conda environment on `http://localhost:5001`:
    image shows on the word card.
 4. Copy some text. Click into Translation, press Ctrl+V — text pastes normally,
    no screenshot is attached.
-5. Click `📷 Attach Screenshot` with text on the clipboard, press Ctrl+V —
-   "no image found" hint appears.
-6. Attach an image, then Cancel. Reopen the modal — the control is empty.
-7. Submit a word that already exists in the chosen category — duplicate error
+5. Copy some text. Click `📷 Attach Screenshot`, press Ctrl+V — "no image found"
+   hint appears, no text appears anywhere in the modal, and the zone stays
+   empty.
+6. Repeat step 5 with rich text copied from a web page, and again with a
+   non-image file copied in Explorer (e.g. a `.pdf`). Both must be rejected the
+   same way.
+7. Copy an image from a web page, which puts both HTML and an image on the
+   clipboard. Attach it — the image is used, no text leaks in.
+8. Attach an image, then Cancel. Reopen the modal — the control is empty.
+9. Submit a word that already exists in the chosen category — duplicate error
    shows and the thumbnail is still attached.
 
 ## Reversibility
