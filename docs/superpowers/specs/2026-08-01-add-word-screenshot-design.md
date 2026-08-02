@@ -94,44 +94,56 @@ attached to the wrong word.
 | --- | --- |
 | `templates/index.html` | New form group in `#addWordModal` |
 | `static/js/app.js` | Element refs, listeners, paste/clear handlers, submit hook |
-| `static/css/style.css` | Styles for the thumbnail and its armed state |
+| `static/css/style.css` | Button row layout and focus ring |
 | `test/test_basic.py` | Markup-presence assertions |
 
 `app.py` is not modified.
 
 ### Markup
 
+> **Revised 2026-08-02.** The control was originally specified as a labelled row
+> containing a 96×64 dashed preview box, an attach button and a hint line. In
+> review that read as too heavy for an optional field, so it was reduced to a
+> single button that carries its own state. The validation behaviour below is
+> unchanged; only the presentation and the paste target moved.
+
 A new `.form-group` is inserted in `#addWordModal`, after the Example Sentences
-group and before `#addWordStatus`:
+group and before `#addWordStatus`. It contains two buttons and nothing else —
+no field label, no placeholder box, no hint line:
 
-- `#newWordPasteZone` — a roughly 96×64 thumbnail box with `tabindex="0"` so it
-  can receive focus and therefore paste events. Shows a placeholder until an
-  image is attached.
-- `#newWordThumb` — the `<img>` preview, hidden until an image is attached.
-- `#attachScreenshotBtn` — `📷 Attach Screenshot`.
-- `#removeScreenshotBtn` — `✕ Remove`, hidden until an image is attached.
-- `#newWordPasteHint` — a small hint line used for prompts and errors.
+- `#attachScreenshotBtn` — the attach control **and** the paste target. Its
+  label is the entire state display:
 
-All buttons carry `type="button"` to match the modal's existing buttons and
-avoid implicit form submission.
+  | State | Label |
+  | --- | --- |
+  | Idle | `📷 Attach Image` |
+  | Armed | `📋 Press Ctrl+V` |
+  | Attached | `✅ Image Attached` |
+  | Rejected | `❌ Not an image` (reverts after 2s) |
+
+- `#removeScreenshotBtn` — a compact `✕`, hidden until an image is attached.
+
+Both carry `type="button"` to match the modal's existing buttons and avoid
+implicit form submission.
+
+There is no thumbnail preview. Attaching the wrong image is corrected by
+clicking the button again and pasting a replacement.
 
 ### Interaction
 
-1. Clicking `#attachScreenshotBtn` adds an `.armed` class to
-   `#newWordPasteZone`, sets the hint to `Press Ctrl+V`, and focuses the zone.
-2. The `paste` listener is bound **to `#newWordPasteZone` only** — never to
-   `document` or to the modal. Because a paste event only reaches the zone when
-   the zone holds focus, Ctrl+V inside the Word, Translation, or Example
-   Sentences fields keeps pasting text normally. This is a structural guarantee,
-   not a focus check that could be got wrong.
+1. Clicking `#attachScreenshotBtn` sets its label to `📋 Press Ctrl+V` and
+   focuses it. A `<button>` is natively focusable, so no `tabindex` is needed.
+2. The `paste` listener is bound **to `#attachScreenshotBtn` only** — never to
+   `document` or to the modal. Because a paste event only reaches an element
+   while that element holds focus, Ctrl+V inside the Word, Translation, or
+   Example Sentences fields keeps pasting text normally. This is a structural
+   guarantee, not a focus check that could be got wrong.
 3. On paste, the handler calls `event.preventDefault()` and scans
    `clipboardData.items` for a qualifying image (see below). If one is found,
-   the blob is stored, a `FileReader` renders it into `#newWordThumb`, the
-   placeholder hides, and `#removeScreenshotBtn` appears. If nothing qualifies,
-   the hint reads `❌ No image found in clipboard.` and clears after 3 seconds,
-   matching the wording and timing of the existing paste modal.
-4. `#removeScreenshotBtn` discards the blob and returns the control to its empty
-   state.
+   the blob is stored, the label becomes `✅ Image Attached` and
+   `#removeScreenshotBtn` appears. If nothing qualifies, the label becomes
+   `❌ Not an image` and reverts after 2 seconds to whichever state applies.
+4. `#removeScreenshotBtn` discards the blob and returns the button to idle.
 
 ### Rejecting non-image content
 
@@ -141,10 +153,10 @@ independent guards enforce this:
 1. **`event.preventDefault()` runs first, unconditionally** — before any
    inspection of the clipboard, and regardless of whether the paste is later
    accepted. No default paste behaviour of any kind occurs.
-2. **`#newWordPasteZone` is a plain `div`, not an input or a
-   `contenteditable`.** Text pasted into it has nowhere to render even if a
-   future edit dropped the `preventDefault()` call. The zone is focusable only
-   because `tabindex="0"` is needed to receive paste events at all.
+2. **The paste target is a `<button>`, not an input or a `contenteditable`.**
+   Text pasted onto it has nowhere to render even if a future edit dropped the
+   `preventDefault()` call. Do not change this element to an input or add
+   `contenteditable` to it — that would silently remove this guard.
 3. **An explicit allowlist decides what is accepted.** A clipboard item
    qualifies only when *both* hold:
    - `item.kind === 'file'`, and
@@ -209,12 +221,13 @@ could close before the outcome is known.
 
 | Case | Behaviour |
 | --- | --- |
-| Clipboard holds plain text | Nothing attached, nothing inserted; "no image" hint |
-| Clipboard holds rich text (`text/html`) | Nothing attached, nothing inserted; "no image" hint |
-| Clipboard holds a non-image file (`.pdf`, `.docx`) | Rejected by the type allowlist; "no image" hint |
+| Clipboard holds plain text | Nothing attached, nothing inserted; `❌ Not an image` |
+| Clipboard holds rich text (`text/html`) | Nothing attached, nothing inserted; `❌ Not an image` |
+| Clipboard holds a non-image file (`.pdf`, `.docx`) | Rejected by the type allowlist; `❌ Not an image` |
 | Clipboard holds an image *and* text | Image attached, text ignored |
 | Clipboard holds an SVG (`image/svg+xml`) | Rejected client-side, before any word is created |
-| Clipboard is empty | Nothing attached; "no image" hint |
+| Clipboard is empty | Nothing attached; `❌ Not an image` |
+| Rejected while an image is already attached | Label reverts to `✅ Image Attached`, the existing image is kept |
 | Duplicate word (409) | No word created, existing error shown, pending image stays attached so the user can change category and resubmit |
 | Validation fails (missing word/translation/category) | Existing early return; image stays attached |
 | Modal cancelled, then reopened | Image cleared |
@@ -227,7 +240,8 @@ could close before the outcome is known.
 
 `test/test_basic.py` runs without a database and covers structure, not
 behaviour. Two assertions are added in that existing style, verifying
-`templates/index.html` contains `newWordPasteZone` and `attachScreenshotBtn`.
+`templates/index.html` contains `attachScreenshotBtn` and
+`removeScreenshotBtn`.
 
 These guard against the markup being removed. They do not test the paste flow;
 clipboard interaction is not reachable from this suite.
@@ -237,15 +251,15 @@ clipboard interaction is not reachable from this suite.
 Run in the `bkdict` conda environment on `http://localhost:5001`:
 
 1. Snip a screenshot (Win+Shift+S). Open Add New Word. Click
-   `📷 Attach Screenshot`, press Ctrl+V — thumbnail appears.
-2. Click `✕ Remove` — thumbnail clears, Remove hides.
+   `📷 Attach Image`, press Ctrl+V — label becomes `✅ Image Attached`.
+2. Click `✕` — label returns to `📷 Attach Image`, the `✕` hides.
 3. Re-attach, fill in word/translation/category, submit — word saves and the
    image shows on the word card.
 4. Copy some text. Click into Translation, press Ctrl+V — text pastes normally,
    no screenshot is attached.
-5. Copy some text. Click `📷 Attach Screenshot`, press Ctrl+V — "no image found"
-   hint appears, no text appears anywhere in the modal, and the zone stays
-   empty.
+5. Copy some text. Click `📷 Attach Image`, press Ctrl+V — label shows
+   `❌ Not an image`, no text appears anywhere in the modal, and nothing is
+   attached.
 6. Repeat step 5 with rich text copied from a web page, and again with a
    non-image file copied in Explorer (e.g. a `.pdf`). Both must be rejected the
    same way.
@@ -253,7 +267,7 @@ Run in the `bkdict` conda environment on `http://localhost:5001`:
    clipboard. Attach it — the image is used, no text leaks in.
 8. Attach an image, then Cancel. Reopen the modal — the control is empty.
 9. Submit a word that already exists in the chosen category — duplicate error
-   shows and the thumbnail is still attached.
+   shows and the button still reads `✅ Image Attached`.
 
 ## Reversibility
 

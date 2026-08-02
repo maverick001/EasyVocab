@@ -142,13 +142,9 @@ const Elements = {
     removeImageBtn: null,
     imageDisplayTitle: null,
 
-    // Add Word Screenshot
-    newWordPasteZone: null,
-    newWordPastePlaceholder: null,
-    newWordThumb: null,
+    // Add Word Image Attachment
     attachScreenshotBtn: null,
-    removeScreenshotBtn: null,
-    newWordPasteHint: null
+    removeScreenshotBtn: null
 };
 
 // ============================================
@@ -366,13 +362,9 @@ function cacheDOMElements() {
     Elements.removeImageBtn = document.getElementById('removeImageBtn');
     Elements.imageDisplayTitle = document.getElementById('imageDisplayTitle');
 
-    // Add Word Screenshot
-    Elements.newWordPasteZone = document.getElementById('newWordPasteZone');
-    Elements.newWordPastePlaceholder = document.getElementById('newWordPastePlaceholder');
-    Elements.newWordThumb = document.getElementById('newWordThumb');
+    // Add Word Image Attachment
     Elements.attachScreenshotBtn = document.getElementById('attachScreenshotBtn');
     Elements.removeScreenshotBtn = document.getElementById('removeScreenshotBtn');
-    Elements.newWordPasteHint = document.getElementById('newWordPasteHint');
 }
 
 /**
@@ -430,7 +422,7 @@ function setupEventListeners() {
     Elements.toggleCategoryBtn.addEventListener('click', toggleNewCategoryInput);
     Elements.attachScreenshotBtn.addEventListener('click', armScreenshotZone);
     Elements.removeScreenshotBtn.addEventListener('click', clearNewWordImage);
-    Elements.newWordPasteZone.addEventListener('paste', handleNewWordPaste);
+    Elements.attachScreenshotBtn.addEventListener('paste', handleNewWordPaste);
 
     // Search functionality
 
@@ -784,23 +776,30 @@ const NEW_WORD_IMAGE_TYPES = [
     'image/bmp'
 ];
 
-const NO_IMAGE_MESSAGE = '❌ No image found in clipboard.';
+// The attach button carries its own state in its label, so the form needs
+// no extra placeholder box, preview or hint line.
+const ATTACH_LABEL_IDLE = '📷 Attach Image';
+const ATTACH_LABEL_ARMED = '📋 Press Ctrl+V';
+const ATTACH_LABEL_ATTACHED = '✅ Image Attached';
+const ATTACH_LABEL_REJECTED = '❌ Not an image';
 
-// Pending screenshot for the Add New Word modal. Deliberately separate from
+// Pending image for the Add New Word modal. Deliberately separate from
 // currentPastedFile, which belongs to the existing pasteImageModal flow.
 let newWordImageFile = null;
 
 /**
- * Arm the paste zone so the next Ctrl+V is captured
+ * Arm the attach button so the next Ctrl+V is captured
+ *
+ * The button is also the paste target: paste events only fire on the
+ * focused element, and a button is natively focusable.
  */
 function armScreenshotZone() {
-    Elements.newWordPasteZone.classList.add('armed');
-    Elements.newWordPasteHint.textContent = 'Press Ctrl+V';
-    Elements.newWordPasteZone.focus();
+    Elements.attachScreenshotBtn.textContent = ATTACH_LABEL_ARMED;
+    Elements.attachScreenshotBtn.focus();
 }
 
 /**
- * Handle a paste into the new word screenshot zone
+ * Handle a paste on the attach button
  *
  * Only image files are accepted. Text, rich text and non-image files are
  * discarded without being attached or inserted anywhere.
@@ -824,42 +823,30 @@ function handleNewWordPaste(event) {
         if (!blob) continue;
 
         newWordImageFile = blob;
-
-        const reader = new FileReader();
-        reader.onload = function (e) {
-            Elements.newWordThumb.src = e.target.result;
-            Elements.newWordThumb.style.display = 'block';
-            Elements.newWordPastePlaceholder.style.display = 'none';
-            Elements.removeScreenshotBtn.style.display = 'inline-block';
-            Elements.newWordPasteHint.textContent = '';
-        };
-        reader.readAsDataURL(blob);
-
-        Elements.newWordPasteZone.classList.remove('armed');
+        Elements.attachScreenshotBtn.textContent = ATTACH_LABEL_ATTACHED;
+        Elements.removeScreenshotBtn.style.display = 'inline-block';
         return;
     }
 
     // Nothing qualified. A mixed clipboard holding both an image and text
     // would have returned above, so reaching here means no usable image.
-    Elements.newWordPasteHint.textContent = NO_IMAGE_MESSAGE;
+    Elements.attachScreenshotBtn.textContent = ATTACH_LABEL_REJECTED;
     setTimeout(() => {
-        if (Elements.newWordPasteHint.textContent === NO_IMAGE_MESSAGE) {
-            Elements.newWordPasteHint.textContent = '';
+        if (Elements.attachScreenshotBtn.textContent === ATTACH_LABEL_REJECTED) {
+            Elements.attachScreenshotBtn.textContent = newWordImageFile
+                ? ATTACH_LABEL_ATTACHED
+                : ATTACH_LABEL_IDLE;
         }
-    }, 3000);
+    }, 2000);
 }
 
 /**
- * Clear any pending screenshot and reset the control to its empty state
+ * Clear any pending image and reset the button to its idle state
  */
 function clearNewWordImage() {
     newWordImageFile = null;
-    Elements.newWordThumb.src = '';
-    Elements.newWordThumb.style.display = 'none';
-    Elements.newWordPastePlaceholder.style.display = 'block';
+    Elements.attachScreenshotBtn.textContent = ATTACH_LABEL_IDLE;
     Elements.removeScreenshotBtn.style.display = 'none';
-    Elements.newWordPasteHint.textContent = '';
-    Elements.newWordPasteZone.classList.remove('armed');
 }
 
 /**
