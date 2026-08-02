@@ -1927,8 +1927,23 @@ async function submitNewWord() {
         const data = await response.json();
 
         if (data.success) {
-            Elements.addWordStatus.textContent = `✅ ${data.message}`;
-            Elements.addWordStatus.className = 'form-status success';
+            let imageFailed = false;
+
+            // Attach the pending screenshot to the word that was just created.
+            // Awaited here so the outcome is known before the close timer starts.
+            if (newWordImageFile && data.word_id) {
+                Elements.addWordStatus.textContent = '⏳ Uploading screenshot...';
+                Elements.addWordStatus.className = 'form-status';
+                imageFailed = !(await uploadNewWordImage(data.word_id));
+            }
+
+            if (imageFailed) {
+                Elements.addWordStatus.textContent = '⚠️ Word added, but screenshot failed to upload';
+                Elements.addWordStatus.className = 'form-status error';
+            } else {
+                Elements.addWordStatus.textContent = `✅ ${data.message}`;
+                Elements.addWordStatus.className = 'form-status success';
+            }
 
             // Increment daily counter for the new word
             if (data.word_id) {
@@ -1938,7 +1953,8 @@ async function submitNewWord() {
             // Reload categories to update counts
             await loadCategories();
 
-            // Close modal after 1.5 seconds
+            // Close modal after a short delay, held longer when the screenshot
+            // warning needs to stay readable
             setTimeout(() => {
                 closeAddWordModal();
 
@@ -1946,7 +1962,7 @@ async function submitNewWord() {
                 if (AppState.currentCategory === category) {
                     loadWord(category, 0);  // Load first word (the newly added one if sorted by recent edits)
                 }
-            }, 1500);
+            }, imageFailed ? 4000 : 1500);
 
             console.log(`✅ Word "${word}" added successfully`);
         } else {
