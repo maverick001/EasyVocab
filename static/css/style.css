@@ -2850,9 +2850,3 @@ body.dark-mode .quiz-word {
     gap: var(--spacing-xs);
 }
 
-/* The attach button is also the paste target, so it must show focus */
-#attachScreenshotBtn:focus {
-    outline: 2px solid var(--primary-blue);
-    outline-offset: 2px;
-}
-

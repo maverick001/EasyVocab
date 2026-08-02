@@ -420,9 +420,8 @@ function setupEventListeners() {
     Elements.generateNewSampleBtn.addEventListener('click', generateNewWordSample);
     Elements.generateNewTransBtn.addEventListener('click', generateNewWordTranslation);
     Elements.toggleCategoryBtn.addEventListener('click', toggleNewCategoryInput);
-    Elements.attachScreenshotBtn.addEventListener('click', armScreenshotZone);
+    Elements.attachScreenshotBtn.addEventListener('click', openNewWordPasteModal);
     Elements.removeScreenshotBtn.addEventListener('click', clearNewWordImage);
-    Elements.attachScreenshotBtn.addEventListener('paste', handleNewWordPaste);
 
     // Search functionality
 
@@ -607,6 +606,11 @@ async function openBackendFileDialog() {
 
 let currentPastedFile = null;
 
+// Which flow the shared paste modal is serving:
+//   'existing' - upload straight away to the word on screen
+//   'newWord'  - hold the image until the new word has been created
+let pasteModalMode = 'existing';
+
 /**
  * Handle Image Button Click
  */
@@ -632,15 +636,25 @@ function togglePasteModal(show) {
         Elements.pastePreview.style.display = 'none';
         Elements.pasteArea.querySelector('.paste-placeholder').style.display = 'flex';
         Elements.uploadImageBtn.disabled = true;
+        Elements.uploadImageBtn.textContent = pasteConfirmLabel();
         Elements.pasteStatus.textContent = '';
         Elements.pasteArea.focus();
     }
 }
 
 /**
+ * Label for the paste modal's confirm button, which differs by mode:
+ * nothing is saved to the server yet when adding a new word.
+ */
+function pasteConfirmLabel() {
+    return pasteModalMode === 'newWord' ? 'Attach Image' : 'Save Image';
+}
+
+/**
  * Open Paste Modal
  */
 function openPasteModal() {
+    pasteModalMode = 'existing';
     togglePasteModal(true);
 }
 
@@ -655,23 +669,29 @@ function handlePasteEvent(event) {
     let foundImage = false;
 
     for (const item of items) {
-        if (item.type.indexOf('image') === 0) {
-            const blob = item.getAsFile();
-            currentPastedFile = blob;
-            foundImage = true;
+        // Copied text arrives as kind 'string' and is never a file. A file
+        // copied in Explorer is kind 'file' but carries its own MIME type,
+        // so the allowlist is what rejects a .pdf or an SVG.
+        if (item.kind !== 'file') continue;
+        if (!NEW_WORD_IMAGE_TYPES.includes(item.type)) continue;
 
-            // Show preview
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                Elements.pastePreview.src = e.target.result;
-                Elements.pastePreview.style.display = 'block';
-                Elements.pasteArea.querySelector('.paste-placeholder').style.display = 'none';
-                Elements.uploadImageBtn.disabled = false;
-                Elements.pasteStatus.textContent = '';
-            };
-            reader.readAsDataURL(blob);
-            break;
-        }
+        const blob = item.getAsFile();
+        if (!blob) continue;
+
+        currentPastedFile = blob;
+        foundImage = true;
+
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            Elements.pastePreview.src = e.target.result;
+            Elements.pastePreview.style.display = 'block';
+            Elements.pasteArea.querySelector('.paste-placeholder').style.display = 'none';
+            Elements.uploadImageBtn.disabled = false;
+            Elements.pasteStatus.textContent = '';
+        };
+        reader.readAsDataURL(blob);
+        break;
     }
 
     if (!foundImage) {
@@ -686,6 +706,13 @@ function handlePasteEvent(event) {
  */
 async function uploadPastedImage() {
     if (!currentPastedFile) return;
+
+    // A new word has no id yet, so hold the image and upload it in
+    // submitNewWord() once the word has actually been created.
+    if (pasteModalMode === 'newWord') {
+        attachPastedImageToNewWord();
+        return;
+    }
 
     try {
         Elements.uploadImageBtn.disabled = true;
@@ -722,7 +749,7 @@ async function uploadPastedImage() {
         Elements.pasteStatus.style.color = 'var(--error)';
         Elements.uploadImageBtn.disabled = false;
     } finally {
-        Elements.uploadImageBtn.textContent = 'Save Image';
+        Elements.uploadImageBtn.textContent = pasteConfirmLabel();
     }
 }
 
@@ -776,68 +803,35 @@ const NEW_WORD_IMAGE_TYPES = [
     'image/bmp'
 ];
 
-// The attach button carries its own state in its label, so the form needs
-// no extra placeholder box, preview or hint line.
+// The attach button carries its own state in its label.
 const ATTACH_LABEL_IDLE = '📷 Attach Image';
-const ATTACH_LABEL_ARMED = '📋 Press Ctrl+V';
 const ATTACH_LABEL_ATTACHED = '✅ Image Attached';
-const ATTACH_LABEL_REJECTED = '❌ Not an image';
 
-// Pending image for the Add New Word modal. Deliberately separate from
-// currentPastedFile, which belongs to the existing pasteImageModal flow.
+// Image pending for the Add New Word modal, uploaded once the word exists.
+// currentPastedFile stays the paste modal's transient buffer; this is where
+// the image is kept after the modal is confirmed and closed.
 let newWordImageFile = null;
 
 /**
- * Arm the attach button so the next Ctrl+V is captured
+ * Open the shared paste modal to attach an image to the new word
  *
- * The button is also the paste target: paste events only fire on the
- * focused element, and a button is natively focusable.
+ * Same popup as the image button on the word card, in 'newWord' mode.
  */
-function armScreenshotZone() {
-    Elements.attachScreenshotBtn.textContent = ATTACH_LABEL_ARMED;
-    Elements.attachScreenshotBtn.focus();
+function openNewWordPasteModal() {
+    pasteModalMode = 'newWord';
+    togglePasteModal(true);
 }
 
 /**
- * Handle a paste on the attach button
+ * Keep the pasted image against the pending new word
  *
- * Only image files are accepted. Text, rich text and non-image files are
- * discarded without being attached or inserted anywhere.
+ * Nothing is sent to the server here: the word does not exist yet.
  */
-function handleNewWordPaste(event) {
-    // Runs first and unconditionally, so no default paste behaviour occurs
-    // regardless of what the clipboard holds.
-    event.preventDefault();
-
-    const items = event.clipboardData ? event.clipboardData.items : [];
-
-    for (const item of items) {
-        // Copied text arrives as kind 'string' and is never a file.
-        if (item.kind !== 'file') continue;
-
-        // A file copied in Explorer is kind 'file' but carries its own MIME
-        // type, so the allowlist is what rejects a .pdf or .docx.
-        if (!NEW_WORD_IMAGE_TYPES.includes(item.type)) continue;
-
-        const blob = item.getAsFile();
-        if (!blob) continue;
-
-        newWordImageFile = blob;
-        Elements.attachScreenshotBtn.textContent = ATTACH_LABEL_ATTACHED;
-        Elements.removeScreenshotBtn.style.display = 'inline-block';
-        return;
-    }
-
-    // Nothing qualified. A mixed clipboard holding both an image and text
-    // would have returned above, so reaching here means no usable image.
-    Elements.attachScreenshotBtn.textContent = ATTACH_LABEL_REJECTED;
-    setTimeout(() => {
-        if (Elements.attachScreenshotBtn.textContent === ATTACH_LABEL_REJECTED) {
-            Elements.attachScreenshotBtn.textContent = newWordImageFile
-                ? ATTACH_LABEL_ATTACHED
-                : ATTACH_LABEL_IDLE;
-        }
-    }, 2000);
+function attachPastedImageToNewWord() {
+    newWordImageFile = currentPastedFile;
+    Elements.attachScreenshotBtn.textContent = ATTACH_LABEL_ATTACHED;
+    Elements.removeScreenshotBtn.style.display = 'inline-block';
+    togglePasteModal(false);
 }
 
 /**
