@@ -140,7 +140,15 @@ const Elements = {
     wordImageDisplay: null,
     changeImageBtn: null,
     removeImageBtn: null,
-    imageDisplayTitle: null
+    imageDisplayTitle: null,
+
+    // Add Word Screenshot
+    newWordPasteZone: null,
+    newWordPastePlaceholder: null,
+    newWordThumb: null,
+    attachScreenshotBtn: null,
+    removeScreenshotBtn: null,
+    newWordPasteHint: null
 };
 
 // ============================================
@@ -357,6 +365,14 @@ function cacheDOMElements() {
     Elements.changeImageBtn = document.getElementById('changeImageBtn');
     Elements.removeImageBtn = document.getElementById('removeImageBtn');
     Elements.imageDisplayTitle = document.getElementById('imageDisplayTitle');
+
+    // Add Word Screenshot
+    Elements.newWordPasteZone = document.getElementById('newWordPasteZone');
+    Elements.newWordPastePlaceholder = document.getElementById('newWordPastePlaceholder');
+    Elements.newWordThumb = document.getElementById('newWordThumb');
+    Elements.attachScreenshotBtn = document.getElementById('attachScreenshotBtn');
+    Elements.removeScreenshotBtn = document.getElementById('removeScreenshotBtn');
+    Elements.newWordPasteHint = document.getElementById('newWordPasteHint');
 }
 
 /**
@@ -412,6 +428,9 @@ function setupEventListeners() {
     Elements.generateNewSampleBtn.addEventListener('click', generateNewWordSample);
     Elements.generateNewTransBtn.addEventListener('click', generateNewWordTranslation);
     Elements.toggleCategoryBtn.addEventListener('click', toggleNewCategoryInput);
+    Elements.attachScreenshotBtn.addEventListener('click', armScreenshotZone);
+    Elements.removeScreenshotBtn.addEventListener('click', clearNewWordImage);
+    Elements.newWordPasteZone.addEventListener('paste', handleNewWordPaste);
 
     // Search functionality
 
@@ -1558,6 +1577,7 @@ async function openAddWordModal() {
     Elements.newSample.value = '';
     Elements.addWordStatus.textContent = '';
     Elements.addWordStatus.className = 'form-status';
+    clearNewWordImage();
 
     // Check if categories need to be fetched
     if (!AppState.categories || AppState.categories.length === 0) {
