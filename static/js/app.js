@@ -750,6 +750,124 @@ async function removeWordImage() {
 }
 
 // ============================================
+// Add Word Screenshot Functions
+// ============================================
+
+// Clipboard image types accepted for a new word's screenshot.
+// SVG is deliberately excluded: it would pass an "image/" prefix test but
+// Pillow cannot decode it, so it would fail server-side with a 500 only
+// after the word had already been created.
+const NEW_WORD_IMAGE_TYPES = [
+    'image/png',
+    'image/jpeg',
+    'image/gif',
+    'image/webp',
+    'image/bmp'
+];
+
+const NO_IMAGE_MESSAGE = '❌ No image found in clipboard.';
+
+// Pending screenshot for the Add New Word modal. Deliberately separate from
+// currentPastedFile, which belongs to the existing pasteImageModal flow.
+let newWordImageFile = null;
+
+/**
+ * Arm the paste zone so the next Ctrl+V is captured
+ */
+function armScreenshotZone() {
+    Elements.newWordPasteZone.classList.add('armed');
+    Elements.newWordPasteHint.textContent = 'Press Ctrl+V';
+    Elements.newWordPasteZone.focus();
+}
+
+/**
+ * Handle a paste into the new word screenshot zone
+ *
+ * Only image files are accepted. Text, rich text and non-image files are
+ * discarded without being attached or inserted anywhere.
+ */
+function handleNewWordPaste(event) {
+    // Runs first and unconditionally, so no default paste behaviour occurs
+    // regardless of what the clipboard holds.
+    event.preventDefault();
+
+    const items = event.clipboardData ? event.clipboardData.items : [];
+
+    for (const item of items) {
+        // Copied text arrives as kind 'string' and is never a file.
+        if (item.kind !== 'file') continue;
+
+        // A file copied in Explorer is kind 'file' but carries its own MIME
+        // type, so the allowlist is what rejects a .pdf or .docx.
+        if (!NEW_WORD_IMAGE_TYPES.includes(item.type)) continue;
+
+        const blob = item.getAsFile();
+        if (!blob) continue;
+
+        newWordImageFile = blob;
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            Elements.newWordThumb.src = e.target.result;
+            Elements.newWordThumb.style.display = 'block';
+            Elements.newWordPastePlaceholder.style.display = 'none';
+            Elements.removeScreenshotBtn.style.display = 'inline-block';
+            Elements.newWordPasteHint.textContent = '';
+        };
+        reader.readAsDataURL(blob);
+
+        Elements.newWordPasteZone.classList.remove('armed');
+        return;
+    }
+
+    // Nothing qualified. A mixed clipboard holding both an image and text
+    // would have returned above, so reaching here means no usable image.
+    Elements.newWordPasteHint.textContent = NO_IMAGE_MESSAGE;
+    setTimeout(() => {
+        if (Elements.newWordPasteHint.textContent === NO_IMAGE_MESSAGE) {
+            Elements.newWordPasteHint.textContent = '';
+        }
+    }, 3000);
+}
+
+/**
+ * Clear any pending screenshot and reset the control to its empty state
+ */
+function clearNewWordImage() {
+    newWordImageFile = null;
+    Elements.newWordThumb.src = '';
+    Elements.newWordThumb.style.display = 'none';
+    Elements.newWordPastePlaceholder.style.display = 'block';
+    Elements.removeScreenshotBtn.style.display = 'none';
+    Elements.newWordPasteHint.textContent = '';
+    Elements.newWordPasteZone.classList.remove('armed');
+}
+
+/**
+ * Upload the pending screenshot to a newly created word
+ *
+ * @param {number} wordId - ID returned by POST /api/words
+ * @returns {Promise<boolean>} true if the image was stored
+ */
+async function uploadNewWordImage(wordId) {
+    try {
+        const formData = new FormData();
+        formData.append('image', newWordImageFile);
+
+        const response = await fetch(`/api/words/${wordId}/image`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+        return data.success === true;
+    } catch (error) {
+        console.error('Error uploading new word screenshot:', error);
+        return false;
+    }
+}
+
+// ============================================
 // API Functions
 // ============================================
 
