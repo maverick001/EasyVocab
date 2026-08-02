@@ -140,7 +140,11 @@ const Elements = {
     wordImageDisplay: null,
     changeImageBtn: null,
     removeImageBtn: null,
-    imageDisplayTitle: null
+    imageDisplayTitle: null,
+
+    // Add Word Image Attachment
+    attachScreenshotBtn: null,
+    removeScreenshotBtn: null
 };
 
 // ============================================
@@ -357,6 +361,10 @@ function cacheDOMElements() {
     Elements.changeImageBtn = document.getElementById('changeImageBtn');
     Elements.removeImageBtn = document.getElementById('removeImageBtn');
     Elements.imageDisplayTitle = document.getElementById('imageDisplayTitle');
+
+    // Add Word Image Attachment
+    Elements.attachScreenshotBtn = document.getElementById('attachScreenshotBtn');
+    Elements.removeScreenshotBtn = document.getElementById('removeScreenshotBtn');
 }
 
 /**
@@ -412,6 +420,8 @@ function setupEventListeners() {
     Elements.generateNewSampleBtn.addEventListener('click', generateNewWordSample);
     Elements.generateNewTransBtn.addEventListener('click', generateNewWordTranslation);
     Elements.toggleCategoryBtn.addEventListener('click', toggleNewCategoryInput);
+    Elements.attachScreenshotBtn.addEventListener('click', openNewWordPasteModal);
+    Elements.removeScreenshotBtn.addEventListener('click', clearNewWordImage);
 
     // Search functionality
 
@@ -596,6 +606,11 @@ async function openBackendFileDialog() {
 
 let currentPastedFile = null;
 
+// Which flow the shared paste modal is serving:
+//   'existing' - upload straight away to the word on screen
+//   'newWord'  - hold the image until the new word has been created
+let pasteModalMode = 'existing';
+
 /**
  * Handle Image Button Click
  */
@@ -621,15 +636,25 @@ function togglePasteModal(show) {
         Elements.pastePreview.style.display = 'none';
         Elements.pasteArea.querySelector('.paste-placeholder').style.display = 'flex';
         Elements.uploadImageBtn.disabled = true;
+        Elements.uploadImageBtn.textContent = pasteConfirmLabel();
         Elements.pasteStatus.textContent = '';
         Elements.pasteArea.focus();
     }
 }
 
 /**
+ * Label for the paste modal's confirm button, which differs by mode:
+ * nothing is saved to the server yet when adding a new word.
+ */
+function pasteConfirmLabel() {
+    return pasteModalMode === 'newWord' ? 'Attach Image' : 'Save Image';
+}
+
+/**
  * Open Paste Modal
  */
 function openPasteModal() {
+    pasteModalMode = 'existing';
     togglePasteModal(true);
 }
 
@@ -644,23 +669,29 @@ function handlePasteEvent(event) {
     let foundImage = false;
 
     for (const item of items) {
-        if (item.type.indexOf('image') === 0) {
-            const blob = item.getAsFile();
-            currentPastedFile = blob;
-            foundImage = true;
+        // Copied text arrives as kind 'string' and is never a file. A file
+        // copied in Explorer is kind 'file' but carries its own MIME type,
+        // so the allowlist is what rejects a .pdf or an SVG.
+        if (item.kind !== 'file') continue;
+        if (!NEW_WORD_IMAGE_TYPES.includes(item.type)) continue;
 
-            // Show preview
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                Elements.pastePreview.src = e.target.result;
-                Elements.pastePreview.style.display = 'block';
-                Elements.pasteArea.querySelector('.paste-placeholder').style.display = 'none';
-                Elements.uploadImageBtn.disabled = false;
-                Elements.pasteStatus.textContent = '';
-            };
-            reader.readAsDataURL(blob);
-            break;
-        }
+        const blob = item.getAsFile();
+        if (!blob) continue;
+
+        currentPastedFile = blob;
+        foundImage = true;
+
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            Elements.pastePreview.src = e.target.result;
+            Elements.pastePreview.style.display = 'block';
+            Elements.pasteArea.querySelector('.paste-placeholder').style.display = 'none';
+            Elements.uploadImageBtn.disabled = false;
+            Elements.pasteStatus.textContent = '';
+        };
+        reader.readAsDataURL(blob);
+        break;
     }
 
     if (!foundImage) {
@@ -675,6 +706,13 @@ function handlePasteEvent(event) {
  */
 async function uploadPastedImage() {
     if (!currentPastedFile) return;
+
+    // A new word has no id yet, so hold the image and upload it in
+    // submitNewWord() once the word has actually been created.
+    if (pasteModalMode === 'newWord') {
+        attachPastedImageToNewWord();
+        return;
+    }
 
     try {
         Elements.uploadImageBtn.disabled = true;
@@ -711,7 +749,7 @@ async function uploadPastedImage() {
         Elements.pasteStatus.style.color = 'var(--error)';
         Elements.uploadImageBtn.disabled = false;
     } finally {
-        Elements.uploadImageBtn.textContent = 'Save Image';
+        Elements.uploadImageBtn.textContent = pasteConfirmLabel();
     }
 }
 
@@ -746,6 +784,86 @@ async function removeWordImage() {
         AppState.currentWord.image_file = null;
         updateImageButtonState(null);
         toggleImageDisplayModal(false);
+    }
+}
+
+// ============================================
+// Add Word Screenshot Functions
+// ============================================
+
+// Clipboard image types accepted for a new word's screenshot.
+// SVG is deliberately excluded: it would pass an "image/" prefix test but
+// Pillow cannot decode it, so it would fail server-side with a 500 only
+// after the word had already been created.
+const NEW_WORD_IMAGE_TYPES = [
+    'image/png',
+    'image/jpeg',
+    'image/gif',
+    'image/webp',
+    'image/bmp'
+];
+
+// The attach button carries its own state in its label.
+const ATTACH_LABEL_IDLE = '📷 Attach Image';
+const ATTACH_LABEL_ATTACHED = '✅ Image Attached';
+
+// Image pending for the Add New Word modal, uploaded once the word exists.
+// currentPastedFile stays the paste modal's transient buffer; this is where
+// the image is kept after the modal is confirmed and closed.
+let newWordImageFile = null;
+
+/**
+ * Open the shared paste modal to attach an image to the new word
+ *
+ * Same popup as the image button on the word card, in 'newWord' mode.
+ */
+function openNewWordPasteModal() {
+    pasteModalMode = 'newWord';
+    togglePasteModal(true);
+}
+
+/**
+ * Keep the pasted image against the pending new word
+ *
+ * Nothing is sent to the server here: the word does not exist yet.
+ */
+function attachPastedImageToNewWord() {
+    newWordImageFile = currentPastedFile;
+    Elements.attachScreenshotBtn.textContent = ATTACH_LABEL_ATTACHED;
+    Elements.removeScreenshotBtn.style.display = 'inline-block';
+    togglePasteModal(false);
+}
+
+/**
+ * Clear any pending image and reset the button to its idle state
+ */
+function clearNewWordImage() {
+    newWordImageFile = null;
+    Elements.attachScreenshotBtn.textContent = ATTACH_LABEL_IDLE;
+    Elements.removeScreenshotBtn.style.display = 'none';
+}
+
+/**
+ * Upload the pending screenshot to a newly created word
+ *
+ * @param {number} wordId - ID returned by POST /api/words
+ * @returns {Promise<boolean>} true if the image was stored
+ */
+async function uploadNewWordImage(wordId) {
+    try {
+        const formData = new FormData();
+        formData.append('image', newWordImageFile);
+
+        const response = await fetch(`/api/words/${wordId}/image`, {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+        return data.success === true;
+    } catch (error) {
+        console.error('Error uploading new word screenshot:', error);
+        return false;
     }
 }
 
@@ -1440,6 +1558,7 @@ async function openAddWordModal() {
     Elements.newSample.value = '';
     Elements.addWordStatus.textContent = '';
     Elements.addWordStatus.className = 'form-status';
+    clearNewWordImage();
 
     // Check if categories need to be fetched
     if (!AppState.categories || AppState.categories.length === 0) {
@@ -1789,8 +1908,23 @@ async function submitNewWord() {
         const data = await response.json();
 
         if (data.success) {
-            Elements.addWordStatus.textContent = `✅ ${data.message}`;
-            Elements.addWordStatus.className = 'form-status success';
+            let imageFailed = false;
+
+            // Attach the pending screenshot to the word that was just created.
+            // Awaited here so the outcome is known before the close timer starts.
+            if (newWordImageFile && data.word_id) {
+                Elements.addWordStatus.textContent = '⏳ Uploading screenshot...';
+                Elements.addWordStatus.className = 'form-status';
+                imageFailed = !(await uploadNewWordImage(data.word_id));
+            }
+
+            if (imageFailed) {
+                Elements.addWordStatus.textContent = '⚠️ Word added, but screenshot failed to upload';
+                Elements.addWordStatus.className = 'form-status error';
+            } else {
+                Elements.addWordStatus.textContent = `✅ ${data.message}`;
+                Elements.addWordStatus.className = 'form-status success';
+            }
 
             // Increment daily counter for the new word
             if (data.word_id) {
@@ -1800,7 +1934,8 @@ async function submitNewWord() {
             // Reload categories to update counts
             await loadCategories();
 
-            // Close modal after 1.5 seconds
+            // Close modal after a short delay, held longer when the screenshot
+            // warning needs to stay readable
             setTimeout(() => {
                 closeAddWordModal();
 
@@ -1808,7 +1943,7 @@ async function submitNewWord() {
                 if (AppState.currentCategory === category) {
                     loadWord(category, 0);  // Load first word (the newly added one if sorted by recent edits)
                 }
-            }, 1500);
+            }, imageFailed ? 4000 : 1500);
 
             console.log(`✅ Word "${word}" added successfully`);
         } else {

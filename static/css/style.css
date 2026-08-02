@@ -2840,3 +2840,13 @@ body.dark-mode .quiz-word {
 
 }
 
+/* ============================================
+   Add New Word - Image Attachment
+   ============================================ */
+
+.screenshot-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
