@@ -2840,3 +2840,58 @@ body.dark-mode .quiz-word {
 
 }
 
+/* ============================================
+   Add New Word - Screenshot Attachment
+   ============================================ */
+
+.screenshot-row {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-xs);
+}
+
+.screenshot-zone {
+    flex: 0 0 auto;
+    width: 96px;
+    height: 64px;
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-main);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.screenshot-zone.armed,
+.screenshot-zone:focus {
+    border-color: var(--primary-blue);
+    background: rgba(135, 206, 235, 0.1);
+}
+
+.screenshot-placeholder {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    pointer-events: none;
+}
+
+.screenshot-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.screenshot-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-xs);
+}
+
+.screenshot-actions .form-hint {
+    margin-top: 0;
+}
+

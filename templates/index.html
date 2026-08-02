@@ -100,6 +100,23 @@
                             placeholder="Enter sample sentences (one per line)..." rows="4"></textarea>
                         <small class="form-hint">Enter one sentence per line</small>
                     </div>
+                    <div class="form-group">
+                        <label>Screenshot (optional)</label>
+                        <div class="screenshot-row">
+                            <div id="newWordPasteZone" class="screenshot-zone" tabindex="0">
+                                <span id="newWordPastePlaceholder" class="screenshot-placeholder">No image</span>
+                                <img id="newWordThumb" class="screenshot-thumb" style="display: none;"
+                                    alt="Screenshot preview">
+                            </div>
+                            <div class="screenshot-actions">
+                                <button id="attachScreenshotBtn" class="btn btn-sm btn-secondary" type="button">📷
+                                    Attach Screenshot</button>
+                                <button id="removeScreenshotBtn" class="btn btn-sm btn-cancel" type="button"
+                                    style="display: none;">✕ Remove</button>
+                                <small id="newWordPasteHint" class="form-hint"></small>
+                            </div>
+                        </div>
+                    </div>
                     <div id="addWordStatus" class="form-status"></div>
                 </div>
                 <div class="modal-footer">

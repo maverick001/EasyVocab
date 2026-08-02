@@ -138,6 +138,22 @@ class TestTemplates:
         template_path = os.path.join(app.root_path, 'templates', 'quiz.html')
         assert os.path.isfile(template_path)
 
+    def test_index_has_screenshot_paste_zone(self):
+        """Add New Word modal should contain the screenshot paste zone"""
+        from app import app
+        template_path = os.path.join(app.root_path, 'templates', 'index.html')
+        with open(template_path, encoding='utf-8') as f:
+            markup = f.read()
+        assert 'newWordPasteZone' in markup
+
+    def test_index_has_attach_screenshot_button(self):
+        """Add New Word modal should contain the attach screenshot button"""
+        from app import app
+        template_path = os.path.join(app.root_path, 'templates', 'index.html')
+        with open(template_path, encoding='utf-8') as f:
+            markup = f.read()
+        assert 'attachScreenshotBtn' in markup
+
 
 class TestUtilities:
     """Tests for utility functions"""
