@@ -22,7 +22,7 @@ both can be viewed without leaving the modal.
 | --- | --- |
 | `words.image_file` (`VARCHAR(255)`, nullable) and its auto-migration | `app.py:220` `ensure_image_file_column()` |
 | Upload endpoint: compresses to JPEG under 500KB, saves to `static/images/word_images/`, writes `image_file` | `app.py:2341` `upload_word_image()` |
-| Image removal, via the generic word PATCH with `image_file: ''` | `app.py:1087` / `app.js:778` |
+| Image removal, via `PUT /api/words/<id>` with `image_file: ''` | `app.py:1087` / `app.js:778` |
 | Shared paste popup (`#pasteImageModal`) with a mode switch | `app.js:606-753` |
 | Display modal (`#imageDisplayModal`), one `<img>` plus Change/Remove/Close | `index.html:315` / `app.js:766` |
 | Quiz image rendering, reads `image_file` | `quiz.js:326` `showWordImage()` |
@@ -49,6 +49,8 @@ repository.
   attach button and is not modified.
 - Deleting orphaned image files from disk. Files are already never deleted on
   replacement today; this change does not widen that, and does not fix it.
+- The upload/remove scope asymmetry. Uploading writes one row; removing writes
+  every row sharing the word text. This is pre-existing; see "Removal scope".
 - Reordering images, captions, per-image metadata.
 - Showing both images in quiz mode.
 - Drag and drop, or a file picker. Clipboard paste remains the only input.
@@ -74,8 +76,10 @@ These were settled during brainstorming and are fixed:
    new-word screenshot feature and avoids inventing a partial-failure path for
    two sequential uploads.
 6. **Compaction is enforced on the server**, and `image_file` is removed from
-   the generic PATCH endpoint's accepted fields, so no client can produce a word
-   whose only image sits in slot 2.
+   the generic `PUT /api/words/<id>` accepted fields, so no client can produce a
+   word whose only image sits in slot 2.
+7. **Removal keeps today's scope: every row sharing the word text.** Not the
+   single row being viewed. See "Removal scope".
 
 ## The Compaction Invariant
 
@@ -105,7 +109,7 @@ Two alternatives were rejected:
 - **Separate endpoints per slot** (`POST .../image/1`, `POST .../image/2`).
   Marginally more RESTful, but either duplicates the ~60-line Pillow
   compression block or forces a refactor of it, for no behavioural gain.
-- **Client-orchestrated slots**, with the browser issuing PATCHes to shuffle
+- **Client-orchestrated slots**, with the browser issuing PUTs to shuffle
   columns. Rejected because compaction would become two round trips that can be
   interrupted between them, leaving a word with a hole in slot 1 — precisely
   the state the invariant forbids.
@@ -116,7 +120,7 @@ Two alternatives were rejected:
 
 | File | Change |
 | --- | --- |
-| `app.py` | Second column migration; `slot` on upload; new delete endpoint; `image_file` dropped from PATCH; `image_file_2` added to three SELECTs; filename format |
+| `app.py` | Second column migration; `slot` on upload; new delete endpoint; `image_file` dropped from `PUT`; `image_file_2` added to three SELECTs; filename format |
 | `templates/index.html` | Display modal body becomes a scroll container; footer buttons change |
 | `static/js/app.js` | Render image blocks; per-slot handlers; paste target slot; re-render from server response |
 | `static/css/style.css` | Scroll pane, image block, per-image button row |
@@ -163,12 +167,66 @@ truth after an upload exactly as it does after a delete:
 
 Returns the resulting `{success, image_file, image_file_2}`.
 
-**`PATCH /api/words/<id>`** — `image_file` is removed from the accepted update
+### Removal scope
+
+The same word can exist as several rows, one per category. Removal applies to
+**every row sharing the word text**, which is exactly what removal does today
+(`app.py:1120-1128`, `WHERE word = %s`, under a list literally named
+`shared_update_fields` with the comment *"Update fields across ALL instances of
+this word"*). `translation` and `ipa` are already shared this way.
+
+So the delete endpoint reads the word text from the id, then updates by text:
+
+```sql
+-- slot 2
+UPDATE words SET image_file_2 = NULL WHERE word = %s;
+-- slot 1
+UPDATE words SET image_file = image_file_2, image_file_2 = NULL WHERE word = %s;
+```
+
+**Both statements preserve the invariant on every affected row, including rows
+whose values differ.** Rows can legitimately diverge, because uploading writes a
+single row (`app.py:2410`, `WHERE id = %s`) while removal writes them all — a
+pre-existing asymmetry this change deliberately does not fix. Compaction is
+nonetheless safe row by row:
+
+| Row before | After slot-1 removal | Valid? |
+| --- | --- | --- |
+| `A` / `B` | `B` / `NULL` | yes |
+| `A` / `NULL` | `NULL` / `NULL` | yes |
+| `NULL` / `NULL` | `NULL` / `NULL` | yes |
+
+The fourth combination, `NULL` / `B`, is the one the invariant forbids and
+cannot occur.
+
+The slot-2 upload guard is evaluated per row, by id, matching upload's scope.
+
+**`PUT /api/words/<id>`** — `image_file` is removed from the accepted update
 fields (`app.py:1087-1091`) and from the endpoint's docstring (`app.py:1048`).
 It exists today only to serve image removal, which the delete endpoint now owns.
 Removing it leaves exactly one route capable of emptying a slot, which is what
 makes the invariant unbreakable. `app.js:960-962`, the client-side branch that
 syncs local state when `image_file` appears in an update, is removed with it.
+
+This was audited before being accepted (2026-08-04):
+
+- `removeWordImage()` (`app.js:779-781`) is the **only** caller that sends
+  `image_file`. The five other `updateWord()` call sites send `word`,
+  `translation`, `example_sentence` or `ipa`.
+- No other route writes the field. The remaining write-method fetches to
+  `/api/words/<id>` are `DELETE`; category, review and image use their own
+  routes.
+- Every other reference repo-wide is a read: `quiz.js:327-328`,
+  `app.js:618/1118/1652`, and `app.py`'s own SELECTs. No `database/*.sql` file,
+  `.github/workflows/ci.yml`, README or CHANGELOG mentions it.
+- `temp/archive/verify_daily_cap.py` PUTs `sample_sentence` only.
+
+**A stale client degrades to a no-op, not an error.** Fields are opt-in
+(`if "x" in data`) and `app.py:1120` guards on a non-empty field list, so an old
+browser tab PUTting only `image_file` has the field ignored, runs no `UPDATE`,
+and receives `success`. The image appears to survive a "successful" removal
+until the page is refreshed. Acceptable: it is transient, self-correcting, and
+reachable only from a tab open across the deployment.
 
 ### Read paths
 
@@ -305,6 +363,8 @@ are unchanged, and now cover all three actions because they share one popup.
 | Word created via Add New Word | One image in slot 1, identical to today |
 | Word with a pre-existing image | Slot 1 holds it, slot 2 null; already valid, no backfill |
 | Quiz mode, two-image word | Slot-1 image only |
+| Removing an image from a word present in several categories | All rows sharing the word text are cleared and compacted, as today |
+| Those rows hold differing images (upload wrote only one) | Each row compacts its own values; the invariant holds on every row |
 
 ## Testing
 
@@ -347,7 +407,10 @@ Run in the `bkdict` conda environment on `http://localhost:5001`:
 9. Set the quiz filter to `Image Only`. The two-image word appears.
 10. Add a new word with an attached image. Behaviour is unchanged and the new
     word opens with exactly one image.
-11. Verify the auto-migration. Stop the app, drop `image_file_2`, and restart —
+11. Take a word that exists in two categories and give it two images. Remove
+    image 1 from one category, then open the same word in the other category.
+    Both show image 2 compacted into slot 1 — removal is shared, as it is today.
+12. Verify the auto-migration. Stop the app, drop `image_file_2`, and restart —
     the column is recreated at startup and the app works.
 
     **Dropping the column discards every slot-2 reference it holds.** Do this
@@ -365,7 +428,7 @@ Run in the `bkdict` conda environment on `http://localhost:5001`:
   or left; neither affects behaviour. No existing column is altered.
 - **Existing data is untouched.** Every word already satisfies the invariant, so
   nothing is migrated, rewritten or backfilled.
-- **Reverting restores the PATCH image field**, so the old removal path returns
+- **Reverting restores the `PUT` image field**, so the old removal path returns
   along with the old removal UI.
 
 Two residues survive a revert. Second images uploaded through this feature
