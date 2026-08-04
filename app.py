@@ -254,6 +254,43 @@ def ensure_image_file_column():
             connection.close()
 
 
+def ensure_image_file_2_column():
+    """
+    Ensure image_file_2 column exists in words table
+    """
+    connection = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        # Check if column exists
+        cursor.execute(
+            """
+            SELECT COUNT(*)
+            FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = %s
+            AND TABLE_NAME = 'words'
+            AND COLUMN_NAME = 'image_file_2'
+        """,
+            (app.config["DB_NAME"],),
+        )
+
+        if cursor.fetchone()[0] == 0:
+            print("Adding image_file_2 column to words table...")
+            cursor.execute(
+                "ALTER TABLE words ADD COLUMN image_file_2 VARCHAR(255) DEFAULT NULL"
+            )
+            connection.commit()
+            print(f"[OK] Second image file column check completed")
+
+        cursor.close()
+    except mysql.connector.Error as err:
+        print(f"[ERROR] Error ensuring image_file_2 column: {err}")
+    finally:
+        if connection:
+            connection.close()
+
+
 def ensure_ipa_column():
     """
     Ensure ipa column exists in words table
@@ -2442,6 +2479,7 @@ def create_app():
     Config.init_app(app)
     init_db_pool()
     ensure_image_file_column()
+    ensure_image_file_2_column()
     ensure_ipa_column()
     return app
 
@@ -2523,6 +2561,7 @@ if __name__ == "__main__":
     init_db_pool()
     ensure_word_history_table()
     ensure_image_file_column()
+    ensure_image_file_2_column()
     ensure_ipa_column()
     ensure_srs_columns()
     ensure_daily_score_column()

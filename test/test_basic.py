@@ -189,3 +189,17 @@ class TestEnvironmentDetection:
         result = inject_env_info()
         assert isinstance(result['env_type'], str)
         assert len(result['env_type']) > 0
+
+
+class TestSecondImageColumn:
+    """Tests for the image_file_2 self-migration"""
+
+    def test_ensure_image_file_2_column_exists(self):
+        """The migration function should be defined"""
+        import app as app_module
+        assert hasattr(app_module, 'ensure_image_file_2_column')
+
+    def test_ensure_image_file_2_column_is_callable(self):
+        """The migration function should be callable"""
+        import app as app_module
+        assert callable(app_module.ensure_image_file_2_column)
