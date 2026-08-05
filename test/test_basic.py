@@ -203,3 +203,47 @@ class TestSecondImageColumn:
         """The migration function should be callable"""
         import app as app_module
         assert callable(app_module.ensure_image_file_2_column)
+
+
+class TestImageSlotParsing:
+    """Tests for interpreting the 'slot' field of an image upload"""
+
+    def test_absent_slot_defaults_to_one(self):
+        """A request with no slot field targets slot 1"""
+        from app import parse_image_slot
+        assert parse_image_slot(None) == 1
+
+    def test_empty_slot_defaults_to_one(self):
+        """An empty slot field targets slot 1"""
+        from app import parse_image_slot
+        assert parse_image_slot('') == 1
+
+    def test_slot_one_accepted(self):
+        """Slot 1 is accepted"""
+        from app import parse_image_slot
+        assert parse_image_slot('1') == 1
+
+    def test_slot_two_accepted(self):
+        """Slot 2 is accepted"""
+        from app import parse_image_slot
+        assert parse_image_slot('2') == 2
+
+    def test_integer_input_accepted(self):
+        """An int is accepted as well as a string"""
+        from app import parse_image_slot
+        assert parse_image_slot(2) == 2
+
+    def test_zero_rejected(self):
+        """Slot 0 is out of range"""
+        from app import parse_image_slot
+        assert parse_image_slot('0') is None
+
+    def test_three_rejected(self):
+        """Slot 3 is out of range - two images is a hard cap"""
+        from app import parse_image_slot
+        assert parse_image_slot('3') is None
+
+    def test_non_numeric_rejected(self):
+        """A non-numeric slot is rejected rather than raising"""
+        from app import parse_image_slot
+        assert parse_image_slot('abc') is None

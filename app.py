@@ -291,6 +291,32 @@ def ensure_image_file_2_column():
             connection.close()
 
 
+# A word holds at most two images. This cap is deliberate: it keeps the data
+# model to two columns rather than a one-to-many table.
+VALID_IMAGE_SLOTS = (1, 2)
+
+
+def parse_image_slot(raw):
+    """
+    Interpret the 'slot' field of an image upload request.
+
+    Absent or empty means slot 1, which keeps every caller written before the
+    second slot existed working without modification.
+
+    Returns:
+        1 or 2, or None when the value is not a valid slot (caller returns 400)
+    """
+    if raw is None or raw == "":
+        return 1
+
+    try:
+        slot = int(raw)
+    except (TypeError, ValueError):
+        return None
+
+    return slot if slot in VALID_IMAGE_SLOTS else None
+
+
 def ensure_ipa_column():
     """
     Ensure ipa column exists in words table
