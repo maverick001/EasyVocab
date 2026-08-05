@@ -317,6 +317,30 @@ def parse_image_slot(raw):
     return slot if slot in VALID_IMAGE_SLOTS else None
 
 
+def build_image_removal_sql(slot):
+    """
+    SQL that empties one image slot and restores the compaction invariant.
+
+    Slot 1 is always filled before slot 2, so removing slot 1 must pull slot 2
+    down into it rather than leaving a hole. Both statements are correct row by
+    row, which matters because rows sharing a word can hold different images:
+    uploads write a single row while removals write every row.
+
+    Args:
+        slot: 1 or 2, already validated by the caller
+
+    Returns:
+        A SQL string with one %s placeholder, for the word text
+    """
+    if slot == 1:
+        return (
+            "UPDATE words SET image_file = image_file_2, image_file_2 = NULL "
+            "WHERE word = %s"
+        )
+
+    return "UPDATE words SET image_file_2 = NULL WHERE word = %s"
+
+
 def ensure_ipa_column():
     """
     Ensure ipa column exists in words table

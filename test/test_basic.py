@@ -247,3 +247,37 @@ class TestImageSlotParsing:
         """A non-numeric slot is rejected rather than raising"""
         from app import parse_image_slot
         assert parse_image_slot('abc') is None
+
+
+class TestImageRemovalSql:
+    """Tests for the SQL that empties a slot and restores compaction"""
+
+    def test_slot_one_pulls_slot_two_down(self):
+        """Removing slot 1 must move slot 2 into it, not just blank slot 1"""
+        from app import build_image_removal_sql
+        sql = build_image_removal_sql(1)
+        assert 'image_file = image_file_2' in sql
+        assert 'image_file_2 = NULL' in sql
+
+    def test_slot_two_clears_only_slot_two(self):
+        """Removing slot 2 must leave slot 1 alone"""
+        from app import build_image_removal_sql
+        sql = build_image_removal_sql(2)
+        assert 'image_file_2 = NULL' in sql
+        assert 'image_file = image_file_2' not in sql
+
+    def test_slot_one_targets_all_rows_sharing_the_word(self):
+        """Removal is shared across categories, as translation and ipa are"""
+        from app import build_image_removal_sql
+        assert build_image_removal_sql(1).endswith('WHERE word = %s')
+
+    def test_slot_two_targets_all_rows_sharing_the_word(self):
+        """Removal is shared across categories, as translation and ipa are"""
+        from app import build_image_removal_sql
+        assert build_image_removal_sql(2).endswith('WHERE word = %s')
+
+    def test_statements_carry_exactly_one_placeholder(self):
+        """Only the word text is parameterised; the slot is never interpolated"""
+        from app import build_image_removal_sql
+        assert build_image_removal_sql(1).count('%s') == 1
+        assert build_image_removal_sql(2).count('%s') == 1
