@@ -788,6 +788,45 @@ function replaceImageSlot(slot) {
 }
 
 /**
+ * Remove one image. The server compacts, so removing slot 1 while slot 2 is
+ * filled leaves the word with the second image in first position.
+ *
+ * @param {number} slot - 1 or 2
+ */
+async function removeImageSlot(slot) {
+    if (!confirm('Are you sure you want to remove this image?')) return;
+
+    try {
+        showLoading(true);
+
+        const response = await fetch(
+            `/api/words/${AppState.currentWord.id}/image/${slot}`,
+            { method: 'DELETE' }
+        );
+
+        const data = await response.json();
+
+        if (!data.success) {
+            showError(data.error || 'Failed to remove image');
+            return;
+        }
+
+        applyImageState(data);
+
+        if (AppState.currentWord.image_file) {
+            renderImageBlocks();
+        } else {
+            toggleImageDisplayModal(false);
+        }
+    } catch (error) {
+        console.error('Error removing image:', error);
+        showError('Network error while removing image');
+    } finally {
+        showLoading(false);
+    }
+}
+
+/**
  * Rebuild the scroll pane from the word currently on screen.
  *
  * Blocks are built from state rather than toggled in markup, so no stale
@@ -821,7 +860,13 @@ function renderImageBlocks() {
         replaceBtn.textContent = 'Replace';
         replaceBtn.addEventListener('click', () => replaceImageSlot(entry.slot));
 
-        actions.append(replaceBtn);
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'btn btn-danger btn-sm';
+        removeBtn.textContent = 'Remove';
+        removeBtn.addEventListener('click', () => removeImageSlot(entry.slot));
+
+        actions.append(replaceBtn, removeBtn);
         block.append(img, actions);
         Elements.imageScrollPane.append(block);
     });
