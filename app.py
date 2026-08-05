@@ -2406,9 +2406,12 @@ def upload_word_image(word_id):
     """
     Upload and process an image for a specific word
 
-    1. Resizes image to 256x256
+    1. Compresses image to JPEG under 500KB
     2. Saves to static/images/word_images with unique name
     3. Updates database
+
+    Accepts an optional 'slot' form field (1 or 2). Absent means slot 1, which
+    keeps every caller written before the second slot existed working.
     """
     conn = None
     try:
@@ -2420,73 +2423,94 @@ def upload_word_image(word_id):
         if file.filename == "":
             return jsonify({"success": False, "error": "No selected file"}), 400
 
-        if file:
-            # Process image using Pillow
-            try:
-                # Open image from stream
-                img = Image.open(file.stream)
+        slot = parse_image_slot(request.form.get("slot"))
+        if slot is None:
+            return jsonify({"success": False, "error": "Invalid image slot"}), 400
 
-                # Convert to RGB (required for JPEG)
-                if img.mode != "RGB":
-                    img = img.convert("RGB")
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
 
-                # Compress to ensure size < 500KB without resizing dimensions
-                output_buffer = io.BytesIO()
-                quality = 95
+        cursor.execute(
+            "SELECT word, image_file, image_file_2 FROM words WHERE id = %s",
+            (word_id,),
+        )
+        word_data = cursor.fetchone()
+
+        if not word_data:
+            return jsonify({"success": False, "error": "Word not found"}), 404
+
+        # Slot 1 is always filled before slot 2, so a word with no first image
+        # cannot be given a second one. Checked before compression so a rejected
+        # upload does no work.
+        if slot == 2 and not word_data["image_file"]:
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "Cannot fill slot 2 while slot 1 is empty",
+                }
+            ), 409
+
+        # Process image using Pillow
+        try:
+            # Open image from stream
+            img = Image.open(file.stream)
+
+            # Convert to RGB (required for JPEG)
+            if img.mode != "RGB":
+                img = img.convert("RGB")
+
+            # Compress to ensure size < 500KB without resizing dimensions
+            output_buffer = io.BytesIO()
+            quality = 95
+            img.save(output_buffer, format="JPEG", quality=quality)
+
+            while output_buffer.tell() > 500 * 1024 and quality > 10:
+                output_buffer.seek(0)
+                output_buffer.truncate()
+                quality -= 5
                 img.save(output_buffer, format="JPEG", quality=quality)
 
-                while output_buffer.tell() > 500 * 1024 and quality > 10:
-                    output_buffer.seek(0)
-                    output_buffer.truncate()
-                    quality -= 5
-                    img.save(output_buffer, format="JPEG", quality=quality)
+            # The slot is part of the filename because time.time() is
+            # second-resolution: two images for one word saved in the same
+            # second would otherwise collide and silently overwrite.
+            timestamp = int(time.time())
+            filename = f"img_{word_id}_{slot}_{timestamp}.jpg"
+            save_path = os.path.join(
+                app.root_path, "static", "images", "word_images", filename
+            )
 
-                # Generate unique filename (using .jpg now)
-                timestamp = int(time.time())
-                filename = f"img_{word_id}_{timestamp}.jpg"
-                save_path = os.path.join(
-                    app.root_path, "static", "images", "word_images", filename
-                )
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
 
-                # Ensure directory exists
-                os.makedirs(os.path.dirname(save_path), exist_ok=True)
+            # Write to file
+            with open(save_path, "wb") as f:
+                f.write(output_buffer.getvalue())
 
-                # Write to file
-                with open(save_path, "wb") as f:
-                    f.write(output_buffer.getvalue())
+            # slot has been validated to 1 or 2, so this is not user input.
+            column = "image_file" if slot == 1 else "image_file_2"
+            cursor.execute(
+                f"UPDATE words SET {column} = %s WHERE id = %s",
+                (filename, word_id),
+            )
+            conn.commit()
 
-                # Update Database
-                conn = get_db_connection()
-                cursor = conn.cursor(dictionary=True)
+            image_file = filename if slot == 1 else word_data["image_file"]
+            image_file_2 = filename if slot == 2 else word_data["image_file_2"]
 
-                # Get old image to delete later (optional cleanup)
-                cursor.execute(
-                    "SELECT image_file, word FROM words WHERE id = %s", (word_id,)
-                )
-                word_data = cursor.fetchone()
+            return jsonify(
+                {
+                    "success": True,
+                    "message": "Image uploaded and processed",
+                    "filename": filename,
+                    "image_file": image_file,
+                    "image_file_2": image_file_2,
+                }
+            )
 
-                if not word_data:
-                    return jsonify({"success": False, "error": "Word not found"}), 404
-
-                # Update word record
-                cursor.execute(
-                    "UPDATE words SET image_file = %s WHERE id = %s",
-                    (filename, word_id),
-                )
-                conn.commit()
-
-                return jsonify(
-                    {
-                        "success": True,
-                        "message": "Image uploaded and processed",
-                        "filename": filename,
-                    }
-                )
-
-            except Exception as e:
-                return jsonify(
-                    {"success": False, "error": f"Image processing failed: {str(e)}"}
-                ), 500
+        except Exception as e:
+            return jsonify(
+                {"success": False, "error": f"Image processing failed: {str(e)}"}
+            ), 500
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
