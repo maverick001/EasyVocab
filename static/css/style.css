@@ -2352,6 +2352,36 @@ body.dark-mode .search-results-panel {
     margin: 0 auto;
 }
 
+/* Two images stack vertically; the fixed height is what produces the
+   native scroll bar on the right. */
+.image-scroll-pane {
+    max-height: 60vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm);
+}
+
+.image-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.image-block-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    justify-content: center;
+}
+
+/* Sized so image 1 nearly fills the pane, putting image 2 just far enough
+   below the fold that scrolling to it is a deliberate act. */
+.image-scroll-pane .word-image-large {
+    max-height: 52vh;
+}
+
 /* Dark mode adjustments */
 body.dark-mode .image-list {
     background: var(--bg-main);

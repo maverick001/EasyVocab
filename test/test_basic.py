@@ -303,3 +303,23 @@ class TestImageDeleteRoute:
             if 'DELETE' in rule.methods and '/image/' in str(rule)
         ]
         assert any('word_id' in rule and 'slot' in rule for rule in matches)
+
+
+class TestImageDisplayModalMarkup:
+    """Tests for the two-image display modal markup"""
+
+    def test_index_has_image_scroll_pane(self):
+        """Display modal should contain the scrolling image pane"""
+        from app import app
+        template_path = os.path.join(app.root_path, 'templates', 'index.html')
+        with open(template_path, encoding='utf-8') as f:
+            markup = f.read()
+        assert 'imageScrollPane' in markup
+
+    def test_index_has_add_another_image_button(self):
+        """Display modal footer should contain the add button"""
+        from app import app
+        template_path = os.path.join(app.root_path, 'templates', 'index.html')
+        with open(template_path, encoding='utf-8') as f:
+            markup = f.read()
+        assert 'addAnotherImageBtn' in markup

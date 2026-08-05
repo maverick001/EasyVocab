@@ -137,9 +137,8 @@ const Elements = {
     imageDisplayModal: null,
     closeImageDisplayBtn: null,
     closeImageDisplayFooterBtn: null,
-    wordImageDisplay: null,
-    changeImageBtn: null,
-    removeImageBtn: null,
+    imageScrollPane: null,
+    addAnotherImageBtn: null,
     imageDisplayTitle: null,
 
     // Add Word Image Attachment
@@ -357,9 +356,8 @@ function cacheDOMElements() {
     Elements.imageDisplayModal = document.getElementById('imageDisplayModal');
     Elements.closeImageDisplayBtn = document.getElementById('closeImageDisplayBtn');
     Elements.closeImageDisplayFooterBtn = document.getElementById('closeImageDisplayFooterBtn');
-    Elements.wordImageDisplay = document.getElementById('wordImageDisplay');
-    Elements.changeImageBtn = document.getElementById('changeImageBtn');
-    Elements.removeImageBtn = document.getElementById('removeImageBtn');
+    Elements.imageScrollPane = document.getElementById('imageScrollPane');
+    Elements.addAnotherImageBtn = document.getElementById('addAnotherImageBtn');
     Elements.imageDisplayTitle = document.getElementById('imageDisplayTitle');
 
     // Add Word Image Attachment
@@ -503,11 +501,12 @@ function setupEventListeners() {
     // Display Modal
     Elements.closeImageDisplayBtn.addEventListener('click', () => toggleImageDisplayModal(false));
     Elements.closeImageDisplayFooterBtn.addEventListener('click', () => toggleImageDisplayModal(false));
-    Elements.changeImageBtn.addEventListener('click', () => {
+    Elements.addAnotherImageBtn.addEventListener('click', () => {
+        // Slot 1 fills first, so the free slot is 2 only once slot 1 is taken.
+        const freeSlot = AppState.currentWord.image_file ? 2 : 1;
         toggleImageDisplayModal(false);
-        openPasteModal();
+        openPasteModal(freeSlot);
     });
-    Elements.removeImageBtn.addEventListener('click', removeWordImage);
 }
 
 // ============================================
@@ -611,6 +610,9 @@ let currentPastedFile = null;
 //   'newWord'  - hold the image until the new word has been created
 let pasteModalMode = 'existing';
 
+// Which slot the paste modal will write to, in 'existing' mode.
+let pasteTargetSlot = 1;
+
 /**
  * Handle Image Button Click
  */
@@ -618,7 +620,7 @@ function handleImageButtonClick() {
     const currentImage = AppState.currentWord.image_file;
 
     if (currentImage) {
-        openImageDisplayModal(currentImage);
+        openImageDisplayModal();
     } else {
         openPasteModal();
     }
@@ -653,8 +655,9 @@ function pasteConfirmLabel() {
 /**
  * Open Paste Modal
  */
-function openPasteModal() {
+function openPasteModal(slot = 1) {
     pasteModalMode = 'existing';
+    pasteTargetSlot = slot;
     togglePasteModal(true);
 }
 
@@ -720,6 +723,7 @@ async function uploadPastedImage() {
 
         const formData = new FormData();
         formData.append('image', currentPastedFile);
+        formData.append('slot', pasteTargetSlot);
 
         const response = await fetch(`/api/words/${AppState.currentWord.id}/image`, {
             method: 'POST',
@@ -731,12 +735,11 @@ async function uploadPastedImage() {
         if (data.success) {
             console.log('✅ Image uploaded:', data.filename);
 
-            AppState.currentWord.image_file = data.filename;
-            updateImageButtonState(data.filename);
+            applyImageState(data);
             togglePasteModal(false);
 
             // Show display modal to confirm
-            setTimeout(() => openImageDisplayModal(data.filename), 300);
+            setTimeout(() => openImageDisplayModal(), 300);
         } else {
             Elements.pasteStatus.textContent = `❌ Error: ${data.error}`;
             Elements.pasteStatus.style.color = 'var(--error)';
@@ -761,30 +764,60 @@ function toggleImageDisplayModal(show) {
 }
 
 /**
- * Open Image Display Modal
+ * Adopt the server's view of both image slots.
+ *
+ * The client never computes the post-compaction state itself, so image 2
+ * sliding up into slot 1 after a removal needs no shuffling logic here.
+ *
+ * @param {Object} data - any response carrying image_file / image_file_2
  */
-function openImageDisplayModal(imageName) {
-    // Add timestamp to prevent caching if image updated
-    Elements.wordImageDisplay.src = `/static/images/word_images/${imageName}?t=${new Date().getTime()}`;
-    Elements.imageDisplayTitle.textContent = AppState.currentWord.word;
-    toggleImageDisplayModal(true);
+function applyImageState(data) {
+    AppState.currentWord.image_file = data.image_file || null;
+    AppState.currentWord.image_file_2 = data.image_file_2 || null;
+    updateImageButtonState(AppState.currentWord.image_file);
 }
 
 /**
- * Remove Image from current word
+ * Rebuild the scroll pane from the word currently on screen.
+ *
+ * Blocks are built from state rather than toggled in markup, so no stale
+ * <img> from a previously viewed word can linger in the DOM.
  */
-async function removeWordImage() {
-    if (!confirm('Are you sure you want to remove this image link?')) return;
+function renderImageBlocks() {
+    const filled = [
+        { slot: 1, file: AppState.currentWord.image_file },
+        { slot: 2, file: AppState.currentWord.image_file_2 }
+    ].filter(entry => entry.file);
 
-    const success = await updateWord(AppState.currentWord.id, {
-        image_file: '' // Empty string to remove
+    Elements.imageScrollPane.innerHTML = '';
+
+    filled.forEach(entry => {
+        const block = document.createElement('div');
+        block.className = 'image-block';
+        block.dataset.slot = entry.slot;
+
+        const img = document.createElement('img');
+        img.className = 'word-image-large';
+        img.alt = `Image ${entry.slot}`;
+        // Timestamp defeats caching when a slot is replaced in place.
+        img.src = `/static/images/word_images/${entry.file}?t=${new Date().getTime()}`;
+
+        block.append(img);
+        Elements.imageScrollPane.append(block);
     });
 
-    if (success) {
-        AppState.currentWord.image_file = null;
-        updateImageButtonState(null);
-        toggleImageDisplayModal(false);
-    }
+    // The two-image cap enforces itself: no free slot, no add button.
+    Elements.addAnotherImageBtn.style.display =
+        filled.length < 2 ? 'inline-flex' : 'none';
+}
+
+/**
+ * Open Image Display Modal
+ */
+function openImageDisplayModal() {
+    Elements.imageDisplayTitle.textContent = AppState.currentWord.word;
+    renderImageBlocks();
+    toggleImageDisplayModal(true);
 }
 
 // ============================================
@@ -956,10 +989,6 @@ async function updateWord(wordId, updates) {
                 AppState.currentWord.example_sentence = updates.example_sentence;
                 // Redisplay samples with updated content
                 displaySampleSentences(updates.example_sentence);
-            }
-            if ('image_file' in updates) {
-                AppState.currentWord.image_file = updates.image_file;
-                updateImageButtonState(updates.image_file);
             }
             if ('ipa' in updates) {
                 AppState.currentWord.ipa = updates.ipa;
