@@ -773,7 +773,7 @@ def get_word_by_category(category=None):
         # Get the word at the specified index
         if category == "All":
             query = f"""
-                SELECT id, word, translation, category, example_sentence, image_file, ipa,
+                SELECT id, word, translation, category, example_sentence, image_file, image_file_2, ipa,
                        review_count, last_reviewed, created_at, updated_at
                 FROM words
                 {order_clause}
@@ -782,7 +782,7 @@ def get_word_by_category(category=None):
             cursor.execute(query, (index,))
         else:
             query = f"""
-                SELECT id, word, translation, category, example_sentence, image_file, ipa,
+                SELECT id, word, translation, category, example_sentence, image_file, image_file_2, ipa,
                        review_count, last_reviewed, created_at, updated_at
                 FROM words
                 WHERE category = %s
@@ -1076,7 +1076,7 @@ def get_word_details(word_id):
         # Get the word details
         cursor.execute(
             """
-            SELECT id, word, translation, example_sentence, category, review_count, last_reviewed, image_file, created_at, updated_at, ipa
+            SELECT id, word, translation, example_sentence, category, review_count, last_reviewed, image_file, image_file_2, created_at, updated_at, ipa
             FROM words
             WHERE id = %s
         """,
@@ -1132,7 +1132,6 @@ def update_word(word_id):
             "word": "updated word",                // optional
             "translation": "updated translation",  // optional
             "sample_sentence": "updated sentence", // optional
-            "image_file": "image.png"              # optional
         }
 
     Returns:
@@ -1170,12 +1169,6 @@ def update_word(word_id):
         # Update fields across ALL instances of this word
         shared_update_fields = []
         shared_params = []
-
-        if "image_file" in data:
-            shared_update_fields.append("image_file = %s")
-            # Handle empty string or null to remove image
-            image_val = data["image_file"].strip() if data["image_file"] else None
-            shared_params.append(image_val)
 
         if "ipa" in data:
             shared_update_fields.append("ipa = %s")
