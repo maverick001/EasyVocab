@@ -254,6 +254,93 @@ def ensure_image_file_column():
             connection.close()
 
 
+def ensure_image_file_2_column():
+    """
+    Ensure image_file_2 column exists in words table
+    """
+    connection = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        # Check if column exists
+        cursor.execute(
+            """
+            SELECT COUNT(*)
+            FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = %s
+            AND TABLE_NAME = 'words'
+            AND COLUMN_NAME = 'image_file_2'
+        """,
+            (app.config["DB_NAME"],),
+        )
+
+        if cursor.fetchone()[0] == 0:
+            print("Adding image_file_2 column to words table...")
+            cursor.execute(
+                "ALTER TABLE words ADD COLUMN image_file_2 VARCHAR(255) DEFAULT NULL"
+            )
+            connection.commit()
+            print(f"[OK] Second image file column check completed")
+
+        cursor.close()
+    except mysql.connector.Error as err:
+        print(f"[ERROR] Error ensuring image_file_2 column: {err}")
+    finally:
+        if connection:
+            connection.close()
+
+
+# A word holds at most two images. This cap is deliberate: it keeps the data
+# model to two columns rather than a one-to-many table.
+VALID_IMAGE_SLOTS = (1, 2)
+
+
+def parse_image_slot(raw):
+    """
+    Interpret the 'slot' field of an image upload request.
+
+    Absent or empty means slot 1, which keeps every caller written before the
+    second slot existed working without modification.
+
+    Returns:
+        1 or 2, or None when the value is not a valid slot (caller returns 400)
+    """
+    if raw is None or raw == "":
+        return 1
+
+    try:
+        slot = int(raw)
+    except (TypeError, ValueError):
+        return None
+
+    return slot if slot in VALID_IMAGE_SLOTS else None
+
+
+def build_image_removal_sql(slot):
+    """
+    SQL that empties one image slot and restores the compaction invariant.
+
+    Slot 1 is always filled before slot 2, so removing slot 1 must pull slot 2
+    down into it rather than leaving a hole. Both statements are correct row by
+    row, which matters because rows sharing a word can hold different images:
+    uploads write a single row while removals write every row.
+
+    Args:
+        slot: 1 or 2, already validated by the caller
+
+    Returns:
+        A SQL string with one %s placeholder, for the word text
+    """
+    if slot == 1:
+        return (
+            "UPDATE words SET image_file = image_file_2, image_file_2 = NULL "
+            "WHERE word = %s"
+        )
+
+    return "UPDATE words SET image_file_2 = NULL WHERE word = %s"
+
+
 def ensure_ipa_column():
     """
     Ensure ipa column exists in words table
@@ -686,7 +773,7 @@ def get_word_by_category(category=None):
         # Get the word at the specified index
         if category == "All":
             query = f"""
-                SELECT id, word, translation, category, example_sentence, image_file, ipa,
+                SELECT id, word, translation, category, example_sentence, image_file, image_file_2, ipa,
                        review_count, last_reviewed, created_at, updated_at
                 FROM words
                 {order_clause}
@@ -695,7 +782,7 @@ def get_word_by_category(category=None):
             cursor.execute(query, (index,))
         else:
             query = f"""
-                SELECT id, word, translation, category, example_sentence, image_file, ipa,
+                SELECT id, word, translation, category, example_sentence, image_file, image_file_2, ipa,
                        review_count, last_reviewed, created_at, updated_at
                 FROM words
                 WHERE category = %s
@@ -989,7 +1076,7 @@ def get_word_details(word_id):
         # Get the word details
         cursor.execute(
             """
-            SELECT id, word, translation, example_sentence, category, review_count, last_reviewed, image_file, created_at, updated_at, ipa
+            SELECT id, word, translation, example_sentence, category, review_count, last_reviewed, image_file, image_file_2, created_at, updated_at, ipa
             FROM words
             WHERE id = %s
         """,
@@ -1045,7 +1132,6 @@ def update_word(word_id):
             "word": "updated word",                // optional
             "translation": "updated translation",  // optional
             "sample_sentence": "updated sentence", // optional
-            "image_file": "image.png"              # optional
         }
 
     Returns:
@@ -1083,12 +1169,6 @@ def update_word(word_id):
         # Update fields across ALL instances of this word
         shared_update_fields = []
         shared_params = []
-
-        if "image_file" in data:
-            shared_update_fields.append("image_file = %s")
-            # Handle empty string or null to remove image
-            image_val = data["image_file"].strip() if data["image_file"] else None
-            shared_params.append(image_val)
 
         if "ipa" in data:
             shared_update_fields.append("ipa = %s")
@@ -2343,9 +2423,12 @@ def upload_word_image(word_id):
     """
     Upload and process an image for a specific word
 
-    1. Resizes image to 256x256
+    1. Compresses image to JPEG under 500KB
     2. Saves to static/images/word_images with unique name
     3. Updates database
+
+    Accepts an optional 'slot' form field (1 or 2). Absent means slot 1, which
+    keeps every caller written before the second slot existed working.
     """
     conn = None
     try:
@@ -2357,73 +2440,174 @@ def upload_word_image(word_id):
         if file.filename == "":
             return jsonify({"success": False, "error": "No selected file"}), 400
 
-        if file:
-            # Process image using Pillow
-            try:
-                # Open image from stream
-                img = Image.open(file.stream)
+        slot = parse_image_slot(request.form.get("slot"))
+        if slot is None:
+            return jsonify({"success": False, "error": "Invalid image slot"}), 400
 
-                # Convert to RGB (required for JPEG)
-                if img.mode != "RGB":
-                    img = img.convert("RGB")
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
 
-                # Compress to ensure size < 500KB without resizing dimensions
-                output_buffer = io.BytesIO()
-                quality = 95
+        cursor.execute(
+            "SELECT word, image_file, image_file_2 FROM words WHERE id = %s",
+            (word_id,),
+        )
+        word_data = cursor.fetchone()
+
+        if not word_data:
+            return jsonify({"success": False, "error": "Word not found"}), 404
+
+        # Slot 1 is always filled before slot 2, so a word with no first image
+        # cannot be given a second one. Checked before compression so a rejected
+        # upload does no work.
+        if slot == 2 and not word_data["image_file"]:
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "Cannot fill slot 2 while slot 1 is empty",
+                }
+            ), 409
+
+        # Process image using Pillow
+        try:
+            # Open image from stream
+            img = Image.open(file.stream)
+
+            # Convert to RGB (required for JPEG)
+            if img.mode != "RGB":
+                img = img.convert("RGB")
+
+            # Compress to ensure size < 500KB without resizing dimensions
+            output_buffer = io.BytesIO()
+            quality = 95
+            img.save(output_buffer, format="JPEG", quality=quality)
+
+            while output_buffer.tell() > 500 * 1024 and quality > 10:
+                output_buffer.seek(0)
+                output_buffer.truncate()
+                quality -= 5
                 img.save(output_buffer, format="JPEG", quality=quality)
 
-                while output_buffer.tell() > 500 * 1024 and quality > 10:
-                    output_buffer.seek(0)
-                    output_buffer.truncate()
-                    quality -= 5
-                    img.save(output_buffer, format="JPEG", quality=quality)
+            # The slot is part of the filename because time.time() is
+            # second-resolution: two images for one word saved in the same
+            # second would otherwise collide and silently overwrite.
+            timestamp = int(time.time())
+            filename = f"img_{word_id}_{slot}_{timestamp}.jpg"
+            save_path = os.path.join(
+                app.root_path, "static", "images", "word_images", filename
+            )
 
-                # Generate unique filename (using .jpg now)
-                timestamp = int(time.time())
-                filename = f"img_{word_id}_{timestamp}.jpg"
-                save_path = os.path.join(
-                    app.root_path, "static", "images", "word_images", filename
-                )
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
 
-                # Ensure directory exists
-                os.makedirs(os.path.dirname(save_path), exist_ok=True)
+            # Write to file
+            with open(save_path, "wb") as f:
+                f.write(output_buffer.getvalue())
 
-                # Write to file
-                with open(save_path, "wb") as f:
-                    f.write(output_buffer.getvalue())
+            # slot has been validated to 1 or 2, so this is not user input.
+            column = "image_file" if slot == 1 else "image_file_2"
 
-                # Update Database
-                conn = get_db_connection()
-                cursor = conn.cursor(dictionary=True)
+            # The early guard above can go stale: another request may empty slot 1
+            # while this one is still compressing. Re-assert the precondition in the
+            # UPDATE itself so the invariant cannot be broken by interleaving.
+            guard = (
+                " AND image_file IS NOT NULL AND image_file != ''" if slot == 2 else ""
+            )
+            cursor.execute(
+                f"UPDATE words SET {column} = %s WHERE id = %s{guard}",
+                (filename, word_id),
+            )
 
-                # Get old image to delete later (optional cleanup)
-                cursor.execute(
-                    "SELECT image_file, word FROM words WHERE id = %s", (word_id,)
-                )
-                word_data = cursor.fetchone()
-
-                if not word_data:
-                    return jsonify({"success": False, "error": "Word not found"}), 404
-
-                # Update word record
-                cursor.execute(
-                    "UPDATE words SET image_file = %s WHERE id = %s",
-                    (filename, word_id),
-                )
-                conn.commit()
-
+            if cursor.rowcount == 0:
                 return jsonify(
                     {
-                        "success": True,
-                        "message": "Image uploaded and processed",
-                        "filename": filename,
+                        "success": False,
+                        "error": "Cannot fill slot 2 while slot 1 is empty",
                     }
-                )
+                ), 409
 
-            except Exception as e:
-                return jsonify(
-                    {"success": False, "error": f"Image processing failed: {str(e)}"}
-                ), 500
+            conn.commit()
+
+            # Re-read after commit so the response is server truth, matching
+            # delete_word_image(). Composing it from the pre-compression read
+            # could report an image another request has since removed.
+            cursor.execute(
+                "SELECT image_file, image_file_2 FROM words WHERE id = %s", (word_id,)
+            )
+            updated = cursor.fetchone()
+            image_file = updated["image_file"]
+            image_file_2 = updated["image_file_2"]
+
+            return jsonify(
+                {
+                    "success": True,
+                    "message": "Image uploaded and processed",
+                    "filename": filename,
+                    "image_file": image_file,
+                    "image_file_2": image_file_2,
+                }
+            )
+
+        except Exception as e:
+            return jsonify(
+                {"success": False, "error": f"Image processing failed: {str(e)}"}
+            ), 500
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route("/api/words/<int:word_id>/image/<int:slot>", methods=["DELETE"])
+def delete_word_image(word_id, slot):
+    """
+    Remove one image slot from a word and restore the compaction invariant.
+
+    Scope matches the existing shared-field behaviour of PUT /api/words/<id>:
+    every row carrying the same word text is updated, exactly as translation
+    and ipa already are.
+
+    Returns both slot values after the change, so the client can re-render
+    from server truth rather than computing compaction itself.
+    """
+    conn = None
+    try:
+        if slot not in VALID_IMAGE_SLOTS:
+            return jsonify({"success": False, "error": "Invalid image slot"}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute(
+            "SELECT word, image_file, image_file_2 FROM words WHERE id = %s",
+            (word_id,),
+        )
+        word_data = cursor.fetchone()
+
+        if not word_data:
+            return jsonify({"success": False, "error": "Word not found"}), 404
+
+        # slot has been validated, so this key is not user input.
+        column = "image_file" if slot == 1 else "image_file_2"
+        if not word_data[column]:
+            return jsonify({"success": False, "error": "No image in that slot"}), 404
+
+        cursor.execute(build_image_removal_sql(slot), (word_data["word"],))
+        conn.commit()
+
+        cursor.execute(
+            "SELECT image_file, image_file_2 FROM words WHERE id = %s", (word_id,)
+        )
+        updated = cursor.fetchone()
+
+        return jsonify(
+            {
+                "success": True,
+                "image_file": updated["image_file"],
+                "image_file_2": updated["image_file_2"],
+            }
+        )
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
@@ -2442,6 +2626,7 @@ def create_app():
     Config.init_app(app)
     init_db_pool()
     ensure_image_file_column()
+    ensure_image_file_2_column()
     ensure_ipa_column()
     return app
 
@@ -2523,6 +2708,7 @@ if __name__ == "__main__":
     init_db_pool()
     ensure_word_history_table()
     ensure_image_file_column()
+    ensure_image_file_2_column()
     ensure_ipa_column()
     ensure_srs_columns()
     ensure_daily_score_column()
