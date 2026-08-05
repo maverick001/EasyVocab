@@ -778,6 +778,16 @@ function applyImageState(data) {
 }
 
 /**
+ * Swap one image for a newly pasted one, leaving the other slot alone.
+ *
+ * @param {number} slot - 1 or 2
+ */
+function replaceImageSlot(slot) {
+    toggleImageDisplayModal(false);
+    openPasteModal(slot);
+}
+
+/**
  * Rebuild the scroll pane from the word currently on screen.
  *
  * Blocks are built from state rather than toggled in markup, so no stale
@@ -802,7 +812,17 @@ function renderImageBlocks() {
         // Timestamp defeats caching when a slot is replaced in place.
         img.src = `/static/images/word_images/${entry.file}?t=${new Date().getTime()}`;
 
-        block.append(img);
+        const actions = document.createElement('div');
+        actions.className = 'image-block-actions';
+
+        const replaceBtn = document.createElement('button');
+        replaceBtn.type = 'button';
+        replaceBtn.className = 'btn btn-secondary btn-sm';
+        replaceBtn.textContent = 'Replace';
+        replaceBtn.addEventListener('click', () => replaceImageSlot(entry.slot));
+
+        actions.append(replaceBtn);
+        block.append(img, actions);
         Elements.imageScrollPane.append(block);
     });
 
