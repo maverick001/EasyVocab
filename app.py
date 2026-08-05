@@ -2543,6 +2543,63 @@ def upload_word_image(word_id):
             conn.close()
 
 
+@app.route("/api/words/<int:word_id>/image/<int:slot>", methods=["DELETE"])
+def delete_word_image(word_id, slot):
+    """
+    Remove one image slot from a word and restore the compaction invariant.
+
+    Scope matches the existing shared-field behaviour of PUT /api/words/<id>:
+    every row carrying the same word text is updated, exactly as translation
+    and ipa already are.
+
+    Returns both slot values after the change, so the client can re-render
+    from server truth rather than computing compaction itself.
+    """
+    conn = None
+    try:
+        if slot not in VALID_IMAGE_SLOTS:
+            return jsonify({"success": False, "error": "Invalid image slot"}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute(
+            "SELECT word, image_file, image_file_2 FROM words WHERE id = %s",
+            (word_id,),
+        )
+        word_data = cursor.fetchone()
+
+        if not word_data:
+            return jsonify({"success": False, "error": "Word not found"}), 404
+
+        # slot has been validated, so this key is not user input.
+        column = "image_file" if slot == 1 else "image_file_2"
+        if not word_data[column]:
+            return jsonify({"success": False, "error": "No image in that slot"}), 404
+
+        cursor.execute(build_image_removal_sql(slot), (word_data["word"],))
+        conn.commit()
+
+        cursor.execute(
+            "SELECT image_file, image_file_2 FROM words WHERE id = %s", (word_id,)
+        )
+        updated = cursor.fetchone()
+
+        return jsonify(
+            {
+                "success": True,
+                "image_file": updated["image_file"],
+                "image_file_2": updated["image_file_2"],
+            }
+        )
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
 def create_app():
     """
     Application factory function

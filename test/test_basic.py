@@ -281,3 +281,25 @@ class TestImageRemovalSql:
         from app import build_image_removal_sql
         assert build_image_removal_sql(1).count('%s') == 1
         assert build_image_removal_sql(2).count('%s') == 1
+
+
+class TestImageDeleteRoute:
+    """Tests for the image removal endpoint's registration"""
+
+    def test_delete_image_route_is_registered(self):
+        """DELETE /api/words/<id>/image/<slot> should exist"""
+        from app import app
+        matches = [
+            rule for rule in app.url_map.iter_rules()
+            if 'DELETE' in rule.methods and '/image/' in str(rule)
+        ]
+        assert matches, 'DELETE /api/words/<id>/image/<slot> is not registered'
+
+    def test_delete_image_route_takes_a_slot(self):
+        """The route should carry both a word id and a slot"""
+        from app import app
+        matches = [
+            str(rule) for rule in app.url_map.iter_rules()
+            if 'DELETE' in rule.methods and '/image/' in str(rule)
+        ]
+        assert any('word_id' in rule and 'slot' in rule for rule in matches)
