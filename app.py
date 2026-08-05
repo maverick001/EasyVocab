@@ -2505,14 +2505,37 @@ def upload_word_image(word_id):
 
             # slot has been validated to 1 or 2, so this is not user input.
             column = "image_file" if slot == 1 else "image_file_2"
+
+            # The early guard above can go stale: another request may empty slot 1
+            # while this one is still compressing. Re-assert the precondition in the
+            # UPDATE itself so the invariant cannot be broken by interleaving.
+            guard = (
+                " AND image_file IS NOT NULL AND image_file != ''" if slot == 2 else ""
+            )
             cursor.execute(
-                f"UPDATE words SET {column} = %s WHERE id = %s",
+                f"UPDATE words SET {column} = %s WHERE id = %s{guard}",
                 (filename, word_id),
             )
+
+            if cursor.rowcount == 0:
+                return jsonify(
+                    {
+                        "success": False,
+                        "error": "Cannot fill slot 2 while slot 1 is empty",
+                    }
+                ), 409
+
             conn.commit()
 
-            image_file = filename if slot == 1 else word_data["image_file"]
-            image_file_2 = filename if slot == 2 else word_data["image_file_2"]
+            # Re-read after commit so the response is server truth, matching
+            # delete_word_image(). Composing it from the pre-compression read
+            # could report an image another request has since removed.
+            cursor.execute(
+                "SELECT image_file, image_file_2 FROM words WHERE id = %s", (word_id,)
+            )
+            updated = cursor.fetchone()
+            image_file = updated["image_file"]
+            image_file_2 = updated["image_file_2"]
 
             return jsonify(
                 {

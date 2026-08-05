@@ -323,3 +323,62 @@ class TestImageDisplayModalMarkup:
         with open(template_path, encoding='utf-8') as f:
             markup = f.read()
         assert 'addAnotherImageBtn' in markup
+
+
+# Ids that document.getElementById() in app.js legitimately looks up even
+# though they are absent from templates/index.html. The failure mode
+# TestElementIdConsistency guards against is an *unguarded* lookup at
+# startup (e.g. Elements.changeImageBtn.addEventListener(...) throwing on
+# null and breaking the whole app). Neither entry below is that case, so
+# each is allowlisted individually with the reason. Do not broaden this
+# beyond the two known cases -- a new missing id should fail the test and
+# get its own deliberate decision.
+IDS_NOT_IN_INDEX_TEMPLATE = {
+    # Created at runtime by app.js itself (assigned into
+    # Elements.searchResultsList.innerHTML in displaySearchResults()), then
+    # looked up a tick later with a null guard. It genuinely exists in the
+    # DOM when queried; the static template just isn't where it's defined.
+    'addSearchWordBtn',
+    # Pre-existing dead code: id="positionInfo" was removed from
+    # templates/index.html before this branch existed. The lookup is
+    # unconditional at cacheElements() time, but the only use site is
+    # guarded (`if (Elements.positionInfo) { ... }`), so it cannot throw.
+    # Left in place deliberately -- removing it is out of scope here.
+    'positionInfo',
+}
+
+
+class TestElementIdConsistency:
+    """
+    Guards against the class of bug Task 7 introduced by hand: an id removed
+    from templates/index.html while static/js/app.js still looks it up
+    unconditionally at startup. That leaves Elements.<name> null, and the
+    very next .addEventListener(...) on it throws and breaks the whole app.
+
+    Every document.getElementById('...') literal in app.js must reference an
+    id that actually exists in templates/index.html, except for the
+    documented, individually-justified exceptions in
+    IDS_NOT_IN_INDEX_TEMPLATE.
+    """
+
+    def test_every_getelementbyid_target_exists_in_index_html(self):
+        """Every id app.js looks up by document.getElementById must exist in index.html"""
+        import re
+        from app import app
+
+        js_path = os.path.join(app.root_path, 'static', 'js', 'app.js')
+        with open(js_path, encoding='utf-8') as f:
+            js_source = f.read()
+
+        html_path = os.path.join(app.root_path, 'templates', 'index.html')
+        with open(html_path, encoding='utf-8') as f:
+            html_source = f.read()
+
+        js_ids = set(re.findall(r"""document\.getElementById\(\s*['"]([^'"]+)['"]\s*\)""", js_source))
+        html_ids = set(re.findall(r"""\bid=["']([^"']+)["']""", html_source))
+
+        missing = js_ids - html_ids - IDS_NOT_IN_INDEX_TEMPLATE
+        assert not missing, (
+            "app.js calls document.getElementById() with ids that do not exist "
+            f"in templates/index.html: {sorted(missing)}"
+        )

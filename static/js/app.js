@@ -862,7 +862,7 @@ function renderImageBlocks() {
 
         const removeBtn = document.createElement('button');
         removeBtn.type = 'button';
-        removeBtn.className = 'btn btn-danger btn-sm';
+        removeBtn.className = 'btn btn-delete btn-sm';
         removeBtn.textContent = 'Remove';
         removeBtn.addEventListener('click', () => removeImageSlot(entry.slot));
 
