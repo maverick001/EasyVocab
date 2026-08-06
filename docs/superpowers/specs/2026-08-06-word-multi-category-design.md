@@ -47,6 +47,8 @@ once two rows routinely coexist (see "The image-sharing fix").
 - A small toast notification, used here for the success message.
 - Fixing image upload so it writes every row sharing the word text, matching
   translation, IPA and image removal.
+- Fixing the review counter and the flashcard SRS update so they too write every
+  row sharing the word text.
 
 ### Out of scope
 
@@ -85,7 +87,10 @@ Settled during brainstorming and fixed:
    studied, so they should be equally far through the schedule. The cost is
    accepted: the quiz selects rows and does not de-duplicate by spelling
    (`app.py:1965-1968`), so an "All categories" quiz can draw the word twice as
-   often as before.
+   often as before. The review-sharing fix limits the damage — answering one copy
+   schedules both forward, so the word cannot be served again immediately.
+8. **Reviewing a word updates every copy of it.** Added after the spec was first
+   approved; see "The review-sharing fix".
 5. **Columns to copy are read from the database, not hardcoded.** See "Copying
    the row".
 6. **The new row's history entry is `'created'`.** `word_history.modification_type`
@@ -98,11 +103,12 @@ Settled during brainstorming and fixed:
 
 ## The Sharing Rule
 
-> Rows sharing a word's spelling share its translation, IPA, example sentences
-> and images. They differ only in category and in nothing else the user edits.
+> Rows sharing a word's spelling share everything except their category:
+> translation, IPA, example sentences, images, and review progress.
 
-The first three already hold. Images hold in one direction only, which is the
-bug fixed below. Everything in this design either relies on that rule or
+Translation, IPA and sentences already hold. Images hold in one direction only,
+and review progress holds only when it is a side effect of editing. Both gaps
+are fixed below. Everything in this design either relies on this rule or
 restores it.
 
 ## The image-sharing fix
@@ -150,10 +156,53 @@ rows updated still means no row had slot 1 filled.
 Rows that diverged before this fix are **not** backfilled. They converge the
 next time an image is uploaded or removed for that word.
 
+## The review-sharing fix
+
+Reviewing is tracked per row, while editing is tracked per word — the same class
+of inconsistency as the image bug, and reachable the moment a word has a second
+category.
+
+| Action | Today | Location |
+| --- | --- | --- |
+| Click the review counter badge | One row | `app.py:1507-1516`, `WHERE id = %s` |
+| Answer a flashcard | One row's `next_review_date` and `srs_interval` | `app.py:2152-2159`, `WHERE id = %s` |
+| Edit translation or a sentence | **Every row**, including `review_count` and `last_reviewed` | `app.py:1194-1208`, `WHERE word = %s` |
+
+So reviewing `algorithm` under `IT_CS` would leave the `Science` copy showing a
+stale date and a lower count, and the flashcard deck would still offer it as
+overdue. Then editing its sentence would bump both at once, which reads as
+arbitrary.
+
+**The fix:** both updates target the word text.
+
+```sql
+UPDATE words
+SET review_count = review_count + 1,
+    last_reviewed = ..., updated_at = ...
+WHERE word = %s
+
+UPDATE words
+SET next_review_date = %s, srs_interval = %s, updated_at = NOW()
+WHERE word = %s
+```
+
+Each endpoint already has, or can cheaply read, the word text for the id it is
+given. Both keep reading their SRS state from the specific row first — that
+state is identical across rows once this holds, and the copy inherits it at
+creation.
+
+The counter's response still reports the row it was called on, so the badge in
+the browser updates exactly as it does now.
+
+Rows whose counts already diverged are **not** backfilled. The next review of
+either copy sets both to the same value, since `review_count + 1` is computed per
+row — the copies converge only after they are next reviewed, which is acceptable
+because divergence is currently near-zero.
+
 ## Approach
 
-**One new endpoint that copies a row, one new button that calls it, and the
-upload fix above.** No schema change, no migration, no data backfill.
+**One new endpoint that copies a row, one new button that calls it, and the two
+sharing fixes above.** No schema change, no migration, no data backfill.
 
 ## Design
 
@@ -161,7 +210,7 @@ upload fix above.** No schema change, no migration, no data backfill.
 
 | File | Change |
 | --- | --- |
-| `app.py` | `build_category_copy_sql()` helper; `POST /api/words/<id>/categories`; upload `WHERE` clause |
+| `app.py` | `build_category_copy_sql()` helper; `POST /api/words/<id>/categories`; upload, review-counter and flashcard `WHERE` clauses |
 | `templates/index.html` | Relabel the dropdown; add `#addCategoryBtn`; add `#toast` |
 | `static/js/app.js` | Cache and wire `addCategoryBtn`; `addWordToCategory()`; `showToast()` |
 | `static/css/style.css` | Toast styling; the new button reuses `btn-secondary btn-sm` |
@@ -337,6 +386,8 @@ adopt it later. Nothing else is converted to it in this change.
 | Edit translation, IPA or sentences from either category | Both rows update — existing shared-write behaviour |
 | Upload an image from either category | Both rows update, once the upload fix lands |
 | Remove an image from either category | Both rows update and compact — unchanged |
+| Click the review badge from either category | Both rows' count and date advance |
+| Answer a flashcard from either category | Both rows get the same next-review date and interval |
 | Delete the word, "current category only" | The other copy survives |
 | Delete the word, "all categories" | Both go; the prompt already lists the other categories |
 | Move one copy to a third category | Allowed. The word is then in two categories, neither of them the original |
@@ -387,6 +438,10 @@ In the `bkdict` conda environment on `http://localhost:5001`:
 4. Paste an image from `Science`, then open the word under `IT_CS`. **The image
    is there** — this is the upload fix.
 5. Remove that image from `IT_CS`, then check `Science`. Gone from both.
+5b. Click the review badge under `IT_CS`, then open the word under `Science`.
+    **The count and the last-reviewed date match** — this is the review fix.
+5c. Answer a flashcard for the word, then check both copies' next review dates.
+    They match.
 6. With the word open in `IT_CS`, try to add it to `IT_CS`. Blocked, no request.
 7. Try to add it to `Science` again. The duplicate message appears.
 8. Click **Add** with nothing selected. Blocked.
@@ -410,6 +465,6 @@ In the `bkdict` conda environment on `http://localhost:5001`:
   handles: it browses, edits, quizzes and deletes correctly, and the Add New Word
   modal could have produced the same rows. Unwanted copies are removed with
   Delete → "current category only".
-- **Reverting the upload fix** restores the old single-row behaviour. Images
-  uploaded while the fix was live stay correctly shared; only later uploads
-  revert to writing one row.
+- **Reverting either sharing fix** restores the old single-row behaviour. Data
+  written while the fixes were live stays correctly shared; only later uploads
+  and reviews revert to writing one row.
