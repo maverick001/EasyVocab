@@ -323,8 +323,9 @@ def build_image_removal_sql(slot):
 
     Slot 1 is always filled before slot 2, so removing slot 1 must pull slot 2
     down into it rather than leaving a hole. Both statements are correct row by
-    row, which matters because rows sharing a word can hold different images:
-    uploads write a single row while removals write every row.
+    row, which matters because rows sharing a word may still hold different
+    images: uploads only began writing every row alongside the multi-category
+    work, so rows that diverged before then converge on the next upload.
 
     Args:
         slot: 1 or 2, already validated by the caller
@@ -339,6 +340,84 @@ def build_image_removal_sql(slot):
         )
 
     return "UPDATE words SET image_file_2 = NULL WHERE word = %s"
+
+
+# Columns that must not travel with a word copied into a second category.
+# Everything else is copied, so a column added by a future migration comes
+# along without anyone remembering to update a list here.
+CATEGORY_COPY_EXCLUDED_COLUMNS = frozenset(
+    {"id", "category", "created_at", "updated_at"}
+)
+
+
+def build_category_copy_sql(columns):
+    """
+    SQL that copies one word's row into another category.
+
+    words holds one row per word-and-category pair, so filing a word under a
+    second category means duplicating its row with a different category. The
+    copy keeps the word's content and its review progress; only the four
+    columns above are left behind, because they describe the row rather than
+    the word.
+
+    The column list comes from the database catalog rather than being written
+    out here: words has grown by self-migration (image_file, image_file_2, ipa
+    and the SRS columns), and a hardcoded list would silently stop copying
+    whatever is added next.
+
+    INSERT ... SELECT is one statement, so a copy cannot be left half-made.
+
+    Args:
+        columns: every column name on the words table, from the catalog
+
+    Returns:
+        A SQL string with two %s placeholders: the new category, then the id of
+        the row being copied
+
+    Raises:
+        ValueError: if nothing is left to copy, which would mean inserting a
+            row with no word and no translation
+    """
+    copied = [c for c in columns if c.lower() not in CATEGORY_COPY_EXCLUDED_COLUMNS]
+
+    if not copied:
+        raise ValueError(
+            "No columns to copy - the words table catalog was read as empty "
+            f"or unrecognisable: {list(columns)!r}"
+        )
+
+    # Names come from the catalog, never from a request, so interpolating them
+    # is safe. They are quoted regardless.
+    quoted = [f"`{name}`" for name in copied]
+    insert_list = ", ".join(["`category`"] + quoted)
+    select_list = ", ".join(["%s"] + quoted)
+
+    return (
+        f"INSERT INTO words ({insert_list}) "
+        f"SELECT {select_list} FROM words WHERE id = %s"
+    )
+
+
+def fetch_words_columns(cursor):
+    """
+    Read the words table's column names from the database catalog.
+
+    Args:
+        cursor: MySQL cursor with dictionary=True
+
+    Returns:
+        A list of column names in table order
+    """
+    cursor.execute(
+        """
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'words'
+        ORDER BY ORDINAL_POSITION
+    """
+    )
+
+    return [row["COLUMN_NAME"] for row in cursor.fetchall()]
 
 
 def ensure_ipa_column():
@@ -1384,6 +1463,140 @@ def change_word_category(word_id):
             conn.close()
 
 
+@app.route("/api/words/<int:word_id>/categories", methods=["POST"])
+def add_word_category(word_id):
+    """
+    File a word under an additional category, keeping the one it is in.
+
+    Where the move endpoint relabels a row, this one copies it. The word ends
+    up in both categories, sharing its translation, IPA, sentences, images and
+    review progress with itself - every write that matters targets the word
+    text rather than a single row.
+
+    There is deliberately no limit on how many categories a word may have.
+
+    Args:
+        word_id: ID of the word to copy (from URL path)
+
+    Request Body (JSON):
+        {
+            "new_category": "Science"
+        }
+
+    Returns:
+        JSON with the new row's id and every category the word now belongs to
+    """
+    conn = None
+    try:
+        data = request.get_json()
+
+        if not data or "new_category" not in data:
+            return jsonify({"success": False, "error": "new_category is required"}), 400
+
+        new_category = data["new_category"].strip()
+
+        if not new_category:
+            return jsonify({"success": False, "error": "Category cannot be empty"}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute(
+            """
+            SELECT word, translation, example_sentence, category
+            FROM words
+            WHERE id = %s
+        """,
+            (word_id,),
+        )
+
+        current_word = cursor.fetchone()
+
+        if not current_word:
+            return jsonify({"success": False, "error": "Word not found"}), 404
+
+        if current_word["category"] == new_category:
+            return jsonify(
+                {"success": False, "error": "Word is already in this category"}
+            ), 400
+
+        duplicate_response = jsonify(
+            {
+                "success": False,
+                "error": f'Word "{current_word["word"]}" already exists in category "{new_category}"',
+                "duplicate": True,
+            }
+        ), 409
+
+        cursor.execute(
+            """
+            SELECT id FROM words
+            WHERE word = %s AND category = %s
+        """,
+            (current_word["word"], new_category),
+        )
+
+        if cursor.fetchone():
+            return duplicate_response
+
+        # The check above is a courtesy, not the guarantee. Two simultaneous
+        # adds would both pass it and the second would hit unique_word_category,
+        # so the race returns the same 409 as the ordinary case.
+        try:
+            cursor.execute(
+                build_category_copy_sql(fetch_words_columns(cursor)),
+                (new_category, word_id),
+            )
+        except mysql.connector.IntegrityError:
+            conn.rollback()
+            return duplicate_response
+
+        new_word_id = cursor.lastrowid
+
+        create_history_record(
+            cursor,
+            new_word_id,
+            current_word["word"],
+            current_word["translation"],
+            current_word["example_sentence"],
+            new_category,
+            "created",
+        )
+
+        conn.commit()
+
+        cursor.execute(
+            "SELECT DISTINCT category FROM words WHERE word = %s ORDER BY category",
+            (current_word["word"],),
+        )
+        categories = [row["category"] for row in cursor.fetchall()]
+
+        # Update category counts
+        try:
+            cursor.callproc("update_category_counts")
+            conn.commit()
+        except Exception:
+            pass  # Non-critical
+
+        return jsonify(
+            {
+                "success": True,
+                "message": f'Added "{current_word["word"]}" to category "{new_category}"',
+                "new_word_id": new_word_id,
+                "new_category": new_category,
+                "categories": categories,
+            }
+        )
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
 @app.route("/api/words/<int:word_id>", methods=["DELETE"])
 def delete_word(word_id):
     """
@@ -1492,6 +1705,12 @@ def increment_review_counter(word_id):
     """
     Increment the review counter for a word and update last_reviewed and edit time
 
+    Reviewing a word reviews it everywhere it is filed, so this writes every row
+    sharing the word text rather than the single row it was called on. A word in
+    two categories would otherwise show a stale date and a lower count in one of
+    them, and keep coming up as overdue. Translation, IPA and images are shared
+    the same way.
+
     Args:
         word_id: ID of the word to update (from URL path)
 
@@ -1503,6 +1722,12 @@ def increment_review_counter(word_id):
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
+        cursor.execute("SELECT word FROM words WHERE id = %s", (word_id,))
+        target = cursor.fetchone()
+
+        if not target:
+            return jsonify({"success": False, "error": "Word not found"}), 404
+
         # Increment review_count and update last_reviewed and updated_at timestamps
         cursor.execute(
             """
@@ -1510,9 +1735,9 @@ def increment_review_counter(word_id):
             SET review_count = review_count + 1,
                 last_reviewed = DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 10 HOUR),
                 updated_at = DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 10 HOUR)
-            WHERE id = %s
+            WHERE word = %s
         """,
-            (word_id,),
+            (target["word"],),
         )
 
         # Get updated word data for history
@@ -2122,9 +2347,10 @@ def submit_quiz_result():
                 return jsonify({"success": False, "error": "Invalid result value for flashcard mode"}), 400
             
             cursor = conn.cursor(dictionary=True)
-            # Get current SRS state
+            # Get current SRS state. Read from the row that was answered; the
+            # schedule that follows is written to every row sharing the word.
             cursor.execute(
-                "SELECT review_count, next_review_date, srs_interval FROM words WHERE id = %s",
+                "SELECT word, review_count, next_review_date, srs_interval FROM words WHERE id = %s",
                 (word_id,),
             )
             word = cursor.fetchone()
@@ -2148,18 +2374,24 @@ def submit_quiz_result():
             # Calculate next review date (AEST)
             next_date = datetime.now(AEST) + timedelta(days=new_interval)
 
-            # Update DB
+            # Update DB. Answering a flashcard reschedules the word everywhere
+            # it is filed, so a word in two categories is not drilled twice.
             cursor.execute(
                 """
-                UPDATE words 
+                UPDATE words
                 SET next_review_date = %s, srs_interval = %s, updated_at = NOW()
-                WHERE id = %s
+                WHERE word = %s
             """,
-                (next_date, new_interval, word_id),
+                (next_date, new_interval, word["word"]),
             )
 
-            # Increment daily counter
-            increment_daily_counter("reviewed", conn)
+            # Increment daily counter. This was calling
+            # increment_daily_counter("reviewed", conn) - a string where the
+            # cursor belongs - so every flashcard answer raised AttributeError,
+            # was swallowed by the handler below and returned 500 before the
+            # schedule was committed. Pre-existing; found while verifying that
+            # the new schedule write reaches every category.
+            increment_daily_counter(cursor, word_id)
 
             conn.commit()
 
@@ -2509,12 +2741,16 @@ def upload_word_image(word_id):
             # The early guard above can go stale: another request may empty slot 1
             # while this one is still compressing. Re-assert the precondition in the
             # UPDATE itself so the invariant cannot be broken by interleaving.
+            # Evaluated per row, so compaction holds on every row it touches.
             guard = (
                 " AND image_file IS NOT NULL AND image_file != ''" if slot == 2 else ""
             )
+            # An image belongs to the word, not to one of its categories, so
+            # this writes every row sharing the word text - as removal, the
+            # translation and the IPA already do.
             cursor.execute(
-                f"UPDATE words SET {column} = %s WHERE id = %s{guard}",
-                (filename, word_id),
+                f"UPDATE words SET {column} = %s WHERE word = %s{guard}",
+                (filename, word_data["word"]),
             )
 
             if cursor.rowcount == 0:
