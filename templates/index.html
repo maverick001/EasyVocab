@@ -214,11 +214,14 @@
             <!-- Word Actions Section -->
             <div class="word-actions">
                 <div class="action-group">
-                    <label for="changeCategorySelect" class="action-label">Move to Category:</label>
+                    <label for="changeCategorySelect" class="action-label">Category:</label>
                     <select id="changeCategorySelect" class="category-change-select">
                         <option value="">-- Select Category --</option>
                     </select>
                     <button id="moveCategoryBtn" class="btn btn-secondary btn-sm">Move</button>
+                    <button id="addCategoryBtn" class="btn btn-secondary btn-sm"
+                        title="Keep this word where it is and file it under the selected category as well">＋ Add to
+                        Category</button>
                     <button id="deleteWordBtn" class="btn btn-secondary btn-sm btn-delete-inline">🗑️ Delete</button>
                 </div>
             </div>
@@ -374,6 +377,9 @@
         <span class="error-icon">⚠️</span>
         <span id="errorText"></span>
     </div>
+
+    <!-- Toast: transient confirmation, fades itself out -->
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
     </div>
 

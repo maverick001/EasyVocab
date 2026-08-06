@@ -2880,3 +2880,46 @@ body.dark-mode .quiz-word {
     gap: var(--spacing-xs);
 }
 
+/* ============================================
+   Toast - transient confirmation
+   ============================================ */
+
+/*
+ * Sits above everything, bottom right, and never takes a click. Hidden by
+ * default with visibility rather than display:none, so the fade can play out
+ * on the way in and on the way out.
+ */
+.toast {
+    position: fixed;
+    bottom: var(--spacing-lg);
+    right: var(--spacing-lg);
+    z-index: 3000;
+    max-width: min(420px, calc(100vw - 2 * var(--spacing-lg)));
+    padding: 0.75rem 1.25rem;
+    background: var(--success-color);
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.4;
+    border-radius: var(--radius-md);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(12px);
+    transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s;
+    pointer-events: none;
+}
+
+.toast.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .toast {
+        transition: opacity 0.25s ease, visibility 0.25s;
+        transform: none;
+    }
+}
+

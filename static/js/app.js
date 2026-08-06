@@ -48,7 +48,11 @@ const Elements = {
     // Word actions
     changeCategorySelect: null,
     moveCategoryBtn: null,
+    addCategoryBtn: null,
     deleteWordBtn: null,
+
+    // Toast
+    toast: null,
 
     // Translation elements
     translationDisplay: null,
@@ -255,7 +259,11 @@ function cacheDOMElements() {
     // Word actions
     Elements.changeCategorySelect = document.getElementById('changeCategorySelect');
     Elements.moveCategoryBtn = document.getElementById('moveCategoryBtn');
+    Elements.addCategoryBtn = document.getElementById('addCategoryBtn');
     Elements.deleteWordBtn = document.getElementById('deleteWordBtn');
+
+    // Toast
+    Elements.toast = document.getElementById('toast');
 
     // Translation
     Elements.translationDisplay = document.getElementById('translationDisplay');
@@ -402,6 +410,7 @@ function setupEventListeners() {
     // Word actions
     Elements.reviewCounter.addEventListener('click', () => incrementReviewCounter());
     Elements.moveCategoryBtn.addEventListener('click', () => changeWordCategory());
+    Elements.addCategoryBtn.addEventListener('click', () => addWordToCategory());
     Elements.deleteWordBtn.addEventListener('click', () => deleteCurrentWord());
 
     // Import functionality
@@ -549,6 +558,29 @@ function showLoading(show) {
 function showError(message) {
     // Display as popup alert window
     alert(message);
+}
+
+// Timer for the toast currently on screen, so a second toast replaces the
+// first instead of inheriting its countdown.
+let toastTimer = null;
+
+/**
+ * Show a transient confirmation that fades itself out.
+ *
+ * For messages the user should see but need not acknowledge - errors still use
+ * showError()'s blocking alert. Deliberately generic so other call sites can
+ * adopt it.
+ */
+function showToast(message) {
+    if (!Elements.toast) return;
+
+    Elements.toast.textContent = message;
+    Elements.toast.classList.add('visible');
+
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+        Elements.toast.classList.remove('visible');
+    }, 3000);
 }
 
 /**
@@ -2646,6 +2678,85 @@ async function changeWordCategory() {
     } catch (error) {
         console.error('Error changing category:', error);
         showError('Network error while changing category');
+    }
+}
+
+/**
+ * File the current word under an additional category, keeping the one it is in.
+ *
+ * The sibling of changeWordCategory(): same dropdown, same validation, but the
+ * word is copied rather than moved. It stays on screen afterwards, because it is
+ * still in the category being browsed and the current position is still valid.
+ */
+async function addWordToCategory() {
+    if (!AppState.currentWord) return;
+
+    // Auto-save translation if editing
+    if (AppState.isEditingTranslation) {
+        await saveTranslation();
+    }
+
+    const newCategory = Elements.changeCategorySelect.value;
+
+    if (!newCategory) {
+        showError('Please select a category first');
+        return;
+    }
+
+    if (newCategory === AppState.currentWord.category) {
+        showError('Word is already in this category');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/words/${AppState.currentWord.id}/categories`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                new_category: newCategory
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            console.log(`✅ ${data.message}`);
+
+            // Increment daily progress counter (max once per word per day)
+            incrementDailyCounter(AppState.currentWord.id);
+
+            const categories = (data.categories || []).join(', ');
+            showToast(`Added "${AppState.currentWord.word}" to ${newCategory} — now in ${categories}`);
+
+            // Save current category before reloading
+            const savedCategory = AppState.currentCategory;
+
+            // Reload categories to update counts
+            await loadCategories();
+
+            // Restore category selection in dropdown
+            if (savedCategory) {
+                Elements.categorySelect.value = savedCategory;
+            }
+
+            // The word is still in the category being browsed, so it stays on
+            // screen and nothing is re-fetched.
+
+        } else {
+            // Check if this is a duplicate word error
+            if (data.duplicate) {
+                // Show popup warning for duplicate
+                alert(data.error || 'This word already exists in the target category');
+            } else {
+                showError(data.error || 'Failed to add category');
+            }
+        }
+
+    } catch (error) {
+        console.error('Error adding category:', error);
+        showError('Network error while adding category');
     }
 }
 
