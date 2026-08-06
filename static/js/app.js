@@ -411,6 +411,10 @@ function setupEventListeners() {
     // Keyboard navigation (Arrow keys)
     document.addEventListener('keydown', handleKeyboardNavigation);
 
+    // The word row re-centres when the card changes width, taking the word's
+    // left edge with it, so the pill row has to be re-measured.
+    window.addEventListener('resize', alignWordCategories);
+
     // Word actions
     Elements.reviewCounter.addEventListener('click', () => incrementReviewCounter());
     Elements.moveCategoryBtn.addEventListener('click', () => changeWordCategory());
@@ -1214,6 +1218,29 @@ function renderWordCategories(categories) {
     Elements.wordCategories.innerHTML = list
         .map(name => `<span class="word-category-tag">${escapeHTML(name)}</span>`)
         .join('');
+
+    alignWordCategories();
+}
+
+/**
+ * Line the first category pill up with the word's first letter.
+ *
+ * The word row is centred, so its left edge depends on the length of the word
+ * and on the width of the card - neither of which CSS can reference from a
+ * sibling. The row itself is stretched and left-aligned in the stylesheet; this
+ * supplies the one measurement that has to be taken at runtime.
+ */
+function alignWordCategories() {
+    if (!Elements.wordCategories || !Elements.wordDisplay) return;
+
+    // Measure from a known zero. Leaving the previous word's padding in place
+    // would bake it into the reading and walk the row further right each time.
+    Elements.wordCategories.style.paddingLeft = '0px';
+
+    const wordLeft = Elements.wordDisplay.getBoundingClientRect().left;
+    const rowLeft = Elements.wordCategories.getBoundingClientRect().left;
+
+    Elements.wordCategories.style.paddingLeft = `${Math.max(0, Math.round(wordLeft - rowLeft))}px`;
 }
 
 /**

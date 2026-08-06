@@ -547,6 +547,65 @@ class TestWordCategoryDisplay:
         assert '#1e3a5f' not in rule
         assert 'var(--text-primary)' in rule
 
+    def _css(self):
+        from app import app
+        with open(os.path.join(app.root_path, 'static', 'css', 'style.css'), encoding='utf-8') as f:
+            return f.read()
+
+    def test_row_is_stretched_and_left_aligned(self):
+        """
+        The first pill lines up with the word's first letter. That needs the row
+        to span the section and start at its left edge, with JS supplying the
+        offset - a centred row could never line up with anything.
+        """
+        css = self._css()
+        rule_at = css.index('.word-categories {')
+        rule = css[rule_at:css.index('}', rule_at)]
+        assert 'align-self: stretch' in rule
+        assert 'justify-content: flex-start' in rule
+        assert 'justify-content: center' not in rule
+
+    def test_section_bottom_padding_matches_the_history_dropdown(self):
+        """
+        The pill row is the section's last content, so its bottom sits at the
+        section's bottom padding. The History dropdown is pinned at
+        bottom: var(--spacing-sm). Both must read the same variable or the two
+        stop being level.
+        """
+        css = self._css()
+        section_at = css.index('.word-section {')
+        section = css[section_at:css.index('}', section_at)]
+        padding = [line for line in section.splitlines() if 'padding:' in line][0]
+        assert padding.rstrip().endswith('var(--spacing-sm);'), padding
+
+        history_at = css.index('.history-dropdown-container {')
+        history = css[history_at:css.index('}', history_at)]
+        assert 'bottom: var(--spacing-sm)' in history
+
+    def test_alignment_is_reapplied_on_resize(self):
+        """
+        Re-centring on a width change moves the word's left edge, so a measured
+        offset taken once would go stale.
+        """
+        from app import app
+        with open(os.path.join(app.root_path, 'static', 'js', 'app.js'), encoding='utf-8') as f:
+            js = f.read()
+        assert "addEventListener('resize', alignWordCategories)" in js
+
+    def test_alignment_resets_padding_before_measuring(self):
+        """
+        Measuring without zeroing the previous padding bakes it into the result
+        and walks the row further right on every word.
+        """
+        from app import app
+        with open(os.path.join(app.root_path, 'static', 'js', 'app.js'), encoding='utf-8') as f:
+            js = f.read()
+        start = js.index('function alignWordCategories(')
+        body = js[start:js.index('\n}', start)]
+        reset_at = body.index("paddingLeft = '0px'")
+        measure_at = body.index('getBoundingClientRect')
+        assert reset_at < measure_at
+
     def test_category_names_are_escaped(self):
         """
         Category names come from the Add New Word modal and from XML import, so

@@ -815,7 +815,13 @@ button {
 
 /* Word Section with Position Info */
 .word-section {
-    padding: var(--spacing-md) var(--spacing-lg);
+    /*
+     * The bottom padding is var(--spacing-sm) rather than --spacing-md so the
+     * category pill row - the last content in the section - ends level with
+     * .history-dropdown-container, which is pinned at bottom: var(--spacing-sm).
+     * Both sides read the same variable, so they stay aligned if it changes.
+     */
+    padding: var(--spacing-md) var(--spacing-lg) var(--spacing-sm);
     border-bottom: 2px solid var(--border-color);
     margin-bottom: var(--spacing-md);
     min-height: 120px;
@@ -2884,10 +2890,17 @@ body.dark-mode .quiz-word {
    Word Categories - every category a word is filed under
    ============================================ */
 
+/*
+ * Stretched to the section's full content width and left-aligned, so the first
+ * pill starts wherever padding-left puts it. alignWordCategories() in app.js
+ * sets that padding to the word's own left edge: the word row is centred, so
+ * its left edge moves with the length of the word and CSS cannot name it.
+ */
 .word-categories {
     display: flex;
     flex-wrap: wrap;
-    justify-content: center;
+    align-self: stretch;
+    justify-content: flex-start;
     gap: var(--spacing-xs);
     margin-top: var(--spacing-xs);
 }
