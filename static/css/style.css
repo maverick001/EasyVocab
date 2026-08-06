@@ -2891,16 +2891,18 @@ body.dark-mode .quiz-word {
    ============================================ */
 
 /*
- * Stretched to the section's full content width and left-aligned, so the first
- * pill starts wherever padding-left puts it. alignWordCategories() in app.js
- * sets that padding to the word's own left edge: the word row is centred, so
- * its left edge moves with the length of the word and CSS cannot name it.
+ * Stretched to the section's full content width, with the pills centred inside
+ * it. That centre is not the one we want on its own: the word row also holds
+ * the edit, IPA and review controls to the right of the word, so its midpoint
+ * sits right of the word's. alignWordCategories() in app.js pads one side to
+ * walk the centre back onto the word itself, which CSS cannot locate because it
+ * moves with the length of the word.
  */
 .word-categories {
     display: flex;
     flex-wrap: wrap;
     align-self: stretch;
-    justify-content: flex-start;
+    justify-content: center;
     gap: var(--spacing-xs);
     margin-top: var(--spacing-xs);
 }

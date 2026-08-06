@@ -1223,24 +1223,37 @@ function renderWordCategories(categories) {
 }
 
 /**
- * Line the first category pill up with the word's first letter.
+ * Centre the category pills on the word itself.
  *
- * The word row is centred, so its left edge depends on the length of the word
- * and on the width of the card - neither of which CSS can reference from a
- * sibling. The row itself is stretched and left-aligned in the stylesheet; this
- * supplies the one measurement that has to be taken at runtime.
+ * The stylesheet centres them within the row, but that is the centre of the
+ * card, not of the word: the word row also carries the edit, IPA and review
+ * controls to the word's right, which pull its midpoint across. The offset
+ * depends on the length of the word and the width of the card, so it has to be
+ * measured rather than written in CSS.
+ *
+ * Padding on one side moves the content box's centre by half its width, so
+ * closing a gap of n takes 2n of padding on the far side.
  */
 function alignWordCategories() {
     if (!Elements.wordCategories || !Elements.wordDisplay) return;
 
     // Measure from a known zero. Leaving the previous word's padding in place
-    // would bake it into the reading and walk the row further right each time.
+    // would bake it into the reading and walk the row further each time.
     Elements.wordCategories.style.paddingLeft = '0px';
+    Elements.wordCategories.style.paddingRight = '0px';
 
-    const wordLeft = Elements.wordDisplay.getBoundingClientRect().left;
-    const rowLeft = Elements.wordCategories.getBoundingClientRect().left;
+    const word = Elements.wordDisplay.getBoundingClientRect();
+    const row = Elements.wordCategories.getBoundingClientRect();
 
-    Elements.wordCategories.style.paddingLeft = `${Math.max(0, Math.round(wordLeft - rowLeft))}px`;
+    const shift = (word.left + word.width / 2) - (row.left + row.width / 2);
+    const padding = `${Math.round(Math.abs(shift) * 2)}px`;
+
+    // Pad the side the pills need to move away from.
+    if (shift >= 0) {
+        Elements.wordCategories.style.paddingLeft = padding;
+    } else {
+        Elements.wordCategories.style.paddingRight = padding;
+    }
 }
 
 /**

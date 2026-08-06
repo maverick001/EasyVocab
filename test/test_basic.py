@@ -552,18 +552,32 @@ class TestWordCategoryDisplay:
         with open(os.path.join(app.root_path, 'static', 'css', 'style.css'), encoding='utf-8') as f:
             return f.read()
 
-    def test_row_is_stretched_and_left_aligned(self):
+    def test_row_is_stretched_and_centred(self):
         """
-        The first pill lines up with the word's first letter. That needs the row
-        to span the section and start at its left edge, with JS supplying the
-        offset - a centred row could never line up with anything.
+        The pills are centred on the word. The row spans the section so that
+        padding on one side can walk that centre off the card's midpoint and
+        onto the word's, which sits left of it - the word row carries the edit,
+        IPA and review controls to the word's right.
         """
         css = self._css()
         rule_at = css.index('.word-categories {')
         rule = css[rule_at:css.index('}', rule_at)]
         assert 'align-self: stretch' in rule
-        assert 'justify-content: flex-start' in rule
-        assert 'justify-content: center' not in rule
+        assert 'justify-content: center' in rule
+
+    def test_alignment_pads_one_side_by_twice_the_gap(self):
+        """
+        Padding shifts a centred content box by half its width, so closing a gap
+        of n needs 2n. Halving this would leave the pills stranded midway.
+        """
+        from app import app
+        with open(os.path.join(app.root_path, 'static', 'js', 'app.js'), encoding='utf-8') as f:
+            js = f.read()
+        start = js.index('function alignWordCategories(')
+        body = js[start:js.index('\n}', start)]
+        assert 'Math.abs(shift) * 2' in body
+        assert 'paddingLeft = padding' in body
+        assert 'paddingRight = padding' in body
 
     def test_section_bottom_padding_matches_the_history_dropdown(self):
         """
