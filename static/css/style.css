@@ -815,7 +815,13 @@ button {
 
 /* Word Section with Position Info */
 .word-section {
-    padding: var(--spacing-md) var(--spacing-lg);
+    /*
+     * The bottom padding is var(--spacing-sm) rather than --spacing-md so the
+     * category pill row - the last content in the section - ends level with
+     * .history-dropdown-container, which is pinned at bottom: var(--spacing-sm).
+     * Both sides read the same variable, so they stay aligned if it changes.
+     */
+    padding: var(--spacing-md) var(--spacing-lg) var(--spacing-sm);
     border-bottom: 2px solid var(--border-color);
     margin-bottom: var(--spacing-md);
     min-height: 120px;
@@ -2878,6 +2884,43 @@ body.dark-mode .quiz-word {
     display: flex;
     align-items: center;
     gap: var(--spacing-xs);
+}
+
+/* ============================================
+   Word Categories - every category a word is filed under
+   ============================================ */
+
+/*
+ * Stretched to the section's full content width, with the pills centred inside
+ * it. That centre is not the one we want on its own: the word row also holds
+ * the edit, IPA and review controls to the right of the word, so its midpoint
+ * sits right of the word's. alignWordCategories() in app.js pads one side to
+ * walk the centre back onto the word itself, which CSS cannot locate because it
+ * moves with the length of the word.
+ */
+.word-categories {
+    display: flex;
+    flex-wrap: wrap;
+    align-self: stretch;
+    justify-content: center;
+    gap: var(--spacing-xs);
+    margin-top: var(--spacing-xs);
+}
+
+/*
+ * Matches .search-result-category, with one deliberate difference: that rule
+ * hardcodes color #1e3a5f, a navy that all but vanishes on the dark-mode
+ * background. This uses the theme variable so it reads in both modes. Spacing
+ * comes from the container's gap, so no margin hangs off the last pill.
+ */
+.word-category-tag {
+    display: inline-block;
+    background: transparent;
+    color: var(--text-primary);
+    padding: 3px 10px;
+    border: 2px solid #e74c3c;
+    border-radius: 12px;
+    font-size: 0.8rem;
 }
 
 /* ============================================

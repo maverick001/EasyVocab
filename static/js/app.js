@@ -51,6 +51,8 @@ const Elements = {
     addCategoryBtn: null,
     deleteWordBtn: null,
 
+    wordCategories: null,
+
     // Toast
     toast: null,
 
@@ -262,6 +264,8 @@ function cacheDOMElements() {
     Elements.addCategoryBtn = document.getElementById('addCategoryBtn');
     Elements.deleteWordBtn = document.getElementById('deleteWordBtn');
 
+    Elements.wordCategories = document.getElementById('wordCategories');
+
     // Toast
     Elements.toast = document.getElementById('toast');
 
@@ -406,6 +410,10 @@ function setupEventListeners() {
 
     // Keyboard navigation (Arrow keys)
     document.addEventListener('keydown', handleKeyboardNavigation);
+
+    // The word row re-centres when the card changes width, taking the word's
+    // left edge with it, so the pill row has to be re-measured.
+    window.addEventListener('resize', alignWordCategories);
 
     // Word actions
     Elements.reviewCounter.addEventListener('click', () => incrementReviewCounter());
@@ -1191,6 +1199,64 @@ function populateCategoryDropdown(categories) {
 }
 
 /**
+ * Render the row of category pills under the word.
+ *
+ * Informational only - nothing here is clickable. The row is rendered even for
+ * a word in a single category: .word-section carries a fixed min-height to stop
+ * the card resizing between words, and a row that came and went would put that
+ * jitter straight back.
+ *
+ * @param {string[]} categories - every category the word is filed under
+ */
+function renderWordCategories(categories) {
+    if (!Elements.wordCategories) return;
+
+    // A missing list clears the row rather than throwing, so a cached app.js
+    // talking to a server that does not send it degrades to a blank row.
+    const list = Array.isArray(categories) ? categories : [];
+
+    Elements.wordCategories.innerHTML = list
+        .map(name => `<span class="word-category-tag">${escapeHTML(name)}</span>`)
+        .join('');
+
+    alignWordCategories();
+}
+
+/**
+ * Centre the category pills on the word itself.
+ *
+ * The stylesheet centres them within the row, but that is the centre of the
+ * card, not of the word: the word row also carries the edit, IPA and review
+ * controls to the word's right, which pull its midpoint across. The offset
+ * depends on the length of the word and the width of the card, so it has to be
+ * measured rather than written in CSS.
+ *
+ * Padding on one side moves the content box's centre by half its width, so
+ * closing a gap of n takes 2n of padding on the far side.
+ */
+function alignWordCategories() {
+    if (!Elements.wordCategories || !Elements.wordDisplay) return;
+
+    // Measure from a known zero. Leaving the previous word's padding in place
+    // would bake it into the reading and walk the row further each time.
+    Elements.wordCategories.style.paddingLeft = '0px';
+    Elements.wordCategories.style.paddingRight = '0px';
+
+    const word = Elements.wordDisplay.getBoundingClientRect();
+    const row = Elements.wordCategories.getBoundingClientRect();
+
+    const shift = (word.left + word.width / 2) - (row.left + row.width / 2);
+    const padding = `${Math.round(Math.abs(shift) * 2)}px`;
+
+    // Pad the side the pills need to move away from.
+    if (shift >= 0) {
+        Elements.wordCategories.style.paddingLeft = padding;
+    } else {
+        Elements.wordCategories.style.paddingRight = padding;
+    }
+}
+
+/**
  * Display word data in the UI
  */
 function displayWord(wordData) {
@@ -1221,6 +1287,9 @@ function displayWord(wordData) {
     // Display review count
     const reviewCount = wordData.review_count || 0;
     Elements.reviewCount.textContent = reviewCount;
+
+    // Display every category this word is filed under
+    renderWordCategories(wordData.categories);
 
     // Display translation
     Elements.translationDisplay.textContent = wordData.translation;
@@ -2726,6 +2795,11 @@ async function addWordToCategory() {
 
             // Increment daily progress counter (max once per word per day)
             incrementDailyCounter(AppState.currentWord.id);
+
+            // The endpoint returns the full list, so the pill row updates from
+            // the response without refetching the word.
+            AppState.currentWord.categories = data.categories;
+            renderWordCategories(data.categories);
 
             const categories = (data.categories || []).join(', ');
             showToast(`Added "${AppState.currentWord.word}" to ${newCategory} — now in ${categories}`);

@@ -473,6 +473,166 @@ class TestSharedWriteScope:
         assert 'WHERE word = %s' in update[:update.index('"""')]
 
 
+class TestWordCategoryDisplay:
+    """
+    Tests for the row of category pills under the word.
+
+    The row is informational: it shows every category the word is filed under,
+    styled like the search-result pill.
+    """
+
+    def _index_html(self):
+        from app import app
+        with open(os.path.join(app.root_path, 'templates', 'index.html'), encoding='utf-8') as f:
+            return f.read()
+
+    def test_index_has_word_categories_row(self):
+        """The word card should carry the pill row's container"""
+        assert 'wordCategories' in self._index_html()
+
+    def test_row_sits_between_word_content_and_history(self):
+        """
+        Position is part of the request: below word-content, above the History
+        dropdown. Asserting it stops the row drifting elsewhere in the card
+        during an unrelated edit.
+        """
+        markup = self._index_html()
+        content = markup.index('class="word-content"')
+        row = markup.index('id="wordCategories"')
+        history = markup.index('history-dropdown-container')
+        assert content < row < history
+
+    def test_browse_response_carries_categories(self):
+        """
+        The list travels with the word, so navigating does not cost an extra
+        round trip per arrow-key press.
+        """
+        from app import app
+        with open(os.path.join(app.root_path, 'app.py'), encoding='utf-8') as f:
+            source = f.read()
+        start = source.index('def get_word_by_category(')
+        body = source[start:source.index('\n@app.route', start)]
+        assert 'word["categories"]' in body
+
+    def test_categories_are_looked_up_by_word_text(self):
+        """
+        Categories belong to the spelling, not to the row being viewed - the
+        whole point is to find that word's other rows.
+        """
+        from app import app
+        with open(os.path.join(app.root_path, 'app.py'), encoding='utf-8') as f:
+            source = f.read()
+        start = source.index('def get_word_by_category(')
+        body = source[start:source.index('\n@app.route', start)]
+        query_at = body.index('SELECT DISTINCT category')
+        assert 'WHERE word = %s' in body[query_at:query_at + 200]
+
+    def test_pill_style_exists(self):
+        """The pill needs its own class rather than borrowing the search one"""
+        from app import app
+        with open(os.path.join(app.root_path, 'static', 'css', 'style.css'), encoding='utf-8') as f:
+            css = f.read()
+        assert '.word-category-tag' in css
+
+    def test_pill_does_not_hardcode_the_dark_mode_navy(self):
+        """
+        .search-result-category hardcodes #1e3a5f, which all but vanishes on the
+        dark-mode background. The new pill must not inherit that mistake.
+        """
+        from app import app
+        with open(os.path.join(app.root_path, 'static', 'css', 'style.css'), encoding='utf-8') as f:
+            css = f.read()
+        rule_at = css.index('.word-category-tag')
+        rule = css[rule_at:css.index('}', rule_at)]
+        assert '#1e3a5f' not in rule
+        assert 'var(--text-primary)' in rule
+
+    def _css(self):
+        from app import app
+        with open(os.path.join(app.root_path, 'static', 'css', 'style.css'), encoding='utf-8') as f:
+            return f.read()
+
+    def test_row_is_stretched_and_centred(self):
+        """
+        The pills are centred on the word. The row spans the section so that
+        padding on one side can walk that centre off the card's midpoint and
+        onto the word's, which sits left of it - the word row carries the edit,
+        IPA and review controls to the word's right.
+        """
+        css = self._css()
+        rule_at = css.index('.word-categories {')
+        rule = css[rule_at:css.index('}', rule_at)]
+        assert 'align-self: stretch' in rule
+        assert 'justify-content: center' in rule
+
+    def test_alignment_pads_one_side_by_twice_the_gap(self):
+        """
+        Padding shifts a centred content box by half its width, so closing a gap
+        of n needs 2n. Halving this would leave the pills stranded midway.
+        """
+        from app import app
+        with open(os.path.join(app.root_path, 'static', 'js', 'app.js'), encoding='utf-8') as f:
+            js = f.read()
+        start = js.index('function alignWordCategories(')
+        body = js[start:js.index('\n}', start)]
+        assert 'Math.abs(shift) * 2' in body
+        assert 'paddingLeft = padding' in body
+        assert 'paddingRight = padding' in body
+
+    def test_section_bottom_padding_matches_the_history_dropdown(self):
+        """
+        The pill row is the section's last content, so its bottom sits at the
+        section's bottom padding. The History dropdown is pinned at
+        bottom: var(--spacing-sm). Both must read the same variable or the two
+        stop being level.
+        """
+        css = self._css()
+        section_at = css.index('.word-section {')
+        section = css[section_at:css.index('}', section_at)]
+        padding = [line for line in section.splitlines() if 'padding:' in line][0]
+        assert padding.rstrip().endswith('var(--spacing-sm);'), padding
+
+        history_at = css.index('.history-dropdown-container {')
+        history = css[history_at:css.index('}', history_at)]
+        assert 'bottom: var(--spacing-sm)' in history
+
+    def test_alignment_is_reapplied_on_resize(self):
+        """
+        Re-centring on a width change moves the word's left edge, so a measured
+        offset taken once would go stale.
+        """
+        from app import app
+        with open(os.path.join(app.root_path, 'static', 'js', 'app.js'), encoding='utf-8') as f:
+            js = f.read()
+        assert "addEventListener('resize', alignWordCategories)" in js
+
+    def test_alignment_resets_padding_before_measuring(self):
+        """
+        Measuring without zeroing the previous padding bakes it into the result
+        and walks the row further right on every word.
+        """
+        from app import app
+        with open(os.path.join(app.root_path, 'static', 'js', 'app.js'), encoding='utf-8') as f:
+            js = f.read()
+        start = js.index('function alignWordCategories(')
+        body = js[start:js.index('\n}', start)]
+        reset_at = body.index("paddingLeft = '0px'")
+        measure_at = body.index('getBoundingClientRect')
+        assert reset_at < measure_at
+
+    def test_category_names_are_escaped(self):
+        """
+        Category names come from the Add New Word modal and from XML import, so
+        they are rendered through escapeHTML() as search results are.
+        """
+        from app import app
+        with open(os.path.join(app.root_path, 'static', 'js', 'app.js'), encoding='utf-8') as f:
+            js = f.read()
+        start = js.index('function renderWordCategories(')
+        body = js[start:js.index('\n}', start)]
+        assert 'escapeHTML(' in body
+
+
 class TestImageDeleteRoute:
     """Tests for the image removal endpoint's registration"""
 
