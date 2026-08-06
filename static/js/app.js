@@ -51,6 +51,8 @@ const Elements = {
     addCategoryBtn: null,
     deleteWordBtn: null,
 
+    wordCategories: null,
+
     // Toast
     toast: null,
 
@@ -261,6 +263,8 @@ function cacheDOMElements() {
     Elements.moveCategoryBtn = document.getElementById('moveCategoryBtn');
     Elements.addCategoryBtn = document.getElementById('addCategoryBtn');
     Elements.deleteWordBtn = document.getElementById('deleteWordBtn');
+
+    Elements.wordCategories = document.getElementById('wordCategories');
 
     // Toast
     Elements.toast = document.getElementById('toast');
@@ -1191,6 +1195,28 @@ function populateCategoryDropdown(categories) {
 }
 
 /**
+ * Render the row of category pills under the word.
+ *
+ * Informational only - nothing here is clickable. The row is rendered even for
+ * a word in a single category: .word-section carries a fixed min-height to stop
+ * the card resizing between words, and a row that came and went would put that
+ * jitter straight back.
+ *
+ * @param {string[]} categories - every category the word is filed under
+ */
+function renderWordCategories(categories) {
+    if (!Elements.wordCategories) return;
+
+    // A missing list clears the row rather than throwing, so a cached app.js
+    // talking to a server that does not send it degrades to a blank row.
+    const list = Array.isArray(categories) ? categories : [];
+
+    Elements.wordCategories.innerHTML = list
+        .map(name => `<span class="word-category-tag">${escapeHTML(name)}</span>`)
+        .join('');
+}
+
+/**
  * Display word data in the UI
  */
 function displayWord(wordData) {
@@ -1221,6 +1247,9 @@ function displayWord(wordData) {
     // Display review count
     const reviewCount = wordData.review_count || 0;
     Elements.reviewCount.textContent = reviewCount;
+
+    // Display every category this word is filed under
+    renderWordCategories(wordData.categories);
 
     // Display translation
     Elements.translationDisplay.textContent = wordData.translation;
@@ -2726,6 +2755,11 @@ async function addWordToCategory() {
 
             // Increment daily progress counter (max once per word per day)
             incrementDailyCounter(AppState.currentWord.id);
+
+            // The endpoint returns the full list, so the pill row updates from
+            // the response without refetching the word.
+            AppState.currentWord.categories = data.categories;
+            renderWordCategories(data.categories);
 
             const categories = (data.categories || []).join(', ');
             showToast(`Added "${AppState.currentWord.word}" to ${newCategory} — now in ${categories}`);

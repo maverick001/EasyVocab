@@ -2881,6 +2881,34 @@ body.dark-mode .quiz-word {
 }
 
 /* ============================================
+   Word Categories - every category a word is filed under
+   ============================================ */
+
+.word-categories {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--spacing-xs);
+    margin-top: var(--spacing-xs);
+}
+
+/*
+ * Matches .search-result-category, with one deliberate difference: that rule
+ * hardcodes color #1e3a5f, a navy that all but vanishes on the dark-mode
+ * background. This uses the theme variable so it reads in both modes. Spacing
+ * comes from the container's gap, so no margin hangs off the last pill.
+ */
+.word-category-tag {
+    display: inline-block;
+    background: transparent;
+    color: var(--text-primary);
+    padding: 3px 10px;
+    border: 2px solid #e74c3c;
+    border-radius: 12px;
+    font-size: 0.8rem;
+}
+
+/* ============================================
    Toast - transient confirmation
    ============================================ */
 

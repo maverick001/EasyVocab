@@ -875,6 +875,23 @@ def get_word_by_category(category=None):
         if word:
             word["total_in_category"] = total_count
             word["current_index"] = index
+
+            # Every category this word is filed under, for the pill row on the
+            # card. Carried with the word rather than fetched separately, so
+            # holding down an arrow key does not fire a request per word.
+            # words(word) is indexed, and DISTINCT is defensive - the
+            # unique_word_category constraint already rules out repeats.
+            cursor.execute(
+                """
+                SELECT DISTINCT category
+                FROM words
+                WHERE word = %s
+                ORDER BY category
+            """,
+                (word["word"],),
+            )
+            word["categories"] = [row["category"] for row in cursor.fetchall()]
+
             return jsonify({"success": True, "word": word})
         else:
             return jsonify({"success": False, "error": "Word not found"}), 404
