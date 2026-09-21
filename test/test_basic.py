@@ -13,6 +13,7 @@ Test Coverage:
 import pytest
 import os
 import sys
+from datetime import date
 
 # Skip database initialization for CI tests
 os.environ['SKIP_DB'] = 'true'
@@ -356,6 +357,7 @@ class TestCategoryCopySql:
             build_category_copy_sql(self.ALL_COLUMNS)
         )
         assert len(insert_list.split(',')) == len(select_list.split(','))
+
 
     def test_copies_a_column_it_has_never_heard_of(self):
         """A column added by a future migration is copied without a code change"""
@@ -756,3 +758,192 @@ class TestElementIdConsistency:
             "app.js calls document.getElementById() with ids that do not exist "
             f"in templates/index.html: {sorted(missing)}"
         )
+
+
+class TestCategoryAliases:
+    """
+    Tests for the renamed-category mapping applied to imported <tags> values.
+
+    The wordbook exports still tag words with the old category name, so the
+    importer has to rename them on the way in or the old category comes back.
+    """
+
+    def test_renamed_category_is_mapped(self):
+        from utils.xml_parser import normalize_category
+        assert normalize_category('\u6587\u5b66') == '\u6587\u5b66_\u4e66\u9762\u8bed'
+
+    def test_new_name_is_left_alone(self):
+        """Imports that already carry the new name must not be renamed again"""
+        from utils.xml_parser import normalize_category
+        new_name = '\u6587\u5b66_\u4e66\u9762\u8bed'
+        assert normalize_category(new_name) == new_name
+
+    def test_other_categories_pass_through(self):
+        from utils.xml_parser import normalize_category
+        for category in ('\u65e5\u5e38\u8bcd\u6c47', '\u7ecf\u6d4e_\u7ba1\u7406', '202604_New'):
+            assert normalize_category(category) == category
+
+    def test_parser_applies_the_alias(self, tmp_path):
+        """The rename happens during parsing, so every import path gets it"""
+        from utils.xml_parser import VocabularyXMLParser
+        xml = tmp_path / 'wordbook.xml'
+        xml.write_text(
+            '<wordbook><item>'
+            '<word>anthology</word>'
+            '<trans><![CDATA[n.\u9009\u96c6]]></trans>'
+            '<tags>\u6587\u5b66</tags>'
+            '</item></wordbook>',
+            encoding='utf-8',
+        )
+        parser = VocabularyXMLParser(str(xml))
+        assert parser.validate_xml()[0]
+        assert parser.parse_words()[0]['category'] == '\u6587\u5b66_\u4e66\u9762\u8bed'
+
+
+class TestEditCountsAsReview:
+    """
+    Tests for the rule deciding when editing a word counts as reviewing it.
+
+    Reviewing is what drives review_count, last_reviewed and the flashcard
+    schedule, so the rule has to be strict about what qualifies: a real change
+    to a field that carries meaning, at most once a day per word.
+    """
+
+    TODAY = date(2026, 8, 8)
+    CURRENT = {'translation': 'ambient noise', 'example_sentence': 'The noise was loud.'}
+
+    def _counts(self, data, last_review_date=None, current=None):
+        from app import edit_counts_as_review
+        return edit_counts_as_review(
+            data,
+            self.CURRENT if current is None else current,
+            last_review_date,
+            self.TODAY,
+        )
+
+    def test_changed_translation_counts(self):
+        """The case that prompted this rule: a translation-only edit"""
+        assert self._counts({'translation': 'environmental noise'})
+
+    def test_changed_sentence_counts(self):
+        assert self._counts({'example_sentence': 'Traffic is environmental noise.'})
+
+    def test_unchanged_translation_does_not_count(self):
+        """Re-saving a word without touching it is not a review"""
+        assert not self._counts({'translation': 'ambient noise'})
+
+    def test_whitespace_only_change_does_not_count(self):
+        assert not self._counts({'translation': '  ambient noise  '})
+
+    def test_renaming_the_word_does_not_count(self):
+        """Fixing the headword is bookkeeping, not review"""
+        assert not self._counts({'word': 'environmental noises'})
+
+    def test_ipa_does_not_count(self):
+        assert not self._counts({'ipa': 'ˌenvaɪrənˈmentl nɔɪz'})
+
+    def test_second_edit_the_same_day_does_not_count(self):
+        """The daily cap: one review per word per day, however many edits"""
+        assert not self._counts(
+            {'translation': 'environmental noise'}, last_review_date=self.TODAY
+        )
+
+    def test_edit_the_next_day_counts_again(self):
+        assert self._counts(
+            {'translation': 'environmental noise'}, last_review_date=date(2026, 8, 7)
+        )
+
+    def test_one_review_when_both_fields_change(self):
+        """Both fields changing is still a single review, not two"""
+        assert self._counts(
+            {'translation': 'environmental noise', 'example_sentence': 'Traffic noise.'}
+        )
+
+    def test_filling_an_empty_field_counts(self):
+        """None in the database must compare cleanly against new text"""
+        assert self._counts(
+            {'example_sentence': 'Traffic is environmental noise.'},
+            current={'translation': 'ambient noise', 'example_sentence': None},
+        )
+
+    def test_clearing_a_field_counts(self):
+        assert self._counts({'example_sentence': None})
+
+    def test_clearing_an_already_empty_field_does_not_count(self):
+        assert not self._counts(
+            {'example_sentence': None},
+            current={'translation': 'ambient noise', 'example_sentence': None},
+        )
+
+
+class TestCategoryMergeValues:
+    """
+    Tests for the values a word keeps when a move lands on a category it is
+    already filed under.
+
+    Moving a word into a category it already occupies collapses two rows into
+    one. The row being moved survives, because its id is what the card on
+    screen, its history and the daily counter all refer to - but the row it
+    absorbs may be the one holding the image, the IPA or the higher review
+    count, and none of that may vanish with it.
+    """
+
+    def test_blank_field_is_filled_from_the_absorbed_row(self):
+        """An image only the duplicate had survives the merge"""
+        from app import build_merge_values
+        values = build_merge_values(
+            {'image_file': None, 'review_count': 0},
+            {'image_file': 'shot.png', 'review_count': 0},
+        )
+        assert values['image_file'] == 'shot.png'
+
+    def test_empty_string_counts_as_blank(self):
+        """The importer writes '' where the app writes NULL; both are missing"""
+        from app import build_merge_values
+        values = build_merge_values({'ipa': ''}, {'ipa': '/əˈdendəm/'})
+        assert values['ipa'] == '/əˈdendəm/'
+
+    def test_populated_field_is_not_overwritten(self):
+        """The row being moved is the one on screen, so its content wins"""
+        from app import build_merge_values
+        values = build_merge_values(
+            {'translation': 'the one on screen'},
+            {'translation': 'the duplicate'},
+        )
+        assert 'translation' not in values
+
+    def test_higher_review_count_wins(self):
+        """Reviews done under the other category were still reviews"""
+        from app import build_merge_values
+        values = build_merge_values({'review_count': 2}, {'review_count': 4})
+        assert values['review_count'] == 4
+
+    def test_lower_review_count_is_ignored(self):
+        """Absorbing a less-reviewed duplicate must not walk the count back"""
+        from app import build_merge_values
+        values = build_merge_values({'review_count': 4}, {'review_count': 2})
+        assert 'review_count' not in values
+
+    def test_later_review_date_wins(self):
+        """The word was last seen at the later of the two times, in either row"""
+        from app import build_merge_values
+        values = build_merge_values(
+            {'last_reviewed': date(2026, 8, 24)},
+            {'last_reviewed': date(2026, 8, 27)},
+        )
+        assert values['last_reviewed'] == date(2026, 8, 27)
+
+    def test_null_on_the_absorbed_row_is_not_copied_over(self):
+        """A missing date must not blank out a date the kept row has"""
+        from app import build_merge_values
+        values = build_merge_values(
+            {'last_reviewed': date(2026, 8, 27)},
+            {'last_reviewed': None},
+        )
+        assert 'last_reviewed' not in values
+
+    def test_nothing_to_merge_returns_nothing(self):
+        """A duplicate with nothing to contribute produces no UPDATE at all"""
+        from app import build_merge_values
+        kept = {'ipa': '/x/', 'image_file': 'a.png', 'review_count': 5}
+        assert build_merge_values(kept, dict(kept)) == {}

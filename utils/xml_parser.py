@@ -13,6 +13,27 @@ class XMLParserError(Exception):
     pass
 
 
+# Categories that were renamed after words had already been imported under the
+# old name. The wordbook exports still carry the old <tags> value, so map them
+# on the way in to keep every occurrence of the category under one name.
+CATEGORY_ALIASES = {
+    '文学': '文学_书面语',
+}
+
+
+def normalize_category(category: str) -> str:
+    """
+    Resolve a raw <tags> value to the category name used in the database
+
+    Args:
+        category: The <tags> text from the XML item
+
+    Returns:
+        The renamed category if the tag is a known alias, otherwise unchanged
+    """
+    return CATEGORY_ALIASES.get(category, category)
+
+
 class VocabularyXMLParser:
     """
     Parser for vocabulary XML files in BKDict format
@@ -107,6 +128,8 @@ class VocabularyXMLParser:
                 # Extract category/tag (required)
                 tags_elem = item.find('tags')
                 category = tags_elem.text.strip() if tags_elem is not None and tags_elem.text else None
+                if category:
+                    category = normalize_category(category)
 
                 # Skip items with missing required fields
                 if not word or not translation or not category:
