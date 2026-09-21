@@ -335,6 +335,24 @@
             </div>
         </div>
 
+        <!-- Delete Word Modal -->
+        <div id="deleteWordModal" class="modal" style="display: none;">
+            <div class="modal-content modal-sm">
+                <div class="modal-header">
+                    <h2>Delete Word</h2>
+                    <button id="closeDeleteWordBtn" class="btn-close">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p id="deleteWordMessage"></p>
+                    <div id="deleteCategoryList" class="category-checkbox-list"></div>
+                </div>
+                <div class="modal-footer">
+                    <button id="cancelDeleteWordBtn" class="btn btn-cancel">Cancel</button>
+                    <button id="confirmDeleteWordBtn" class="btn btn-delete-inline">Delete Selected</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Welcome Message (shown when no category selected) -->
         <div id="welcomeMessage" class="welcome-message">
             <!-- Loading Indicator (inside welcome message) -->

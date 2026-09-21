@@ -51,6 +51,14 @@ const Elements = {
     addCategoryBtn: null,
     deleteWordBtn: null,
 
+    // Delete Word Modal
+    deleteWordModal: null,
+    deleteWordMessage: null,
+    deleteCategoryList: null,
+    closeDeleteWordBtn: null,
+    cancelDeleteWordBtn: null,
+    confirmDeleteWordBtn: null,
+
     wordCategories: null,
 
     // Toast
@@ -375,6 +383,14 @@ function cacheDOMElements() {
     // Add Word Image Attachment
     Elements.attachScreenshotBtn = document.getElementById('attachScreenshotBtn');
     Elements.removeScreenshotBtn = document.getElementById('removeScreenshotBtn');
+
+    // Delete Word Modal
+    Elements.deleteWordModal = document.getElementById('deleteWordModal');
+    Elements.deleteWordMessage = document.getElementById('deleteWordMessage');
+    Elements.deleteCategoryList = document.getElementById('deleteCategoryList');
+    Elements.closeDeleteWordBtn = document.getElementById('closeDeleteWordBtn');
+    Elements.cancelDeleteWordBtn = document.getElementById('cancelDeleteWordBtn');
+    Elements.confirmDeleteWordBtn = document.getElementById('confirmDeleteWordBtn');
 }
 
 /**
@@ -420,6 +436,10 @@ function setupEventListeners() {
     Elements.moveCategoryBtn.addEventListener('click', () => changeWordCategory());
     Elements.addCategoryBtn.addEventListener('click', () => addWordToCategory());
     Elements.deleteWordBtn.addEventListener('click', () => deleteCurrentWord());
+
+    // Delete Word Modal
+    Elements.closeDeleteWordBtn.addEventListener('click', () => closeDeleteWordModal());
+    Elements.cancelDeleteWordBtn.addEventListener('click', () => closeDeleteWordModal());
 
     // Import functionality
     Elements.importBtn.addEventListener('click', toggleImportPanel);
@@ -2717,6 +2737,13 @@ async function changeWordCategory() {
         if (data.success) {
             console.log(`✅ ${data.message}`);
 
+            // A move onto a category the word was already in collapses two
+            // entries into one. That is a deletion the user did not explicitly
+            // ask for, so say so rather than letting a card quietly disappear.
+            if (data.merged) {
+                showToast(data.message);
+            }
+
             // Increment daily progress counter (max once per word per day)
             incrementDailyCounter(AppState.currentWord.id);
 
@@ -2735,13 +2762,7 @@ async function changeWordCategory() {
             navigateWord(1);
 
         } else {
-            // Check if this is a duplicate word error
-            if (data.duplicate) {
-                // Show popup warning for duplicate
-                alert(data.error || 'This word already exists in the target category');
-            } else {
-                showError(data.error || 'Failed to change category');
-            }
+            showError(data.error || 'Failed to change category');
         }
 
     } catch (error) {
@@ -2841,73 +2862,83 @@ async function deleteCurrentWord() {
     console.log('🗑️ deleteCurrentWord initiated');
     if (!AppState.currentWord) return;
 
-    // Check uniqueness before confirmation
-    let confirmationMsg = `Are you sure you want to delete "${AppState.currentWord.word}"?`;
+    const wordId = AppState.currentWord.id;
+    const wordText = AppState.currentWord.word;
+    const currentCategory = AppState.currentWord.category;
 
     try {
-        const uniqueCheckResponse = await fetch(`/api/words/${AppState.currentWord.id}`);
+        const uniqueCheckResponse = await fetch(`/api/words/${wordId}`);
         const uniqueCheckData = await uniqueCheckResponse.json();
 
-        if (uniqueCheckData.success && uniqueCheckData.is_unique) {
-            confirmationMsg = `Are you sure you want to delete "${AppState.currentWord.word}"? It is the only record in the Vocab.`;
+        if (!uniqueCheckData.success) {
+            showError(uniqueCheckData.error || 'Failed to check word before deletion');
+            return;
+        }
+
+        if (uniqueCheckData.is_unique) {
+            // Only one record for this word - simple confirmation
+            const confirmationMsg = `Are you sure you want to delete "${wordText}"? It is the only record in the Vocab.`;
+            if (confirm(confirmationMsg)) {
+                await performDelete(wordId, [currentCategory]);
+            }
+        } else {
+            // Word exists in multiple categories - let the user pick which ones
+            showDeleteWordModal(wordId, wordText, currentCategory, uniqueCheckData.other_categories);
         }
     } catch (e) {
-        console.error("Error checking word uniqueness:", e);
-        // Fallback to generic message if check fails
-    }
-
-    // Basic confirmation
-    if (!confirm(confirmationMsg)) {
-        return;
-    }
-
-    try {
-        // Check if word exists in other categories
-        const checkResponse = await fetch(`/api/words/${AppState.currentWord.id}`, {
-            method: 'DELETE'
-        });
-
-        const checkData = await checkResponse.json();
-
-        // If word exists in other categories, ask user for scope choice
-        if (checkData.requires_confirmation) {
-            const otherCats = checkData.other_categories.join('\n   - ');
-
-            // Show prompt with three clear options
-            const promptMessage = `Word "${checkData.word}" also exists in other categories:\n   - ${otherCats}\n\nChoose deletion scope:\n  1 = Delete only from "${checkData.current_category}"\n  2 = Delete from ALL categories\n  3 = Cancel (do not delete)\n\nEnter your choice (1, 2, or 3):`;
-
-            const userChoice = prompt(promptMessage);
-
-            if (userChoice === '1') {
-                // Delete only from current category
-                await performDelete(AppState.currentWord.id, 'current_category');
-            } else if (userChoice === '2') {
-                // Delete from all categories
-                await performDelete(AppState.currentWord.id, 'all_categories');
-            } else {
-                // User chose 3 or cancelled - do nothing
-                console.log('Deletion cancelled by user');
-            }
-        } else if (checkData.success) {
-            // Word was deleted successfully (only existed in current category)
-            await handleDeleteSuccess(checkData.message);
-        } else {
-            // Some other error occurred
-            showError(checkData.error || 'Failed to delete word');
-        }
-
-    } catch (error) {
-        console.error('Error deleting word:', error);
-        showError('Network error while deleting word');
+        console.error('Error checking word uniqueness:', e);
+        showError('Network error while checking word before deletion');
     }
 }
 
 /**
- * Perform actual deletion with specified scope
+ * Show the delete confirmation modal with a checkbox per category the
+ * word belongs to, so the user can pick exactly which one(s) to remove.
  */
-async function performDelete(wordId, scope) {
+function showDeleteWordModal(wordId, wordText, currentCategory, otherCategories) {
+    const allCategories = [currentCategory, ...otherCategories];
+
+    Elements.deleteWordMessage.textContent = `Word "${wordText}" exists in ${allCategories.length} categories. Choose which one(s) to delete it from:`;
+
+    Elements.deleteCategoryList.innerHTML = allCategories.map((cat, index) => `
+        <label class="category-checkbox-item">
+            <input type="checkbox" value="${escapeHTML(cat)}" ${cat === currentCategory ? 'checked' : ''} data-index="${index}">
+            <span>${escapeHTML(cat)}${cat === currentCategory ? ' (current)' : ''}</span>
+        </label>
+    `).join('');
+
+    Elements.confirmDeleteWordBtn.onclick = async () => {
+        const checked = Array.from(
+            Elements.deleteCategoryList.querySelectorAll('input[type="checkbox"]:checked')
+        ).map((input) => input.value);
+
+        if (checked.length === 0) {
+            showError('Select at least one category to delete from');
+            return;
+        }
+
+        closeDeleteWordModal();
+        await performDelete(wordId, checked);
+    };
+
+    Elements.deleteWordModal.style.display = 'flex';
+}
+
+/**
+ * Close the delete confirmation modal
+ */
+function closeDeleteWordModal() {
+    Elements.deleteWordModal.style.display = 'none';
+    Elements.deleteCategoryList.innerHTML = '';
+}
+
+/**
+ * Perform actual deletion from the given list of categories
+ */
+async function performDelete(wordId, categories) {
     try {
-        const response = await fetch(`/api/words/${wordId}?scope=${scope}`, {
+        const params = new URLSearchParams({ categories: categories.join(',') });
+        const response = await fetch(`/api/words/${wordId}?${params.toString()}`, {
             method: 'DELETE'
         });
 

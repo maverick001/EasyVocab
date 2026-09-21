@@ -398,6 +398,95 @@ def build_category_copy_sql(columns):
     )
 
 
+# Editing one of these counts as reviewing the word: reading a word closely
+# enough to correct what it means or how it is used is the review. Renaming the
+# word or fixing its IPA is bookkeeping, so neither counts.
+REVIEW_WORTHY_FIELDS = ("translation", "example_sentence")
+
+
+def edit_counts_as_review(data, current_values, last_review_date, today):
+    """
+    Whether an edit should bump review_count and last_reviewed.
+
+    A field has to actually change, so re-saving a word untouched is not a
+    review. The daily cap then stops a run of small corrections to one word
+    from inflating its count: the first qualifying edit of the day counts and
+    the rest are free.
+
+    Args:
+        data: The submitted JSON body
+        current_values: The word's stored values, keyed as data is
+        last_review_date: The word's last_sample_review_date, or None
+        today: Today's date, in the timezone the cap is written with
+
+    Returns:
+        True if the edit should count as a review of the word
+    """
+    if last_review_date == today:
+        return False
+
+    return any(
+        field in data
+        and (data[field] or "").strip() != (current_values.get(field) or "").strip()
+        for field in REVIEW_WORTHY_FIELDS
+    )
+
+
+# What a surviving row takes from the duplicate it absorbs when a move lands on
+# a category the word is already filed under. Content and assets are filled in
+# only where the surviving row has nothing, so the entry on screen stays the one
+# the user sees; review progress takes whichever row got further, because a
+# review done under either category was still a review.
+MERGE_FILL_COLUMNS = (
+    "translation",
+    "example_sentence",
+    "ipa",
+    "image_file",
+    "image_file_2",
+)
+MERGE_FURTHEST_COLUMNS = (
+    "review_count",
+    "last_reviewed",
+    "last_sample_review_date",
+    "last_daily_activity_date",
+)
+
+
+def build_merge_values(kept, absorbed):
+    """
+    The columns the kept row has to change to absorb its duplicate.
+
+    Returns only what actually differs, so a duplicate with nothing to
+    contribute produces no UPDATE at all.
+
+    Args:
+        kept: The row that survives the merge, as a dict of column to value
+        absorbed: The duplicate row being folded into it, keyed the same way
+
+    Returns:
+        A dict of column name to new value, empty if there is nothing to carry
+    """
+    values = {}
+
+    for column in MERGE_FILL_COLUMNS:
+        theirs = absorbed.get(column)
+        if _is_blank(kept.get(column)) and not _is_blank(theirs):
+            values[column] = theirs
+
+    for column in MERGE_FURTHEST_COLUMNS:
+        theirs = absorbed.get(column)
+        ours = kept.get(column)
+        if theirs is not None and (ours is None or theirs > ours):
+            values[column] = theirs
+
+    return values
+
+
+def _is_blank(value):
+    """Missing means NULL or, for text the importer left empty, an empty string"""
+    return value is None or (isinstance(value, str) and not value.strip())
+
+
 def fetch_words_columns(cursor):
     """
     Read the words table's column names from the database catalog.
@@ -1247,9 +1336,9 @@ def update_word(word_id):
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # First, get the current word text, sample_sentence, and category
+        # First, get the current word text, translation, sample_sentence, and category
         cursor.execute(
-            "SELECT word, example_sentence, last_sample_review_date, category FROM words WHERE id = %s",
+            "SELECT word, translation, example_sentence, last_sample_review_date, category FROM words WHERE id = %s",
             (word_id,),
         )
         current_word_data = cursor.fetchone()
@@ -1276,22 +1365,23 @@ def update_word(word_id):
                 shared_params.append(data["translation"])
 
             if "example_sentence" in data:
-                new_sample = data["example_sentence"] or ""
-
                 shared_update_fields.append("example_sentence = %s")
                 shared_params.append(data["example_sentence"])
 
-                # Check if sample sentence actually changed to trigger review increment
-                if new_sample.strip() != current_sample.strip():
-                    # Check daily cap
-                    today = date.today()
-
-                    if last_sample_date != today:
-                        shared_update_fields.append("review_count = review_count + 1")
-                        shared_update_fields.append("last_reviewed = DATE_ADD(NOW(), INTERVAL 10 HOUR)")
-                        shared_update_fields.append(
-                            "last_sample_review_date = CURDATE()"
-                        )
+            # Correcting either the translation or the sentence counts as a
+            # review, capped at one per word per day.
+            if edit_counts_as_review(
+                data,
+                {
+                    "translation": current_word_data.get("translation"),
+                    "example_sentence": current_sample,
+                },
+                last_sample_date,
+                date.today(),
+            ):
+                shared_update_fields.append("review_count = review_count + 1")
+                shared_update_fields.append("last_reviewed = DATE_ADD(NOW(), INTERVAL 10 HOUR)")
+                shared_update_fields.append("last_sample_review_date = CURDATE()")
 
         if shared_update_fields:
             # Update ALL rows with the same word text
@@ -1374,10 +1464,13 @@ def update_word(word_id):
 @app.route("/api/words/<int:word_id>/category", methods=["PUT"])
 def change_word_category(word_id):
     """
-    Move a word to a different category (or add to additional category)
+    Move a word to a different category, relabelling the row in place.
 
-    Note: Each word can exist in multiple categories, but shares one translation and sample sentence.
-    This endpoint moves the word by creating it in the new category and removing it from the current category.
+    A word may be filed under several categories at once, sharing one
+    translation and sample sentence. Moving it to a category it is already
+    filed under is therefore not a duplicate to refuse but a merge: the two
+    entries collapse into one, so that Move always leaves the word in exactly
+    the category asked for. See the merge comment below for which row survives.
 
     Args:
         word_id: ID of the word to update (from URL path)
@@ -1388,7 +1481,7 @@ def change_word_category(word_id):
         }
 
     Returns:
-        JSON response with success status
+        JSON response with success status and whether a merge took place
     """
     conn = None
     try:
@@ -1405,55 +1498,59 @@ def change_word_category(word_id):
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Get current word information
-        cursor.execute(
-            """
-            SELECT word, translation, example_sentence, category, review_count, last_reviewed
-            FROM words
-            WHERE id = %s
-        """,
-            (word_id,),
-        )
+        # Whole row, because a merge below may need to read any column of it
+        cursor.execute("SELECT * FROM words WHERE id = %s", (word_id,))
 
         current_word = cursor.fetchone()
 
         if not current_word:
             return jsonify({"success": False, "error": "Word not found"}), 404
 
-        # Check if word already exists in target category
+        if current_word["category"] == new_category:
+            return jsonify(
+                {"success": False, "error": "Word is already in this category"}
+            ), 400
+
+        # Is the word already filed under the category it is being moved to?
         cursor.execute(
-            """
-            SELECT id FROM words
-            WHERE word = %s AND category = %s
-        """,
+            "SELECT * FROM words WHERE word = %s AND category = %s",
             (current_word["word"], new_category),
         )
 
         existing_word = cursor.fetchone()
 
-        if existing_word:
-            # Word already exists in target category - return error with special flag
-            return jsonify(
-                {
-                    "success": False,
-                    "error": f'Word "{current_word["word"]}" already exists in category "{new_category}"',
-                    "duplicate": True,
-                }
-            ), 409
+        # Moving a word onto a category it already occupies has nothing to
+        # relabel - the two entries become one. This used to refuse the move,
+        # which left the word sitting in both categories and read as though
+        # Move had added a category instead of replacing one.
+        #
+        # The row being moved is the one that survives: its id is what the card
+        # on screen, its history and the daily counter all refer to. The
+        # duplicate may still be the row holding the image, the IPA or the
+        # higher review count, so what it has is folded in before it goes.
+        update_values = build_merge_values(current_word, existing_word) if existing_word else {}
 
-        # Word doesn't exist in target category - perform the move
+        if existing_word:
+            # Before the relabel, or the two rows collide on unique_word_category
+            cursor.execute("DELETE FROM words WHERE id = %s", (existing_word["id"],))
+
         # Update category directly to preserve ID and last_daily_activity_date
+        update_values["category"] = new_category
+        assignments = ", ".join(f"`{column}` = %s" for column in update_values)
         cursor.execute(
-            "UPDATE words SET category = %s WHERE id = %s", (new_category, word_id)
+            f"UPDATE words SET {assignments} WHERE id = %s",
+            (*update_values.values(), word_id),
         )
 
-        # Create history record for the moved word
+        # Create history record for the moved word, recording what it holds
+        # after any merge rather than what it held before
+        moved_word = {**current_word, **update_values}
         create_history_record(
             cursor,
             word_id,
-            current_word["word"],
-            current_word["translation"],
-            current_word["example_sentence"],
+            moved_word["word"],
+            moved_word["translation"],
+            moved_word["example_sentence"],
             new_category,
             "moved",
         )
@@ -1467,9 +1564,14 @@ def change_word_category(word_id):
         except Exception:
             pass  # Non-critical
 
-        return jsonify(
-            {"success": True, "message": f'Word moved to category "{new_category}"'}
-        )
+        message = f'Word moved to category "{new_category}"'
+        if existing_word:
+            message = (
+                f'"{current_word["word"]}" was already in "{new_category}" - '
+                f'the two entries were merged into one'
+            )
+
+        return jsonify({"success": True, "message": message, "merged": bool(existing_word)})
 
     except Exception as e:
         if conn:
@@ -1623,18 +1725,25 @@ def delete_word(word_id):
         scope: 'current_category' (default) or 'all_categories'
                - current_category: Delete only from current category
                - all_categories: Delete from all categories
+        categories: comma-separated list of category names to delete the
+               word from. Takes precedence over `scope` and lets the user
+               pick any subset of the categories the word belongs to.
 
     Args:
         word_id: ID of the word to delete (from URL path)
 
     Returns:
         JSON response with success status
-        If word exists in multiple categories and scope is not specified,
-        returns a special response requesting user confirmation
+        If word exists in multiple categories and scope/categories is not
+        specified, returns a special response requesting user confirmation
     """
     conn = None
     try:
         scope = request.args.get("scope", None)
+        categories_param = request.args.get("categories", None)
+        selected_categories = (
+            [c for c in categories_param.split(",") if c] if categories_param else None
+        )
 
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
@@ -1666,8 +1775,11 @@ def delete_word(word_id):
 
         other_categories = cursor.fetchall()
 
-        # If word exists in other categories and no scope specified, ask user
-        if other_categories and scope is None:
+        if selected_categories is not None and len(selected_categories) == 0:
+            return jsonify({"success": False, "error": "No category selected for deletion"}), 400
+
+        # If word exists in other categories and no scope/categories specified, ask user
+        if other_categories and scope is None and selected_categories is None:
             category_list = [cat["category"] for cat in other_categories]
             return jsonify(
                 {
@@ -1680,8 +1792,17 @@ def delete_word(word_id):
                 }
             ), 200
 
-        # Perform deletion based on scope
-        if scope == "all_categories":
+        # Perform deletion based on the selected categories/scope
+        if selected_categories is not None:
+            # Delete from exactly the categories the user selected
+            placeholders = ", ".join(["%s"] * len(selected_categories))
+            cursor.execute(
+                f"DELETE FROM words WHERE word = %s AND category IN ({placeholders})",
+                (current_word["word"], *selected_categories),
+            )
+            rows_affected = cursor.rowcount
+            message = f'Word "{current_word["word"]}" deleted from {len(selected_categories)} categor{"y" if len(selected_categories) == 1 else "ies"}'
+        elif scope == "all_categories":
             # Delete all instances of this word across all categories
             cursor.execute("DELETE FROM words WHERE word = %s", (current_word["word"],))
             rows_affected = cursor.rowcount

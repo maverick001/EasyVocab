@@ -2338,6 +2338,39 @@ body.dark-mode .search-results-panel {
     margin-bottom: var(--spacing-xs);
 }
 
+/* Delete Word Modal - per-category checklist */
+.category-checkbox-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.category-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+}
+
+.category-checkbox-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.category-checkbox-item span {
+    flex: 1;
+}
+
+body.dark-mode .category-checkbox-item {
+    border-color: var(--border-color);
+}
+
 /* Image Display Modal */
 .modal-image-display {
     max-width: 800px;
