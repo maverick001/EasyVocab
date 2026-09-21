@@ -38,6 +38,7 @@ const rememberBtn = document.getElementById('rememberBtn');
 const notRememberBtn = document.getElementById('notRememberBtn');
 const nextBtn = document.getElementById('nextBtn');
 const retryBtn = document.getElementById('retryBtn');
+const editWordBtn = document.getElementById('editWordBtn');
 
 /**
  * Initialize quiz on page load
@@ -92,6 +93,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     notRememberBtn.addEventListener('click', () => handleResult('not_remember'));
     nextBtn.addEventListener('click', loadNextWord);
     retryBtn.addEventListener('click', loadNextWord);
+    if (editWordBtn) {
+        editWordBtn.addEventListener('click', () => {
+            if (!currentWord) return;
+            window.open(`/?word_id=${encodeURIComponent(currentWord.id)}`, '_blank', 'noopener');
+        });
+    }
 
     // Category change listener
     categorySelect.addEventListener('change', () => {

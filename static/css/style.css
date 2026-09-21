@@ -2650,6 +2650,13 @@ body.dark-mode .word-image-large {
     border: 1px solid var(--border-color);
 }
 
+.quiz-card-toolbar {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 1rem;
+}
+
 .quiz-word {
     font-size: 3.5rem;
     font-weight: 700;

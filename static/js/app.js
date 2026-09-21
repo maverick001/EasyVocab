@@ -184,8 +184,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // Load debt data
     loadDebtData();
 
-    // Load categories
-    loadCategories();
+    // Load categories, then jump straight to a word if we were sent here
+    // from the quiz page's "Edit in Vocabulary" button (?word_id=123)
+    loadCategories().then(() => applyWordIdFromUrl());
 
     console.log('✅ Initialization complete');
 });
@@ -1077,6 +1078,36 @@ async function loadWord(category, index) {
         showError('Network error while loading word');
     } finally {
         showLoading(false);
+    }
+}
+
+/**
+ * If we were opened with ?word_id=123 (e.g. from the quiz page's
+ * "Edit in Vocabulary" button), jump straight to that word.
+ */
+async function applyWordIdFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const wordId = params.get('word_id');
+    if (!wordId) return;
+
+    // Strip the param immediately so refreshing the page doesn't re-jump
+    window.history.replaceState({}, '', window.location.pathname);
+
+    try {
+        const response = await fetch(`/api/words/${wordId}/position?sort_by=${AppState.currentSortBy}`);
+        const data = await response.json();
+
+        if (data.success) {
+            AppState.currentCategory = data.category;
+            Elements.categorySelect.value = data.category;
+            await loadWord(data.category, data.index);
+            console.log(`✅ Jumped to word ${wordId} from quiz`);
+        } else {
+            showError(data.error || 'Failed to locate that word');
+        }
+    } catch (error) {
+        console.error('Error jumping to word from quiz:', error);
+        showError('Network error while loading word from quiz');
     }
 }
 
