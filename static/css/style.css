@@ -3110,3 +3110,111 @@ body.dark-mode .quiz-word {
         justify-content: center;
     }
 }
+
+/* ============================================
+   Quiz Page - Mobile Layout (Galaxy S23 et al.)
+   Scoped to body.quiz-page so vocab/login pages are untouched, and to
+   max-width: 768px so the desktop layout is untouched. Several quiz.html
+   controls carry inline styles (widths, padding) that beat plain CSS
+   specificity, so a handful of rules below use !important to override
+   just those inline values on mobile - desktop keeps the inline styles.
+   ============================================ */
+@media (max-width: 768px) {
+    /* Header: shrink the title so it fits one line, stack the controls
+       full-width instead of wrapping them at uneven widths. */
+    .quiz-page .quiz-header {
+        padding: var(--spacing-sm);
+        margin-bottom: var(--spacing-md);
+    }
+
+    .quiz-page .app-title {
+        font-size: 1.6rem !important;
+    }
+
+    .quiz-page .header-controls {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        width: 100%;
+        margin-left: 0 !important;
+        gap: var(--spacing-sm) !important;
+    }
+
+    .quiz-page .select-wrapper {
+        width: 100%;
+    }
+
+    .quiz-page #categorySelect,
+    .quiz-page #quizFilterSelect {
+        width: 100%;
+        min-width: 0 !important;
+        max-width: none !important;
+        box-sizing: border-box;
+    }
+
+    .quiz-page .quiz-mode-toggle {
+        width: 100%;
+        justify-content: space-between;
+        box-sizing: border-box;
+    }
+
+    .quiz-page #themeToggle {
+        width: 100%;
+    }
+
+    /* Reclaim horizontal space so sentences and buttons fit the screen */
+    .quiz-page .quiz-container {
+        padding: var(--spacing-xs);
+    }
+
+    .quiz-page .quiz-card {
+        padding: var(--spacing-sm);
+        min-height: 0;
+    }
+
+    .quiz-page .quiz-word {
+        font-size: 2rem;
+        word-break: break-word;
+    }
+
+    .quiz-page .quiz-sentences {
+        font-size: 1rem;
+    }
+
+    .quiz-page .quiz-card-toolbar .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Remember / Not Remember: equal width, stay inside the card */
+    .quiz-page .quiz-actions {
+        gap: var(--spacing-sm);
+    }
+
+    .quiz-page .btn-remember,
+    .quiz-page .btn-not-remember {
+        flex: 1;
+        min-width: 0;
+        padding: 0.75rem 0.5rem;
+    }
+
+    /* Quiz Mode (multiple choice): stack instead of a 2-column grid */
+    .quiz-page .quiz-choices {
+        grid-template-columns: 1fr;
+    }
+
+    .quiz-page .btn-next {
+        width: 100%;
+        padding: 1rem;
+    }
+
+    /* Exit Quiz: full width, centred, no underline */
+    .quiz-page .quiz-footer-actions {
+        justify-content: center !important;
+    }
+
+    .quiz-page .btn-exit-quiz {
+        width: 100%;
+        justify-content: center;
+        text-decoration: none;
+    }
+}
