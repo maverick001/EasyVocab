@@ -2,33 +2,60 @@
 
 **EasyVocab** is a personal vocabulary builder web app designed for English learners. It allows you to build your own vocabulary, review words and phrases in example sentences, and track your daily progress.
 
-![EasyVocab Frontpage](static/images/frontpage.png)
-
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue)
 ![Flask](https://img.shields.io/badge/flask-3.0.0-green)
 ![MySQL](https://img.shields.io/badge/mysql-8.0-orange)
 
-
-
+<p align="center">
+  <img src="static/images/readme-desktop.png" alt="EasyVocab main vocabulary page in the Duolingo-like theme" width="800">
+</p>
 
 ## 🌟 Features
 
 - **Cloud Hosted**: Deployed on Vercel with Aiven MySQL database for access anywhere
 - **Secure Access**: Password-protected site with login rate limiting to prevent brute force attacks
-- **AI-Powered Word Entry**: Auto-generate translations and example sentences using Claude AI
-- **Smart Quiz Mode**: Spaced repetition quiz based on Ebbinghaus forgetting curve for optimal retention
-- **Browse by Category**: Organize and review vocabulary by 20+ categories
-- **Interactive Word Cards**: Clean, card-based UI showing word, translation, and sample sentences
+- **AI-Powered Word Entry**: Auto-generate translations and example sentences with Google Gemini (Gemini 3.7 Flash by default)
+- **Smart Quiz**: Spaced repetition based on the Ebbinghaus forgetting curve, with a flashcard mode, a multiple-choice mode, Image-only / IPA-only filters and a daily progress chart
+- **Browse by Category**: Organize and review vocabulary by 20+ categories, and file a word under more than one category
+- **Interactive Word Cards**: Word, translation, example sentences, IPA, an optional picture and the word's categories on one card
+- **Daily Tracking**: "Word Today" and "Word Debt" counters, plus a per-word edit history
 - **Keyboard Navigation**: Use left/right arrow keys to quickly navigate between words
 - **In-Place Editing**: Edit translations and add sample sentences directly in the interface
 - **XML Import**: Bulk import vocabulary from XML files with validation and duplicate handling
 - **Performance Optimized**: Handles 30,000+ words efficiently with database indexing
-- **Beautiful UI**: Light blue theme with dark mode, optimized for comfortable long-term study sessions
+- **Themes**: 5 GUI themes (Default, Minimalist, Cyberpunk, Glassmorphism, Duolingo-like) plus dark mode
+- **Mobile Friendly**: Layout adapts to phones as well as desktop browsers
 
-![Add New Word Modal](static/images/addWordModal.png)
+## 📸 Screenshots
 
-![EasyVocab Interface](static/images/app-interface.png)
+### Quiz
+
+<table>
+  <tr>
+    <td width="50%" valign="top"><img src="static/images/readme-quiz-flashcard.png" alt="Quiz in flashcard mode with the answer revealed"></td>
+    <td width="50%" valign="top"><img src="static/images/readme-quiz-choice.png" alt="Quiz in multiple-choice mode with the correct answer selected and the daily progress chart"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Flashcard mode</sub></td>
+    <td align="center"><sub>Multiple-choice mode and daily progress chart</sub></td>
+  </tr>
+</table>
+
+### Mobile
+
+<table>
+  <tr>
+    <td width="33%" valign="top"><img src="static/images/Screenshot_Frontpage_mobile.jpg" alt="Welcome page on a phone"></td>
+    <td width="33%" valign="top"><img src="static/images/Screenshot_VocabPage_mobile.jpg" alt="Vocabulary page on a phone"></td>
+    <td width="33%" valign="top"><img src="static/images/Screenshot_QuizPage_mobile.jpg" alt="Quiz page on a phone"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Welcome page</sub></td>
+    <td align="center"><sub>Vocabulary page</sub></td>
+    <td align="center"><sub>Quiz</sub></td>
+  </tr>
+</table>
 
 ## 📋 Prerequisites
 
@@ -175,10 +202,9 @@ BKDict/
 
 ## 🎨 Design Features
 
-- **Color Scheme**: Light blue theme (#87CEEB, #B0E0E6) for comfortable viewing
-- **Optimized for**: Lenovo Slim5 with 16:10 aspect ratio (also works on other displays)
-- **Typography**: Clean, readable fonts (Segoe UI)
-- **Responsive**: Adapts to different screen sizes
+- **Color Scheme**: Light blue default theme, plus Minimalist, Cyberpunk, Glassmorphism and Duolingo-like themes and dark mode
+- **Typography**: Clean, readable fonts (Inter; Nunito in the Duolingo-like theme)
+- **Responsive**: Adapts to desktop screens and phones
 
 
 ## 🛠️ Advanced Configuration
