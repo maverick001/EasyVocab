@@ -2272,6 +2272,13 @@ body.dark-mode .search-results-panel {
     box-shadow: 0 2px 8px rgba(238, 82, 83, 0.3);
 }
 
+/* "Add Image" beside the translation model picker (was inline in index.html) */
+.btn-image-inline {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+    margin-right: 10px;
+}
+
 .btn-image:hover {
     background: linear-gradient(135deg, #EE5253, #D63031);
     transform: translateY(-2px);
@@ -3006,3 +3013,100 @@ body.dark-mode .quiz-word {
     }
 }
 
+
+/* ============================================
+   Vocab Page - Mobile Layout (Galaxy S23 et al.)
+   Scoped to body.vocab-page so quiz/login pages are untouched, and to
+   max-width: 768px so the desktop layout is untouched.
+   ============================================ */
+@media (max-width: 768px) {
+    /* Reclaim horizontal space: the container, cards and inner boxes each
+       added their own side padding, leaving ~2/3 of the screen for content. */
+    .vocab-page .container {
+        width: 100%;
+        padding: var(--spacing-xs);
+    }
+
+    .vocab-page .control-panel,
+    .vocab-page .word-card {
+        padding: var(--spacing-sm);
+    }
+
+    .vocab-page .word-section {
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    /* Header: the theme picker + dark-mode toggle were absolutely centred over
+       the title. Put them in normal flow on their own row below it. */
+    .vocab-page .app-header {
+        padding: var(--spacing-sm);
+    }
+
+    .vocab-page .header-controls {
+        position: static;
+        transform: none;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .vocab-page .header-controls .theme-toggle {
+        position: static;
+        flex-shrink: 0;
+    }
+
+    .vocab-page .theme-select {
+        min-width: 0;
+        max-width: calc(100% - 44px - var(--spacing-sm));
+    }
+
+    /* Category / Sort / Search: one shared left edge, full width */
+    .vocab-page .sort-group {
+        margin-left: 0;
+    }
+
+    .vocab-page .control-group > select {
+        width: 100%;
+    }
+
+    .vocab-page .search-container {
+        align-items: stretch;
+    }
+
+    .vocab-page .search-container .btn {
+        flex-shrink: 0;
+        justify-content: center;
+    }
+
+    /* Move / Add to Category / Delete box */
+    .vocab-page .word-actions {
+        padding: var(--spacing-sm);
+    }
+
+    .vocab-page .word-actions .action-group {
+        width: 100%;
+        gap: var(--spacing-xs);
+    }
+
+    .vocab-page .category-change-select {
+        margin-bottom: 0;
+    }
+
+    .vocab-page .word-actions .btn {
+        width: 100%;
+        justify-content: center;
+        min-height: 44px;
+    }
+
+    .vocab-page .btn-delete-inline {
+        margin-top: 0;
+    }
+
+    /* Translation / example generate row: every control the same width */
+    .vocab-page .generate-controls .btn,
+    .vocab-page .generate-controls select {
+        width: 100%;
+        margin: 0;
+        justify-content: center;
+    }
+}
