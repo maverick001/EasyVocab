@@ -81,6 +81,33 @@ def login_required(f):
     return decorated_function
 
 
+@app.before_request
+def require_login_for_api():
+    """
+    Refuse API requests from visitors who have not logged in.
+
+    login_required guards the pages, but the pages only load the data; the data
+    itself comes from /api/*. Without this check anyone could call the API
+    directly to read, edit or delete words, or spend the Gemini quota, without
+    ever seeing the login page.
+
+    Returns JSON rather than a redirect, because the callers are fetch() calls
+    that expect JSON back. The browser sends the session cookie with every
+    same-origin fetch, so a logged-in page is unaffected.
+    """
+    if not request.path.startswith("/api/"):
+        return None
+    # Same rule as login_required: no password configured means open access
+    if not app.config.get("SITE_PASSWORD") or session.get("logged_in"):
+        return None
+    return jsonify(
+        {
+            "success": False,
+            "error": "Not logged in. Please reload the page and log in again.",
+        }
+    ), 401
+
+
 @app.route("/login", methods=["GET", "POST"])
 @limiter.limit("5 per minute", error_message="Too many login attempts. Please wait a minute before trying again.")
 def login():

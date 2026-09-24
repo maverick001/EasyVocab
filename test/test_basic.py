@@ -78,6 +78,56 @@ class TestRouteDefinitions:
         assert response.status_code in [200, 404]
 
 
+class TestApiRequiresLogin:
+    """The API must be as protected as the pages that use it"""
+
+    # Returns 400 for an empty body before touching the database or Gemini,
+    # so it shows whether a request got past the login check without side effects
+    PROBE = '/api/generate-sample'
+
+    @pytest.fixture
+    def client(self, monkeypatch):
+        from app import app
+        app.config['TESTING'] = True
+        monkeypatch.setitem(app.config, 'SITE_PASSWORD', 'test-password')
+        return app.test_client()
+
+    def test_logged_out_api_call_is_refused(self, client):
+        response = client.post(self.PROBE, json={})
+        assert response.status_code == 401
+        assert response.get_json()['success'] is False
+
+    def test_logged_out_read_is_refused_before_the_database(self, client):
+        # SKIP_DB means no pool; a 401 proves the check runs first
+        response = client.get('/api/categories')
+        assert response.status_code == 401
+
+    def test_logged_out_delete_is_refused(self, client):
+        response = client.delete('/api/words/1')
+        assert response.status_code == 401
+
+    def test_logged_in_api_call_goes_through(self, client):
+        with client.session_transaction() as sess:
+            sess['logged_in'] = True
+        response = client.post(self.PROBE, json={})
+        assert response.status_code == 400
+
+    def test_no_password_configured_leaves_api_open(self, client, monkeypatch):
+        from app import app
+        monkeypatch.setitem(app.config, 'SITE_PASSWORD', None)
+        response = client.post(self.PROBE, json={})
+        assert response.status_code == 400
+
+    def test_pages_still_redirect_to_login(self, client):
+        response = client.get('/')
+        assert response.status_code == 302
+        assert '/login' in response.headers['Location']
+
+    def test_login_page_is_not_blocked(self, client):
+        response = client.get('/login')
+        assert response.status_code == 200
+
+
 class TestStaticFiles:
     """Tests for static file configuration"""
     
