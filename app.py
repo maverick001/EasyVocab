@@ -2193,7 +2193,7 @@ def generate_translation():
     Request Body (JSON):
         {
             "word": "example",
-            "model": "Claude-Haiku-4.5",  # optional
+            "model": "gemini-3.7-flash",  # optional
             "mode": "normal" | "reverse"  # optional, default "normal"
         }
 

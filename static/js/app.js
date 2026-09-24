@@ -1916,7 +1916,7 @@ async function navigateToExistingWord(category, wordId) {
 }
 
 /**
- * Generate sample sentence for new word using Poe API
+ * Generate sample sentence for new word using Gemini
  */
 async function generateNewWordSample() {
     const word = Elements.newWord.value.trim();
@@ -1977,7 +1977,7 @@ async function generateNewWordSample() {
 }
 
 /**
- * Generate Chinese translation for new word using Poe API
+ * Generate Chinese translation for new word using Gemini
  * Also supports reverse generation (Chinese -> English) if Word is empty and Translation is filled
  */
 async function generateNewWordTranslation() {
