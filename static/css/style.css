@@ -3218,3 +3218,45 @@ body.dark-mode .quiz-word {
         text-decoration: none;
     }
 }
+
+/* ============================================
+   Quiz Page - Desktop header controls
+   Category select, Quiz Mode toggle and filter select share one size and
+   look. Scoped to body.quiz-page and min-width: 769px so the phone layout
+   (stacked, full-width) is untouched. !important overrides the inline
+   widths/padding/borders in quiz.html.
+   ============================================ */
+@media (min-width: 769px) {
+    .quiz-page #categorySelect,
+    .quiz-page #quizFilterSelect,
+    .quiz-page .quiz-mode-toggle {
+        box-sizing: border-box !important;
+        width: 200px !important;
+        min-width: 200px !important;
+        max-width: 200px !important;
+        height: 44px !important;
+        padding: 0 1rem !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 8px !important;
+        background: var(--bg-card) !important;
+        color: var(--text-primary) !important;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+        font-size: 0.95rem;
+    }
+
+    .quiz-page .quiz-mode-toggle {
+        justify-content: space-between;
+    }
+
+    .quiz-page #categorySelect:hover,
+    .quiz-page #quizFilterSelect:hover {
+        border-color: var(--primary-dark) !important;
+        box-shadow: 0 2px 8px rgba(70, 130, 180, 0.15) !important;
+    }
+
+    .quiz-page #categorySelect:focus,
+    .quiz-page #quizFilterSelect:focus {
+        border-color: var(--primary-blue) !important;
+        box-shadow: 0 0 0 3px rgba(135, 206, 235, 0.2) !important;
+    }
+}

@@ -100,6 +100,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // Right arrow = "Next Word", only once the answer is revealed
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'ArrowRight' || e.repeat) return;
+        if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+        if (e.target.closest('select, input, textarea')) return;
+        if (nextBtn.style.display === 'none') return;
+        e.preventDefault();
+        loadNextWord();
+    });
+
     // Category change listener
     categorySelect.addEventListener('change', () => {
         loadNextWord();
@@ -428,7 +438,7 @@ function renderChart(stats) {
             scales: {
                 y: {
                     beginAtZero: true,
-                    ticks: { color: textColor },
+                    ticks: { color: textColor, precision: 0 },
                     grid: { color: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }
                 },
                 x: {
