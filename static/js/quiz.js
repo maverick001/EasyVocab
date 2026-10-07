@@ -438,7 +438,7 @@ function renderChart(stats) {
             scales: {
                 y: {
                     beginAtZero: true,
-                    ticks: { color: textColor },
+                    ticks: { color: textColor, precision: 0 },
                     grid: { color: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }
                 },
                 x: {
