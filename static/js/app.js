@@ -1857,57 +1857,19 @@ async function navigateToExistingWord(category, wordId) {
     closeAddWordModal();
 
     try {
-        // Set the category in the dropdown and trigger change
-        Elements.categorySelect.value = category;
-        AppState.currentCategory = category;
-        AppState.currentIndex = 0;
-
-        // Fetch the word details by ID
-        const response = await fetch(`/api/words/${wordId}`);
+        // Go through loadWord() like a search result does, so the card is
+        // fully refreshed (category pills, index for Next/Prev) instead of
+        // patched field by field and left showing the previous word's pills.
+        const response = await fetch(`/api/words/${wordId}/position?sort_by=${AppState.currentSortBy}`);
         const data = await response.json();
 
-        if (data.success && data.word) {
-            // Show the word card and hide welcome message
-            Elements.wordCard.style.display = 'block';
-            Elements.welcomeMessage.style.display = 'none';
-            setHeaderControlsVisible(true);
-
-            // Update app state
-            AppState.currentWord = data.word;
-
-            // Display the word using existing displayWord logic
-            // Set word content
-            Elements.wordDisplay.textContent = data.word.word;
-
-            // Check if IPA exists and update button styling
-            if (data.word.ipa && data.word.ipa.trim() !== '') {
-                Elements.ipaWordBtn.classList.add('btn-ipa-has-content');
-                Elements.ipaWordBtn.title = `IPA: ${data.word.ipa}`;
-                Elements.ipaInput.value = data.word.ipa;
-            } else {
-                Elements.ipaWordBtn.classList.remove('btn-ipa-has-content');
-                Elements.ipaWordBtn.title = "Add IPA";
-                Elements.ipaInput.value = '';
-            }
-
-            // Set translation content - preserve formatting
-            Elements.translationDisplay.textContent = data.word.translation || '';
-            displaySampleSentences(data.word.example_sentence);
-            Elements.reviewCount.textContent = data.word.review_count || 0;
-            Elements.wordInput.value = data.word.word;
-            updateImageButtonState(data.word.image_file);
-
-            // Load word history
-            loadWordHistory(wordId);
-
-            // Update position info if element exists
-            if (Elements.positionInfo) {
-                Elements.positionInfo.textContent = `Jumped to existing word`;
-            }
-
-            console.log(`✅ Navigated to existing word: ${data.word.word}`);
+        if (data.success) {
+            AppState.currentCategory = data.category;
+            Elements.categorySelect.value = data.category;
+            await loadWord(data.category, data.index);
+            console.log(`✅ Navigated to existing word ${wordId} in "${data.category}"`);
         } else {
-            showError('Failed to load the existing word');
+            showError(data.error || 'Failed to load the existing word');
         }
     } catch (error) {
         console.error('Error navigating to existing word:', error);
