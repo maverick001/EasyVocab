@@ -1149,20 +1149,61 @@ def add_word():
             conn.close()
 
 
+# Opening/closing pairs that switch search to exact mode. Curly quotes are
+# included because phone and Chinese keyboards type them instead of "".
+EXACT_SEARCH_QUOTES = {'"': '"', "“": "”"}
+
+
+def parse_search_query(raw):
+    """
+    Split a search box entry into the term and whether it is an exact search.
+
+    Args:
+        raw: the text typed in the search box
+
+    Returns:
+        (term, exact) - term has surrounding whitespace and quotes removed
+    """
+    query = (raw or "").strip()
+    if len(query) >= 2 and EXACT_SEARCH_QUOTES.get(query[0]) == query[-1]:
+        return query[1:-1].strip(), True
+    return query, False
+
+
+def build_exact_search_pattern(term):
+    """
+    MySQL (ICU) regex matching term as a whole word.
+
+    Only Latin letters and digits join a word, so hyphens and apostrophes are
+    breaks ("techno-pop" matches "techno") and so are Chinese characters, which
+    keeps quoted Chinese searches usable in translations that have no spaces.
+    Case sensitivity comes from the 'c' match type at the call site.
+
+    Args:
+        term: the unquoted search term
+
+    Returns:
+        regex string, passed to the query as a parameter
+    """
+    word_char = r"[\p{Latin}\p{N}]"
+    return rf"(?<!{word_char}){re.escape(term)}(?!{word_char})"
+
+
 @app.route("/api/words/search", methods=["GET"])
 def search_words():
     """
     Search for words containing a specific sequence
 
     Query Parameters:
-        q: Search query string (required)
+        q: Search query string (required). Wrapped in "" or “”, it matches the
+           exact string as a whole word, case-sensitively.
 
     Returns:
         JSON response with matching words
     """
     conn = None
     try:
-        query = request.args.get("q", "").strip()
+        query, exact = parse_search_query(request.args.get("q", ""))
 
         if not query:
             return jsonify({"success": False, "error": "Search query is required"}), 400
@@ -1178,30 +1219,56 @@ def search_words():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Search for words containing the query in word OR translation
-        # Prioritize matches in 'word' column over 'translation' column
-        # Using COLLATE utf8mb4_unicode_ci ensures case-insensitive search on binary columns
-        cursor.execute(
-            """
-            SELECT id, word, translation, category, review_count, example_sentence, ipa
-            FROM words
-            WHERE word COLLATE utf8mb4_unicode_ci LIKE %s 
-               OR translation COLLATE utf8mb4_unicode_ci LIKE %s
-            ORDER BY 
-                CASE 
-                    WHEN word COLLATE utf8mb4_unicode_ci LIKE %s THEN 1 
-                    ELSE 2 
-                END,
-                word ASC
-            LIMIT 100
-        """,
-            (f"%{query}%", f"%{query}%", f"%{query}%"),
-        )
+        if exact:
+            # Whole-word, case-sensitive match ('c'), word matches first
+            pattern = build_exact_search_pattern(query)
+            cursor.execute(
+                """
+                SELECT id, word, translation, category, review_count, example_sentence, ipa
+                FROM words
+                WHERE REGEXP_LIKE(word, %s, 'c')
+                   OR REGEXP_LIKE(translation, %s, 'c')
+                ORDER BY
+                    CASE
+                        WHEN REGEXP_LIKE(word, %s, 'c') THEN 1
+                        ELSE 2
+                    END,
+                    word ASC
+                LIMIT 100
+            """,
+                (pattern, pattern, pattern),
+            )
+        else:
+            # Search for words containing the query in word OR translation
+            # Prioritize matches in 'word' column over 'translation' column
+            # Using COLLATE utf8mb4_unicode_ci ensures case-insensitive search on binary columns
+            cursor.execute(
+                """
+                SELECT id, word, translation, category, review_count, example_sentence, ipa
+                FROM words
+                WHERE word COLLATE utf8mb4_unicode_ci LIKE %s
+                   OR translation COLLATE utf8mb4_unicode_ci LIKE %s
+                ORDER BY
+                    CASE
+                        WHEN word COLLATE utf8mb4_unicode_ci LIKE %s THEN 1
+                        ELSE 2
+                    END,
+                    word ASC
+                LIMIT 100
+            """,
+                (f"%{query}%", f"%{query}%", f"%{query}%"),
+            )
 
         results = cursor.fetchall()
 
         return jsonify(
-            {"success": True, "query": query, "count": len(results), "results": results}
+            {
+                "success": True,
+                "query": query,
+                "exact": exact,
+                "count": len(results),
+                "results": results,
+            }
         )
 
     except Exception as e:

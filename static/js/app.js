@@ -2243,7 +2243,9 @@ function displaySearchResults(data) {
     Elements.searchResults.style.display = 'flex'; // Use flex for modal centering
 
     // Update header
-    Elements.searchResultsCount.textContent = `Found ${data.count} result${data.count !== 1 ? 's' : ''} for "${data.query}"`;
+    // data.query comes back without the quotes that switched on exact mode
+    const matchLabel = data.exact ? ' (exact match)' : '';
+    Elements.searchResultsCount.textContent = `Found ${data.count} result${data.count !== 1 ? 's' : ''} for "${data.query}"${matchLabel}`;
 
     // Clear previous results
     Elements.searchResultsList.innerHTML = '';
@@ -2251,7 +2253,7 @@ function displaySearchResults(data) {
     if (data.count === 0) {
         Elements.searchResultsList.innerHTML = `
             <div class="search-no-results">
-                <p>No words found containing "${escapeHTML(data.query)}"</p>
+                <p>No words found ${data.exact ? 'with the exact word' : 'containing'} "${escapeHTML(data.query)}"</p>
                 <div style="margin-top: 15px;">
                     <button id="addSearchWordBtn" class="btn btn-primary" style="padding: 0.5rem 1rem;">
                         ✨ Add "${escapeHTML(data.query)}"
