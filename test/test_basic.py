@@ -997,3 +997,70 @@ class TestCategoryMergeValues:
         from app import build_merge_values
         kept = {'ipa': '/x/', 'image_file': 'a.png', 'review_count': 5}
         assert build_merge_values(kept, dict(kept)) == {}
+
+
+class TestExactSearchQuery:
+    """Tests for turning a quoted search box entry into an exact search"""
+
+    def test_plain_query_is_not_exact(self):
+        """Without quotes the search stays a substring search"""
+        from app import parse_search_query
+        assert parse_search_query('techno') == ('techno', False)
+
+    def test_straight_quotes_turn_on_exact(self):
+        """"techno" searches for techno exactly"""
+        from app import parse_search_query
+        assert parse_search_query('"techno"') == ('techno', True)
+
+    def test_curly_quotes_turn_on_exact(self):
+        """Phone and Chinese keyboards type curly quotes instead"""
+        from app import parse_search_query
+        assert parse_search_query('“techno”') == ('techno', True)
+
+    def test_surrounding_whitespace_is_ignored(self):
+        """Spaces outside or just inside the quotes do not count"""
+        from app import parse_search_query
+        assert parse_search_query('  " techno "  ') == ('techno', True)
+
+    def test_unbalanced_quote_is_not_exact(self):
+        """A single stray quote is searched for literally"""
+        from app import parse_search_query
+        assert parse_search_query('"techno') == ('"techno', False)
+
+    def test_mismatched_quotes_are_not_exact(self):
+        """A straight opener needs a straight closer"""
+        from app import parse_search_query
+        assert parse_search_query('"techno”') == ('"techno”', False)
+
+    def test_empty_quotes_give_empty_term(self):
+        """"" leaves nothing to search for, which the route rejects"""
+        from app import parse_search_query
+        assert parse_search_query('""') == ('', True)
+
+    def test_missing_query_is_empty(self):
+        """No q parameter at all is handled like an empty box"""
+        from app import parse_search_query
+        assert parse_search_query(None) == ('', False)
+
+    def test_pattern_wraps_term_in_word_boundaries(self):
+        """Latin letters and digits on either side mean part of a longer word"""
+        from app import build_exact_search_pattern
+        assert build_exact_search_pattern('techno') == (
+            r'(?<![\p{Latin}\p{N}])techno(?![\p{Latin}\p{N}])'
+        )
+
+    def test_pattern_escapes_regex_characters(self):
+        """A term like C++ is matched literally, not as a regex"""
+        from app import build_exact_search_pattern
+        assert r'C\+\+' in build_exact_search_pattern('C++')
+
+    def test_empty_quoted_search_is_rejected(self):
+        """The route refuses "" before touching the database"""
+        from app import app
+        app.config['TESTING'] = True
+        client = app.test_client()
+        with client.session_transaction() as sess:
+            sess['logged_in'] = True
+        # SKIP_DB means no pool, so a 400 proves it stopped before the query
+        response = client.get('/api/words/search?q=%22%22')
+        assert response.status_code == 400
