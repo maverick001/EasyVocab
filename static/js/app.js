@@ -1939,6 +1939,17 @@ async function generateNewWordSample() {
 }
 
 /**
+ * Check whether text looks like an English word or phrase: Latin-script
+ * letters (accents allowed) with spaces, digits, hyphens, apostrophes or
+ * periods, and no Chinese or other non-Latin characters.
+ */
+function isEnglishWord(text) {
+    const value = text.trim();
+    return /\p{Script=Latin}/u.test(value) &&
+        /^[\p{Script=Latin}\d\s'’.\-]+$/u.test(value);
+}
+
+/**
  * Generate Chinese translation for new word using Gemini
  * Also supports reverse generation (Chinese -> English) if Word is empty and Translation is filled
  */
@@ -2271,8 +2282,8 @@ function displaySearchResults(data) {
                     openAddWordModal();
                     // Pre-fill word
                     Elements.newWord.value = data.query;
-                    // Trigger translation generation automatically for convenience
-                    if (Elements.newWord.value) {
+                    // Auto-generate the translation only for English words
+                    if (isEnglishWord(Elements.newWord.value)) {
                         generateNewWordTranslation();
                     }
                 });
