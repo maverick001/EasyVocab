@@ -2,6 +2,11 @@
 
 
 ## [Unreleased]
+### Changed
+- **Faster Translation**: Gemini calls now use low reasoning effort (`GEMINI_REASONING_EFFORT`, default `low`), cutting a translation from roughly 10-50 seconds to about 2 seconds with the same quality. If a model rejects the setting the call is retried without it. Set the variable empty to restore each model's default.
+
+### Added
+- **Optional Monitoring**: Sentry (errors, request timing) and Langfuse (Gemini call traces) turn on only when their keys are set in `.env` or on Vercel. Both are forced off under `SKIP_DB=true`, and a missing package or unreachable service never breaks a request.
 
 
 ## [1.6.1] - 2026-02-09

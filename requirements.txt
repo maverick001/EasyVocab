@@ -28,3 +28,8 @@ Pillow==10.1.0
 
 # Security - Rate Limiting
 Flask-Limiter==3.5.0
+
+# Monitoring (optional, inactive until keys are set in .env)
+sentry-sdk[flask]==2.73.0
+# Langfuse needs Python 3.11+; older Pythons (e.g. the Docker image) skip it
+langfuse==5.1.0; python_version >= "3.11"

@@ -23,13 +23,26 @@ import platform
 from werkzeug.utils import secure_filename
 from config import Config
 from utils import parse_and_import_xml, XMLParserError
+from utils.monitoring import (
+    init_sentry,
+    get_openai_class,
+    langfuse_kwargs,
+    capture_exception,
+    flush_sentry,
+    flush_langfuse,
+)
 from datetime import datetime, date, timedelta, timezone
-from openai import OpenAI
+from openai import BadRequestError
 from PIL import Image
 import io
 import time
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+
+# Optional monitoring (off unless keys are set and SKIP_DB is not true).
+# Sentry must start before the Flask app is created.
+init_sentry()
+OpenAI = get_openai_class()
 
 # Initialize Flask application
 app = Flask(__name__)
@@ -47,6 +60,12 @@ limiter = Limiter(
 
 # Disable caching for development (prevents browser caching issues)
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+
+
+@app.teardown_request
+def flush_monitoring(exc):
+    """Send queued Sentry events before Vercel freezes the function (Vercel only)"""
+    flush_sentry()
 
 
 @app.after_request
@@ -2213,6 +2232,34 @@ def clean_gemini_response(text):
     return "\n".join(final_lines).strip()
 
 
+def create_gemini_completion(client, model, prompt, trace_name):
+    """
+    Ask Gemini (via the OpenAI SDK) for a short completion.
+
+    Uses the configured reasoning effort for speed. If the model rejects that
+    setting, retries once with the model's default so Generate never breaks.
+
+    Args:
+        client: OpenAI client pointed at the Gemini endpoint
+        model: Gemini model name
+        prompt: User prompt text
+        trace_name: Label for the call in Langfuse (ignored when it is off)
+    """
+    kwargs = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": app.config.get("GEMINI_TEMPERATURE", 0.9),
+        **langfuse_kwargs(trace_name),
+    }
+    effort = app.config.get("GEMINI_REASONING_EFFORT")
+    if effort:
+        try:
+            return client.chat.completions.create(reasoning_effort=effort, **kwargs)
+        except BadRequestError:
+            pass  # Model does not support this setting; use its default instead
+    return client.chat.completions.create(**kwargs)
+
+
 @app.route("/api/generate-sample", methods=["POST"])
 def generate_sample_sentence():
     """
@@ -2257,11 +2304,7 @@ def generate_sample_sentence():
         prompt = f'Create a simple, natural English sentence that uses the EXACT word or phrase "{word}" (including all words as shown). You must use "{word}" exactly as written, not variations or partial matches. Use simple language and vocabulary suitable for a high school student. Keep the sentence short and easy to understand. Only output the sentence, nothing else.'
 
         # Call Gemini API via OpenAI SDK
-        response = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=app.config.get("GEMINI_TEMPERATURE", 0.9),
-        )
+        response = create_gemini_completion(client, model, prompt, "generate-sample")
 
         if response.choices and response.choices[0].message.content:
             raw_content = response.choices[0].message.content.strip()
@@ -2275,7 +2318,10 @@ def generate_sample_sentence():
             ), 500
 
     except Exception as e:
+        capture_exception(e)
         return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        flush_langfuse()
 
 
 @app.route("/api/generate-translation", methods=["POST"])
@@ -2331,10 +2377,8 @@ def generate_translation():
             prompt = f"What's the Chinese translation of '{word}'? Only list the 2 most common translations and ignore others. Separate them with a Chinese comma (，). Only list the translations in Chinese characters, no other explanations or phonetics are needed."
 
         # Call Gemini API via OpenAI SDK
-        response = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=app.config.get("GEMINI_TEMPERATURE", 0.9),
+        response = create_gemini_completion(
+            client, model, prompt, "generate-translation"
         )
 
         if response.choices and response.choices[0].message.content:
@@ -2349,7 +2393,10 @@ def generate_translation():
             ), 500
 
     except Exception as e:
+        capture_exception(e)
         return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        flush_langfuse()
 
 
 @app.route("/api/category/<category>/count", methods=["GET"])
