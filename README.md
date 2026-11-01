@@ -209,6 +209,14 @@ BKDict/
 
 ## 🛠️ Advanced Configuration
 
+### Monitoring (optional)
+
+[Sentry](https://sentry.io) (errors and request timing) and [Langfuse](https://langfuse.com)
+(Gemini call traces) are optional. Each stays off until you add its keys to `.env`
+(see `.env.example`): `SENTRY_DSN`, and `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` /
+`LANGFUSE_BASE_URL`. Neither runs when `SKIP_DB=true`, so tests never send data.
+Langfuse needs Python 3.11 or newer; on older versions only Sentry is used.
+
 ### Database Connection Pool Size
 
 Edit `config.py`:

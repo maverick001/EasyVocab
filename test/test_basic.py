@@ -1064,3 +1064,169 @@ class TestExactSearchQuery:
         # SKIP_DB means no pool, so a 400 proves it stopped before the query
         response = client.get('/api/words/search?q=%22%22')
         assert response.status_code == 400
+
+
+class TestMonitoring:
+    """Sentry and Langfuse are opt-in and must stay silent under SKIP_DB"""
+
+    PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    # Fake keys that point at a dead local port, so nothing can reach the internet
+    FAKE_KEYS = {
+        'SENTRY_DSN': 'http://key@127.0.0.1:9/1',
+        'LANGFUSE_PUBLIC_KEY': 'pk-test',
+        'LANGFUSE_SECRET_KEY': 'sk-test',
+        'LANGFUSE_BASE_URL': 'http://127.0.0.1:9',
+    }
+
+    def _monitoring_state(self, skip_db):
+        """Import the app in a fresh process with fake keys; return its monitoring flags"""
+        import subprocess
+        env = dict(os.environ, **self.FAKE_KEYS)
+        env.pop('SKIP_DB', None)
+        if skip_db:
+            env['SKIP_DB'] = 'true'
+        code = (
+            "import sys; import app; import utils.monitoring as m; "
+            "print(m._sentry_active, m._langfuse_active, 'langfuse.openai' in sys.modules)"
+        )
+        result = subprocess.run(
+            [sys.executable, '-c', code], cwd=self.PROJECT_ROOT, env=env,
+            capture_output=True, text=True, timeout=120,
+        )
+        assert result.returncode == 0, result.stderr
+        return result.stdout.strip().splitlines()[-1]
+
+    def test_monitoring_disabled_under_skip_db(self):
+        """SKIP_DB=true turns the master switch off"""
+        from config import Config
+        assert Config.MONITORING_ENABLED is False
+
+    def test_nothing_active_in_test_process(self):
+        """The app imported here has no Sentry, no Langfuse, and a plain OpenAI client"""
+        import utils.monitoring as monitoring
+        assert monitoring._sentry_active is False
+        assert monitoring._langfuse_active is False
+        assert monitoring.langfuse_kwargs('generate-sample') == {}
+        assert 'langfuse.openai' not in sys.modules
+
+    def test_hooks_are_harmless_when_inactive(self):
+        """capture and flush calls do nothing and never raise when monitoring is off"""
+        import utils.monitoring as monitoring
+        monitoring.capture_exception(ValueError('ignored'))
+        monitoring.flush_sentry()
+        monitoring.flush_langfuse()
+
+    def test_fake_keys_stay_silent_under_skip_db(self):
+        """Real-looking keys in the environment do nothing while SKIP_DB=true"""
+        assert self._monitoring_state(skip_db=True) == 'False False False'
+
+    def test_fake_keys_activate_when_skip_db_unset(self):
+        """Without SKIP_DB the same keys switch both tools on, proving the wiring works"""
+        pytest.importorskip('sentry_sdk')
+        pytest.importorskip('langfuse')
+        assert self._monitoring_state(skip_db=False) == 'True True True'
+
+    @pytest.mark.parametrize('route, field', [
+        ('/api/generate-sample', 'sentence'),
+        ('/api/generate-translation', 'translation'),
+    ])
+    def test_gemini_routes_pass_no_langfuse_arguments_when_off(self, monkeypatch, route, field):
+        """With Langfuse off, create() gets only plain OpenAI arguments (no 'name')"""
+        import app as app_module
+        monkeypatch.setitem(app_module.app.config, 'GEMINI_REASONING_EFFORT', 'low')
+        calls = []
+
+        class FakeCompletions:
+            def create(self, **kwargs):
+                calls.append(kwargs)
+                message = type('Message', (), {'content': 'fake reply'})()
+                return type('Response', (), {'choices': [type('Choice', (), {'message': message})()]})()
+
+        class FakeClient:
+            def __init__(self, **kwargs):
+                self.chat = type('Chat', (), {'completions': FakeCompletions()})()
+
+        monkeypatch.setattr(app_module, 'OpenAI', FakeClient)
+        monkeypatch.setitem(app_module.app.config, 'GEMINI_API_KEY', 'test-key')
+        app_module.app.config['TESTING'] = True
+        client = app_module.app.test_client()
+        with client.session_transaction() as sess:
+            sess['logged_in'] = True
+        response = client.post(route, json={'word': 'apple'})
+        assert response.status_code == 200
+        assert response.get_json()[field] == 'fake reply'
+        assert len(calls) == 1
+        assert set(calls[0]) == {'model', 'messages', 'temperature', 'reasoning_effort'}
+
+
+class TestGeminiReasoningEffort:
+    """Gemini calls ask for low reasoning effort, and fall back if a model rejects it"""
+
+    @staticmethod
+    def _client(calls, create):
+        """A stand-in OpenAI client whose create() records its arguments then runs `create`"""
+        def recording_create(**kwargs):
+            calls.append(kwargs)
+            return create(kwargs)
+        completions = type('Completions', (), {'create': staticmethod(recording_create)})()
+        return type('Client', (), {'chat': type('Chat', (), {'completions': completions})()})()
+
+    @staticmethod
+    def _bad_request():
+        import httpx
+        from openai import BadRequestError
+        response = httpx.Response(400, request=httpx.Request('POST', 'http://test'))
+        return BadRequestError('unsupported setting', response=response, body=None)
+
+    def test_sends_configured_effort(self, monkeypatch):
+        """The configured effort goes out with the request"""
+        from app import app, create_gemini_completion
+        monkeypatch.setitem(app.config, 'GEMINI_REASONING_EFFORT', 'low')
+        calls = []
+        client = self._client(calls, lambda kwargs: 'reply')
+        assert create_gemini_completion(client, 'm', 'hello', 'generate-sample') == 'reply'
+        assert len(calls) == 1
+        assert calls[0]['reasoning_effort'] == 'low'
+        assert calls[0]['messages'] == [{'role': 'user', 'content': 'hello'}]
+
+    def test_retries_without_effort_when_model_rejects_it(self, monkeypatch):
+        """A 400 about the setting triggers one retry that omits it, so Generate still works"""
+        from app import app, create_gemini_completion
+        monkeypatch.setitem(app.config, 'GEMINI_REASONING_EFFORT', 'low')
+        bad_request = self._bad_request()
+
+        def create(kwargs):
+            if 'reasoning_effort' in kwargs:
+                raise bad_request
+            return 'reply'
+
+        calls = []
+        client = self._client(calls, create)
+        assert create_gemini_completion(client, 'm', 'hello', 'generate-sample') == 'reply'
+        assert len(calls) == 2
+        assert 'reasoning_effort' not in calls[1]
+
+    def test_blank_setting_sends_no_effort(self, monkeypatch):
+        """An empty GEMINI_REASONING_EFFORT keeps each model's default behavior"""
+        from app import app, create_gemini_completion
+        monkeypatch.setitem(app.config, 'GEMINI_REASONING_EFFORT', '')
+        calls = []
+        client = self._client(calls, lambda kwargs: 'reply')
+        create_gemini_completion(client, 'm', 'hello', 'generate-sample')
+        assert len(calls) == 1
+        assert 'reasoning_effort' not in calls[0]
+
+    def test_other_errors_are_not_retried(self, monkeypatch):
+        """Only a 400 response is retried; any other error reaches the route unchanged"""
+        from app import app, create_gemini_completion
+        monkeypatch.setitem(app.config, 'GEMINI_REASONING_EFFORT', 'low')
+
+        def create(kwargs):
+            raise RuntimeError('network down')
+
+        calls = []
+        client = self._client(calls, create)
+        with pytest.raises(RuntimeError):
+            create_gemini_completion(client, 'm', 'hello', 'generate-sample')
+        assert len(calls) == 1

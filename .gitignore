@@ -95,3 +95,7 @@ static/images/word_images
 Claude.md
 
 
+.vercel
+.env
+.env.*
+!.env.example

@@ -28,3 +28,9 @@ Pillow==10.1.0
 
 # Security - Rate Limiting
 Flask-Limiter==3.5.0
+
+# Monitoring (optional, inactive until keys are set in .env)
+sentry-sdk[flask]==2.73.0
+# Langfuse is not listed: its OpenTelemetry deps need protobuf>=5, which conflicts
+# with mysql-connector-python 8.2.0 (protobuf<=4.21.12). utils/monitoring.py falls
+# back to plain OpenAI when it is not installed.

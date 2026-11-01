@@ -35,6 +35,21 @@ class Config:
     GEMINI_API_KEY = os.environ.get('GOOGLE_API_KEY')
     GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-3.7-flash')
     GEMINI_TEMPERATURE = float(os.environ.get('GEMINI_TEMPERATURE', 0.9))
+    # How much the model "thinks" before answering. 'low' cuts translation from
+    # ~10-50s to ~2s with the same answers. Set empty to use each model's default.
+    GEMINI_REASONING_EFFORT = os.environ.get('GEMINI_REASONING_EFFORT', 'low').strip()
+
+    # Monitoring (Sentry errors/performance, Langfuse LLM traces).
+    # Opt-in: each tool stays off until its keys are set. Everything is forced
+    # off when SKIP_DB=true (the test suite), even if .env holds real keys.
+    MONITORING_ENABLED = os.environ.get('SKIP_DB', '').lower() != 'true'
+    MONITORING_ENVIRONMENT = (
+        os.environ.get('SENTRY_ENVIRONMENT') or os.environ.get('VERCEL_ENV') or 'local'
+    )
+    SENTRY_DSN = os.environ.get('SENTRY_DSN')
+    SENTRY_TRACES_SAMPLE_RATE = os.environ.get('SENTRY_TRACES_SAMPLE_RATE', '1.0')
+    LANGFUSE_PUBLIC_KEY = os.environ.get('LANGFUSE_PUBLIC_KEY')
+    LANGFUSE_SECRET_KEY = os.environ.get('LANGFUSE_SECRET_KEY')
 
     # Database connection pool settings (for performance with large dataset)
     DB_POOL_SIZE = int(os.environ.get('DB_POOL_SIZE', 5))
