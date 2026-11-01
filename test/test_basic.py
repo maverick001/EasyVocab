@@ -1174,7 +1174,11 @@ class TestGeminiReasoningEffort:
 
     @staticmethod
     def _bad_request():
-        import httpx
+        # openai>=3 depends on httpx2 instead of httpx; accept either
+        try:
+            import httpx
+        except ImportError:
+            import httpx2 as httpx
         from openai import BadRequestError
         response = httpx.Response(400, request=httpx.Request('POST', 'http://test'))
         return BadRequestError('unsupported setting', response=response, body=None)
