@@ -832,10 +832,133 @@ def favicon():
 # ============================================
 
 
+# Words from a deleted category land here. It is created on first use and can
+# never be deleted itself.
+UNGROUPED_CATEGORY = "未分组单词"
+
+
+def ensure_category_row(cursor, name):
+    """
+    Make sure a category exists in the categories table.
+
+    The categories table is the source of truth for which categories exist, so
+    a category survives its last word being deleted. Call this wherever a word
+    is filed under a category name, before the caller commits.
+    """
+    cursor.execute(
+        "INSERT IGNORE INTO categories (name, word_count) VALUES (%s, 0)",
+        (name,),
+    )
+
+
+@app.route("/api/categories/<path:name>", methods=["DELETE"])
+def delete_category(name):
+    """
+    Delete a category and move every word filed under it into 未分组单词.
+
+    Categories are only removed here, never as a side effect of deleting their
+    last word. A word that is already in 未分组单词 is not moved a second time:
+    its copy in the deleted category is dropped and the one in 未分组单词 is kept.
+
+    Returns:
+        JSON response with success status and a message saying how many words moved
+    """
+    name = (name or "").strip()
+    if not name:
+        return jsonify({"success": False, "error": "Category is required"}), 400
+
+    if name == UNGROUPED_CATEGORY:
+        return jsonify(
+            {"success": False, "error": f'"{UNGROUPED_CATEGORY}" cannot be deleted'}
+        ), 400
+
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("SELECT name FROM categories WHERE name = %s", (name,))
+        exists = cursor.fetchone() is not None
+        cursor.fetchall()
+
+        if not exists:
+            cursor.execute("SELECT 1 FROM words WHERE category = %s LIMIT 1", (name,))
+            exists = cursor.fetchone() is not None
+            cursor.fetchall()
+
+        if not exists:
+            return jsonify({"success": False, "error": "Category not found"}), 404
+
+        ensure_category_row(cursor, UNGROUPED_CATEGORY)
+
+        # Drop copies whose word is already in 未分组单词. The inner query is
+        # wrapped in a derived table because MySQL forbids reading the table
+        # being deleted from in a subquery.
+        cursor.execute(
+            """
+            DELETE FROM words
+            WHERE category = %s
+              AND word IN (
+                  SELECT word FROM (
+                      SELECT word FROM words WHERE category = %s
+                  ) AS target
+              )
+            """,
+            (name, UNGROUPED_CATEGORY),
+        )
+        duplicates_dropped = cursor.rowcount
+
+        cursor.execute(
+            "UPDATE words SET category = %s WHERE category = %s",
+            (UNGROUPED_CATEGORY, name),
+        )
+        words_moved = cursor.rowcount
+
+        cursor.execute("DELETE FROM categories WHERE name = %s", (name,))
+        conn.commit()
+
+        # Refresh counts. Non-critical: the list reads the categories table, so
+        # the deletion already stands even if this fails.
+        try:
+            cursor.callproc("update_category_counts")
+            for result in cursor.stored_results():
+                result.fetchall()
+            conn.commit()
+        except Exception:
+            pass
+
+        message = f'Category "{name}" deleted'
+        if words_moved:
+            message += f', {words_moved} word{"s" if words_moved != 1 else ""} moved to "{UNGROUPED_CATEGORY}"'
+        if duplicates_dropped:
+            message += f' ({duplicates_dropped} already there)'
+
+        return jsonify(
+            {
+                "success": True,
+                "message": message,
+                "words_moved": words_moved,
+                "duplicates_dropped": duplicates_dropped,
+            }
+        )
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
 @app.route("/api/categories", methods=["GET"])
 def get_categories():
     """
     Get list of all categories with word counts
+
+    Empty categories are included with a word_count of 0. The categories table
+    decides which categories exist; the view supplies counts for those that
+    have words.
 
     Returns:
         JSON response:
@@ -853,11 +976,17 @@ def get_categories():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Query category statistics using the view
+        # Every category row, with live counts from the view (0 when empty).
+        # The second half covers any category that has words but no row yet.
         cursor.execute("""
-            SELECT category AS name, word_count, last_updated
-            FROM category_stats
-            ORDER BY category
+            SELECT c.name AS name, COALESCE(s.word_count, 0) AS word_count, s.last_updated
+            FROM categories c
+            LEFT JOIN category_stats s ON s.category = c.name
+            UNION
+            SELECT s.category AS name, s.word_count, s.last_updated
+            FROM category_stats s
+            WHERE s.category NOT IN (SELECT name FROM categories)
+            ORDER BY name
         """)
 
         categories = cursor.fetchall()
@@ -1121,6 +1250,7 @@ def add_word():
         )
 
         new_word_id = cursor.lastrowid
+        ensure_category_row(cursor, category)
 
         # Create history record for new word
         create_history_record(
@@ -1648,6 +1778,7 @@ def change_word_category(word_id):
             cursor.execute("DELETE FROM words WHERE id = %s", (existing_word["id"],))
 
         # Update category directly to preserve ID and last_daily_activity_date
+        ensure_category_row(cursor, new_category)
         update_values["category"] = new_category
         assignments = ", ".join(f"`{column}` = %s" for column in update_values)
         cursor.execute(
@@ -1784,6 +1915,7 @@ def add_word_category(word_id):
             return duplicate_response
 
         new_word_id = cursor.lastrowid
+        ensure_category_row(cursor, new_category)
 
         create_history_record(
             cursor,

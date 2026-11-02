@@ -31,6 +31,7 @@ const Elements = {
     // Category selection
     categorySelect: null,
     categoryInfo: null,
+    deleteCategoryBtn: null,
     sortSelect: null,
 
     // Word card
@@ -253,6 +254,7 @@ function cacheDOMElements() {
     // Category
     Elements.categorySelect = document.getElementById('categorySelect');
     Elements.categoryInfo = document.getElementById('categoryInfo');
+    Elements.deleteCategoryBtn = document.getElementById('deleteCategoryBtn');
     Elements.sortSelect = document.getElementById('sortSelect');
 
     // Word card
@@ -400,6 +402,8 @@ function cacheDOMElements() {
 function setupEventListeners() {
     // Category selection
     Elements.categorySelect.addEventListener('change', handleCategoryChange);
+    Elements.deleteCategoryBtn.addEventListener('click', deleteCurrentCategory);
+    Elements.changeCategorySelect.addEventListener('change', (event) => updateDeleteCategoryButton(event.target.value));
 
     // Sort selection
     Elements.sortSelect.addEventListener('change', handleSortChange);
@@ -1030,6 +1034,53 @@ async function uploadNewWordImage(wordId) {
 // API Functions
 // ============================================
 
+// Words from a deleted category are moved here. Mirrors UNGROUPED_CATEGORY in app.py.
+const UNGROUPED_CATEGORY = '未分组单词';
+
+/**
+ * Show the Delete Category button only when a real category is selected in the Move dropdown
+ * @param {string|null} category - The category selected in the Move dropdown
+ */
+function updateDeleteCategoryButton(category) {
+    if (!Elements.deleteCategoryBtn) return;
+    const deletable = !!category && category !== 'All' && category !== UNGROUPED_CATEGORY;
+    Elements.deleteCategoryBtn.style.display = deletable ? '' : 'none';
+}
+
+/**
+ * Delete the category selected in the Move dropdown. Its words move to UNGROUPED_CATEGORY.
+ * Categories otherwise persist, even after their last word is deleted.
+ */
+async function deleteCurrentCategory() {
+    const category = Elements.changeCategorySelect.value;
+    if (!category || category === 'All' || category === UNGROUPED_CATEGORY) return;
+
+    const entry = AppState.categories.find(cat => cat.name === category);
+    const count = entry ? entry.word_count : 0;
+    const detail = count > 0
+        ? `Its ${count} word${count === 1 ? '' : 's'} will move to "${UNGROUPED_CATEGORY}".`
+        : 'It has no words.';
+    if (!confirm(`Delete category "${category}"? ${detail}`)) return;
+
+    try {
+        const response = await fetch(`/api/categories/${encodeURIComponent(category)}`, { method: 'DELETE' });
+        const data = await response.json();
+
+        if (!data.success) {
+            showError(data.error || 'Failed to delete category');
+            return;
+        }
+
+        // Reloading rebuilds both dropdowns. If the category on screen was the one
+        // deleted, the view goes back to the welcome screen.
+        await loadCategories();
+        showToast(data.message);
+    } catch (error) {
+        console.error('Error deleting category:', error);
+        showError('Network error while deleting category');
+    }
+}
+
 /**
  * Load all categories from the server
  */
@@ -1213,16 +1264,21 @@ function displaySampleSentences(sampleText) {
  * Populate category dropdown with fetched categories
  */
 function populateCategoryDropdown(categories) {
-    // Sort categories by word count (descending - most words first)
+    // Sort categories by word count (descending - most words first, so empty ones sit last)
     const sortedCategories = [...categories].sort((a, b) => b.word_count - a.word_count);
 
-    // Save to AppState for other components (like Add Word modal)
+    // Save to AppState for other components (like Add Word modal), empty categories included
     AppState.categories = sortedCategories;
 
     // Calculate total word count
     const totalWords = categories.reduce((sum, cat) => sum + (cat.word_count || 0), 0);
 
-    // Populate main category selector
+    // Remember what is on screen, since rebuilding the selector clears it
+    const previous = AppState.currentCategory;
+
+    // Main selector: only categories with at least one word
+    const nonEmpty = sortedCategories.filter(cat => cat.word_count > 0);
+
     Elements.categorySelect.innerHTML = '<option value="">-- Select a Category --</option>';
 
     // Add "All" option
@@ -1231,14 +1287,14 @@ function populateCategoryDropdown(categories) {
     allOption.textContent = `All (${totalWords})`;
     Elements.categorySelect.appendChild(allOption);
 
-    sortedCategories.forEach(cat => {
+    nonEmpty.forEach(cat => {
         const option = document.createElement('option');
         option.value = cat.name;
         option.textContent = `${cat.name} (${cat.word_count})`;
         Elements.categorySelect.appendChild(option);
     });
 
-    // Also populate the change category selector
+    // Move dropdown: every category, including empty ones (shown as (0))
     Elements.changeCategorySelect.innerHTML = '<option value="">-- Select Category --</option>';
 
     sortedCategories.forEach(cat => {
@@ -1247,6 +1303,19 @@ function populateCategoryDropdown(categories) {
         option.textContent = `${cat.name} (${cat.word_count})`;
         Elements.changeCategorySelect.appendChild(option);
     });
+
+    // Restore the view. If the category on screen still has words, keep it selected.
+    // If it has been emptied or deleted, return to the welcome screen.
+    if (previous) {
+        const stillListed = previous === 'All' || nonEmpty.some(cat => cat.name === previous);
+        if (stillListed) {
+            Elements.categorySelect.value = previous;
+        } else {
+            handleCategoryChange({ target: Elements.categorySelect });
+        }
+    }
+
+    updateDeleteCategoryButton(null);
 }
 
 /**

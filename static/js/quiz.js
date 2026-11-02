@@ -136,7 +136,9 @@ async function loadCategories() {
                 categorySelect.remove(1);
             }
 
-            data.categories.forEach(cat => {
+            // Empty categories stay listed on the vocab page, but a quiz on
+            // them has nothing to ask, so they are left out here.
+            data.categories.filter(cat => cat.word_count > 0).forEach(cat => {
                 const option = document.createElement('option');
                 option.value = cat.name;
                 option.textContent = `${cat.name} (${cat.word_count})`;

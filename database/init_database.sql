@@ -71,23 +71,29 @@ ORDER BY category;
 
 -- ============================================
 -- Stored Procedure: update_category_counts
--- Updates the category word counts (call after bulk imports)
+-- Refreshes category word counts (call after bulk imports)
+-- Never deletes rows: a category stays listed until it is deleted explicitly
+-- (DELETE /api/categories/<name>), even when it has no words left.
 -- ============================================
 DELIMITER //
 
 CREATE PROCEDURE IF NOT EXISTS update_category_counts()
 BEGIN
-    -- Clear existing category data
-    TRUNCATE TABLE categories;
-
-    -- Insert current category statistics
-    INSERT INTO categories (name, word_count, last_updated)
-    SELECT
-        category,
-        COUNT(*) AS word_count,
-        MAX(updated_at) AS last_updated
+    -- Add a row for any category that has words but no row yet
+    INSERT IGNORE INTO categories (name, word_count, last_updated)
+    SELECT category, 0, MAX(updated_at)
     FROM words
     GROUP BY category;
+
+    -- Refresh counts; a category with no words gets 0
+    UPDATE categories c
+    LEFT JOIN (
+        SELECT category, COUNT(*) AS word_count, MAX(updated_at) AS last_updated
+        FROM words
+        GROUP BY category
+    ) s ON s.category = c.name
+    SET c.word_count = COALESCE(s.word_count, 0),
+        c.last_updated = COALESCE(s.last_updated, c.last_updated);
 END //
 
 DELIMITER ;

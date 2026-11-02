@@ -1234,3 +1234,222 @@ class TestGeminiReasoningEffort:
         with pytest.raises(RuntimeError):
             create_gemini_completion(client, 'm', 'hello', 'generate-sample')
         assert len(calls) == 1
+
+
+class TestPersistentCategories:
+    """
+    Categories persist until they are deleted on purpose.
+
+    The list used to come from a GROUP BY over words, so a category vanished
+    when its last word was deleted, and the refresh procedure TRUNCATEd the
+    categories table to rebuild it. Now the categories table decides which
+    categories exist, the refresh only updates counts, and DELETE
+    /api/categories/<name> is the one way a category goes away.
+    """
+
+    def _app_source(self):
+        from app import app
+        with open(os.path.join(app.root_path, 'app.py'), encoding='utf-8') as f:
+            return f.read()
+
+    def _function_body(self, name):
+        source = self._app_source()
+        start = source.index(f'def {name}(')
+        end = source.find('\n@app.route', start)
+        return source[start:] if end == -1 else source[start:end]
+
+    def test_delete_category_route_is_registered(self):
+        """DELETE /api/categories/<name> should exist"""
+        from app import app
+        matches = [
+            str(rule) for rule in app.url_map.iter_rules()
+            if 'DELETE' in rule.methods and str(rule).startswith('/api/categories/')
+        ]
+        assert matches, 'DELETE /api/categories/<name> is not registered'
+
+    def test_delete_category_route_takes_a_path_name(self):
+        """Names contain CJK and spaces, so the route takes the rest of the path"""
+        from app import app
+        matches = [
+            str(rule) for rule in app.url_map.iter_rules()
+            if 'DELETE' in rule.methods and str(rule).startswith('/api/categories/')
+        ]
+        assert any('<path:name>' in rule for rule in matches)
+
+    def test_ungrouped_category_name(self):
+        """The fallback category has the agreed name"""
+        from app import UNGROUPED_CATEGORY
+        assert UNGROUPED_CATEGORY == '未分组单词'
+
+    def test_delete_refuses_the_ungrouped_category(self):
+        """未分组单词 is where orphaned words go, so it can never be deleted"""
+        from app import app, UNGROUPED_CATEGORY
+        app.config['TESTING'] = True
+        client = app.test_client()
+        with client.session_transaction() as sess:
+            sess['logged_in'] = True
+        # Refused before any database access, so SKIP_DB is fine
+        response = client.delete(f'/api/categories/{UNGROUPED_CATEGORY}')
+        assert response.status_code == 400
+
+    def test_delete_refuses_a_blank_name(self):
+        """A missing name is refused before touching the database"""
+        from app import app
+        app.config['TESTING'] = True
+        client = app.test_client()
+        with client.session_transaction() as sess:
+            sess['logged_in'] = True
+        response = client.delete('/api/categories/%20')
+        assert response.status_code == 400
+
+    def test_delete_is_refused_when_logged_out(self, monkeypatch):
+        """The new route sits behind the same login check as the rest of the API"""
+        from app import app
+        app.config['TESTING'] = True
+        monkeypatch.setitem(app.config, 'SITE_PASSWORD', 'test-password')
+        client = app.test_client()
+        response = client.delete('/api/categories/AI')
+        assert response.status_code == 401
+
+    def test_delete_moves_words_before_removing_the_category(self):
+        """Words are moved first, so no row is left pointing at a deleted category"""
+        body = self._function_body('delete_category')
+        move_at = body.index('UPDATE words SET category = %s WHERE category = %s')
+        remove_at = body.index('DELETE FROM categories WHERE name = %s')
+        assert move_at < remove_at
+
+    def test_delete_drops_copies_already_in_the_target(self):
+        """A word already in 未分组单词 is not moved again, which would break the unique key"""
+        body = self._function_body('delete_category')
+        assert 'DELETE FROM words' in body
+        assert 'AS target' in body
+
+    def test_delete_is_one_transaction(self):
+        """Move and remove commit together, so a failure leaves nothing half-done"""
+        body = self._function_body('delete_category')
+        assert body.count('conn.commit()') >= 1
+        assert body.index('UPDATE words SET category') < body.index('conn.commit()')
+        assert 'conn.rollback()' in body
+
+    def test_category_list_includes_empty_categories(self):
+        """The list reads the categories table, so a category with no words still appears"""
+        body = self._function_body('get_categories')
+        assert 'FROM categories c' in body
+        assert 'COALESCE(s.word_count, 0)' in body
+
+    def test_word_add_creates_the_category_row(self):
+        """Adding a word under a new name records the category"""
+        body = self._function_body('add_word')
+        assert 'ensure_category_row(cursor, category)' in body
+
+    def test_copy_into_category_creates_the_category_row(self):
+        body = self._function_body('add_word_category')
+        assert 'ensure_category_row(cursor, new_category)' in body
+
+    def test_move_creates_the_category_row(self):
+        body = self._function_body('change_word_category')
+        assert 'ensure_category_row(cursor, new_category)' in body
+
+    def test_word_delete_does_not_remove_the_category_row(self):
+        """Deleting a word must leave the categories table alone"""
+        body = self._function_body('delete_word')
+        assert 'FROM categories' not in body
+        assert 'DELETE FROM categories' not in body
+
+    def _procedure_sql(self):
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                               'database', 'init_database.sql'), encoding='utf-8') as f:
+            sql = f.read()
+        start = sql.index('CREATE PROCEDURE IF NOT EXISTS update_category_counts()')
+        return sql[start:sql.index('END //', start)]
+
+    def test_refresh_procedure_never_truncates(self):
+        """TRUNCATE is what made empty categories disappear"""
+        assert 'TRUNCATE' not in self._procedure_sql().upper()
+
+    def test_refresh_procedure_zeroes_empty_categories(self):
+        """A category whose words are all gone is kept, with a count of 0"""
+        assert 'COALESCE(s.word_count, 0)' in self._procedure_sql()
+
+    def test_migration_script_replaces_the_procedure_without_truncating(self):
+        """The live database gets the same procedure as a fresh install"""
+        path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                            'scripts', 'migrate_persistent_categories.py')
+        with open(path, encoding='utf-8') as f:
+            source = f.read()
+        assert 'DROP PROCEDURE IF EXISTS update_category_counts' in source
+        assert 'TRUNCATE TABLE' not in source.upper()
+
+    def test_quiz_picker_hides_empty_categories(self):
+        """A quiz on a category with no words has nothing to ask"""
+        from app import app
+        with open(os.path.join(app.root_path, 'static', 'js', 'quiz.js'), encoding='utf-8') as f:
+            js = f.read()
+        assert 'word_count > 0' in js
+
+    def test_vocab_page_has_delete_category_button(self):
+        from app import app
+        with open(os.path.join(app.root_path, 'templates', 'index.html'), encoding='utf-8') as f:
+            markup = f.read()
+        assert 'id="deleteCategoryBtn"' in markup
+
+    def test_delete_button_is_wired_to_the_handler(self):
+        from app import app
+        with open(os.path.join(app.root_path, 'static', 'js', 'app.js'), encoding='utf-8') as f:
+            js = f.read()
+        assert "addEventListener('click', deleteCurrentCategory)" in js
+        assert 'UNGROUPED_CATEGORY' in js
+
+    def _app_js(self):
+        from app import app
+        with open(os.path.join(app.root_path, 'static', 'js', 'app.js'), encoding='utf-8') as f:
+            return f.read()
+
+    def test_vocab_selector_lists_only_categories_with_words(self):
+        """categorySelect is filled from the non-empty list"""
+        js = self._app_js()
+        start = js.index('function populateCategoryDropdown(')
+        body = js[start:js.index('\n}', start)]
+        move_at = body.index('Elements.changeCategorySelect.innerHTML')
+        assert 'nonEmpty = sortedCategories.filter(cat => cat.word_count > 0)' in body
+        assert 'nonEmpty.forEach' in body[:move_at]
+        assert 'sortedCategories.forEach' not in body[:move_at]
+
+    def test_move_dropdown_lists_empty_categories(self):
+        """changeCategorySelect is filled from every category, including empty ones"""
+        js = self._app_js()
+        start = js.index('function populateCategoryDropdown(')
+        body = js[start:js.index('\n}', start)]
+        move_at = body.index('Elements.changeCategorySelect.innerHTML')
+        assert 'sortedCategories.forEach' in body[move_at:]
+
+    def test_add_word_modal_still_gets_empty_categories(self):
+        """AppState.categories keeps every category for the Add New Word dropdown"""
+        js = self._app_js()
+        start = js.index('function populateCategoryDropdown(')
+        body = js[start:js.index('\n}', start)]
+        assert 'AppState.categories = sortedCategories;' in body
+
+    def test_delete_button_sits_in_the_move_row(self):
+        """The button lives beside Move, and it works on the Move dropdown's selection"""
+        from app import app
+        with open(os.path.join(app.root_path, 'templates', 'index.html'), encoding='utf-8') as f:
+            markup = f.read()
+        actions = markup.index('class="word-actions"')
+        button = markup.index('id="deleteCategoryBtn"')
+        assert actions < button < markup.index('id="deleteWordBtn"')
+
+    def test_delete_targets_the_move_dropdown(self):
+        js = self._app_js()
+        start = js.index('async function deleteCurrentCategory(')
+        body = js[start:js.index('\n}', start)]
+        assert 'Elements.changeCategorySelect.value' in body
+        assert 'Elements.categorySelect.value' not in body
+        assert "changeCategorySelect.addEventListener('change'" in js
+
+    def test_reload_returns_to_welcome_when_the_category_on_screen_is_gone(self):
+        """A reload that drops the open category falls back to the welcome screen"""
+        js = self._app_js()
+        start = js.index('function populateCategoryDropdown(')
+        body = js[start:js.index('\n}', start)]
+        assert 'handleCategoryChange({ target: Elements.categorySelect })' in body
