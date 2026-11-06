@@ -1950,6 +1950,16 @@ function isEnglishWord(text) {
 }
 
 /**
+ * Check whether text is Chinese (traditional or simplified): it contains Han
+ * characters and no Japanese kana. Anything else is treated as non-Chinese.
+ */
+function isChineseWord(text) {
+    const value = text.trim();
+    return /\p{Script=Han}/u.test(value) &&
+        !/[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(value);
+}
+
+/**
  * Generate Chinese translation for new word using Gemini
  * Also supports reverse generation (Chinese -> English) if Word is empty and Translation is filled
  */
@@ -2280,11 +2290,17 @@ function displaySearchResults(data) {
                 addBtn.addEventListener('click', () => {
                     closeSearchResults();
                     openAddWordModal();
-                    // Pre-fill word
-                    Elements.newWord.value = data.query;
-                    // Auto-generate the translation only for English words
-                    if (isEnglishWord(Elements.newWord.value)) {
+                    if (isChineseWord(data.query)) {
+                        // Chinese query goes into Translation; AI fills the English Word
+                        Elements.newTranslation.value = data.query;
                         generateNewWordTranslation();
+                    } else {
+                        // Pre-fill word
+                        Elements.newWord.value = data.query;
+                        // Auto-generate the translation only for English words
+                        if (isEnglishWord(Elements.newWord.value)) {
+                            generateNewWordTranslation();
+                        }
                     }
                 });
             }
