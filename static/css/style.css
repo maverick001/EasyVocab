@@ -1793,6 +1793,21 @@ button {
     align-items: center;
 }
 
+/* Multicolor "Search" label: S red, E blue, A orange, R green, C purple, H teal */
+.search-rainbow > span:nth-child(1) { color: #e53935; }
+.search-rainbow > span:nth-child(2) { color: #1e66d0; }
+.search-rainbow > span:nth-child(3) { color: #f57c00; }
+.search-rainbow > span:nth-child(4) { color: #2e9e44; }
+.search-rainbow > span:nth-child(5) { color: #8e44ad; }
+.search-rainbow > span:nth-child(6) { color: #00897b; }
+
+body.dark-mode .search-rainbow > span:nth-child(1) { color: #ff6b66; }
+body.dark-mode .search-rainbow > span:nth-child(2) { color: #6aa9ff; }
+body.dark-mode .search-rainbow > span:nth-child(3) { color: #ffa94d; }
+body.dark-mode .search-rainbow > span:nth-child(4) { color: #5fd47a; }
+body.dark-mode .search-rainbow > span:nth-child(5) { color: #c58af0; }
+body.dark-mode .search-rainbow > span:nth-child(6) { color: #4dd0c0; }
+
 .search-input {
     flex: 1;
     padding: 8px 12px;
