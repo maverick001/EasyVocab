@@ -1794,6 +1794,11 @@ button {
 }
 
 /* Multicolor "Search" label: S red, E blue, A orange, R green, C red, H teal */
+/* Label words (Category, Sort, Search) are 10% larger than the label's own size;
+   the colon keeps the label size. */
+.label-word,
+.search-rainbow { font-size: 1.1em; }
+
 .search-rainbow { font-weight: 800; }
 .search-rainbow > span:nth-child(1) { color: #e53935; }
 .search-rainbow > span:nth-child(2) { color: #1e66d0; }
