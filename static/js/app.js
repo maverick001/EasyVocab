@@ -1202,6 +1202,17 @@ async function updateWord(wordId, updates) {
                 // No direct display element, but button state might change
             }
 
+            // The server decides whether this edit counted as a review, so
+            // mirror its count and pulse the badge only when it moved
+            if (typeof data.review_count === 'number') {
+                const previous = AppState.currentWord.review_count || 0;
+                AppState.currentWord.review_count = data.review_count;
+                Elements.reviewCount.textContent = data.review_count;
+                if (data.review_count !== previous) {
+                    pulseReviewCounter();
+                }
+            }
+
             // Reload history after update
             loadWordHistory(AppState.currentWord.id);
 
@@ -2753,6 +2764,16 @@ function toggleDebtDropdown() {
 // ============================================
 
 /**
+ * Briefly enlarge the review counter badge to show its count changed
+ */
+function pulseReviewCounter() {
+    Elements.reviewCounter.style.transform = 'scale(1.2)';
+    setTimeout(() => {
+        Elements.reviewCounter.style.transform = 'scale(1)';
+    }, 200);
+}
+
+/**
  * Increment review counter for current word
  */
 async function incrementReviewCounter() {
@@ -2767,16 +2788,22 @@ async function incrementReviewCounter() {
 
         if (data.success) {
             // Update the display with new count
+            AppState.currentWord.review_count = data.review_count;
             Elements.reviewCount.textContent = data.review_count;
 
             // Add visual feedback
-            Elements.reviewCounter.style.transform = 'scale(1.2)';
-            setTimeout(() => {
-                Elements.reviewCounter.style.transform = 'scale(1)';
-            }, 200);
+            pulseReviewCounter();
 
-            // Increment daily progress counter (max once per word per day)
-            incrementDailyCounter(AppState.currentWord.id);
+            // Daily counter moves only when the server counted this word today
+            // (once per word per day, however many clicks)
+            if (data.daily_counted !== false) {
+                incrementDailyCounter(AppState.currentWord.id);
+            } else {
+                AppState.countedWordIds.add(AppState.currentWord.id);
+            }
+
+            // Refresh the History dropdown so it shows today's date (selected)
+            loadWordHistory(AppState.currentWord.id);
 
             console.log(`✅ Review count updated: ${data.review_count}`);
         } else {

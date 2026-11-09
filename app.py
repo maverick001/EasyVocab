@@ -1669,7 +1669,7 @@ def update_word(word_id):
         # Get the updated word data for history record
         cursor.execute(
             """
-            SELECT word, translation, example_sentence, category, ipa
+            SELECT word, translation, example_sentence, category, ipa, review_count
             FROM words
             WHERE id = %s
         """,
@@ -1693,7 +1693,14 @@ def update_word(word_id):
 
         conn.commit()
 
-        return jsonify({"success": True, "message": "Word updated successfully"})
+        # review_count lets the page refresh its badge without a reload
+        return jsonify(
+            {
+                "success": True,
+                "message": "Word updated successfully",
+                "review_count": updated_word["review_count"],
+            }
+        )
 
     except Exception as e:
         if conn:
@@ -2136,25 +2143,38 @@ def increment_review_counter(word_id):
         result = cursor.fetchone()
 
         if result:
-            # Create history record for review
-            create_history_record(
-                cursor,
-                word_id,
-                result["word"],
-                result["translation"],
-                result["example_sentence"],
-                result["category"],
-                "updated",
+            # One history entry per word per day: the history dropdown shows
+            # one date per day anyway, so only the first review today writes one
+            cursor.execute(
+                """
+                SELECT 1 FROM word_history
+                WHERE word_id = %s
+                AND DATE(DATE_ADD(modified_at, INTERVAL 10 HOUR))
+                    = DATE(DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 10 HOUR))
+                LIMIT 1
+            """,
+                (word_id,),
             )
+            if not cursor.fetchall():
+                create_history_record(
+                    cursor,
+                    word_id,
+                    result["word"],
+                    result["translation"],
+                    result["example_sentence"],
+                    result["category"],
+                    "updated",
+                )
 
             # Log daily review activity (AEST timezone, 1 per word per day)
-            increment_daily_counter(cursor, word_id)
+            daily_counted = increment_daily_counter(cursor, word_id)
 
             conn.commit()
 
             return jsonify(
                 {
                     "success": True,
+                    "daily_counted": bool(daily_counted),
                     "review_count": result["review_count"],
                     "last_reviewed": str(result["last_reviewed"])
                     if result["last_reviewed"]
