@@ -525,6 +525,82 @@ class TestSharedWriteScope:
         assert 'WHERE word = %s' in update[:update.index('"""')]
 
 
+class TestReviewBadgeClick:
+    """
+    Clicking the review badge any number of times in a day moves the daily
+    counter by one, writes one history entry, and leaves History on today.
+    """
+
+    def _read(self, *parts):
+        from app import app
+        with open(os.path.join(app.root_path, *parts), encoding='utf-8') as f:
+            return f.read()
+
+    def _review_body(self):
+        source = self._read('app.py')
+        start = source.index('def increment_review_counter(')
+        rest = source[start + 1:]
+        end = rest.find('\n@app.route')
+        return rest if end == -1 else rest[:end]
+
+    def test_server_reports_whether_the_daily_counter_moved(self):
+        """The response carries daily_counted from increment_daily_counter"""
+        body = self._review_body()
+        assert 'daily_counted = increment_daily_counter(cursor, word_id)' in body
+        assert '"daily_counted": bool(daily_counted)' in body
+
+    def test_history_row_is_written_once_per_day(self):
+        """Later clicks the same day skip the history insert"""
+        body = self._review_body()
+        check = body.index('SELECT 1 FROM word_history')
+        assert check < body.index('create_history_record(')
+        assert 'if not cursor.fetchall():' in body
+
+    def test_review_count_still_goes_up_every_click(self):
+        """Only the counter and history are capped, not review_count itself"""
+        body = self._review_body()
+        assert 'review_count = review_count + 1' in body
+
+    def test_page_follows_the_server_and_refreshes_history(self):
+        """The badge handler gates the counter on daily_counted and reloads History"""
+        js = self._read('static', 'js', 'app.js')
+        start = js.index('async function incrementReviewCounter()')
+        handler = js[start:js.index('async function changeWordCategory()')]
+        assert 'data.daily_counted !== false' in handler
+        assert 'loadWordHistory(AppState.currentWord.id)' in handler
+
+
+class TestSaveRefreshesReviewBadge:
+    """
+    Saving a translation or sample sentence can count as a review, so the page
+    must show the new count straight away instead of after a reload.
+    """
+
+    def _read(self, *parts):
+        from app import app
+        with open(os.path.join(app.root_path, *parts), encoding='utf-8') as f:
+            return f.read()
+
+    def test_update_endpoint_returns_review_count(self):
+        """PUT /api/words/<id> reports the stored count after the edit"""
+        source = self._read('app.py')
+        start = source.index('def update_word(')
+        rest = source[start + 1:]
+        end = rest.find('\n@app.route')
+        body = rest if end == -1 else rest[:end]
+        assert 'ipa, review_count' in body
+        assert '"review_count": updated_word["review_count"]' in body
+
+    def test_page_mirrors_server_count_and_pulses_on_change(self):
+        """updateWord writes the returned count to the badge, pulsing only if it moved"""
+        js = self._read('static', 'js', 'app.js')
+        start = js.index('async function updateWord(')
+        handler = js[start:js.index('// UI Update Functions')]
+        assert 'Elements.reviewCount.textContent = data.review_count' in handler
+        assert 'data.review_count !== previous' in handler
+        assert 'pulseReviewCounter()' in handler
+
+
 class TestWordCategoryDisplay:
     """
     Tests for the row of category pills under the word.
