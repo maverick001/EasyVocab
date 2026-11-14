@@ -25,6 +25,7 @@ from werkzeug.utils import secure_filename
 from config import Config
 from utils import parse_and_import_xml, XMLParserError
 from utils.word_images import CREATE_WORD_IMAGES_TABLE_SQL
+from utils.sample_prompts import build_sample_prompt
 from utils.monitoring import (
     init_sentry,
     get_openai_class,
@@ -2559,8 +2560,9 @@ def generate_sample_sentence():
             api_key=app.config["GEMINI_API_KEY"], base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
         )
 
-        # Prepare prompt
-        prompt = f'Create a simple, natural English sentence that uses the EXACT word or phrase "{word}" (including all words as shown). You must use "{word}" exactly as written, not variations or partial matches. Use simple language and vocabulary suitable for a high school student. Keep the sentence short and easy to understand. Only output the sentence, nothing else.'
+        # The prompt depends on the model: hydrogen explains nouns, others
+        # write a plain sentence (see utils/sample_prompts.py)
+        prompt = build_sample_prompt(model, word)
 
         # Call Gemini API via OpenAI SDK
         response = create_gemini_completion(client, model, prompt, "generate-sample")
@@ -2592,7 +2594,7 @@ def generate_translation():
     Request Body (JSON):
         {
             "word": "example",
-            "model": "gemini-3.7-flash",  # optional
+            "model": "gemini-4-hydrogen",  # optional
             "mode": "normal" | "reverse"  # optional, default "normal"
         }
 

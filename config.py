@@ -33,7 +33,7 @@ class Config:
 
     # Gemini API Configuration (OpenAI-compatible)
     GEMINI_API_KEY = os.environ.get('GOOGLE_API_KEY')
-    GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-3.7-flash')
+    GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-4-hydrogen')
     GEMINI_TEMPERATURE = float(os.environ.get('GEMINI_TEMPERATURE', 0.9))
     # How much the model "thinks" before answering. 'low' cuts translation from
     # ~10-50s to ~2s with the same answers. Set empty to use each model's default.
