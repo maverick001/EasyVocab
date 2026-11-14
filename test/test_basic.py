@@ -1624,3 +1624,76 @@ class TestWordImagesInMysql:
                 source = f.read()
             assert '/static/images/word_images/' not in source
             assert '/api/word-image/' in source
+
+
+class TestSwipeNavigation:
+    """Left/right swipe on the word card moves to the next/previous word"""
+
+    def _app_js(self):
+        from app import app
+        with open(os.path.join(app.root_path, 'static', 'js', 'app.js'), encoding='utf-8') as f:
+            return f.read()
+
+    def _swipe_directions(self, cases):
+        """Run the real getSwipeDirection in Node; skip when Node is absent"""
+        import json
+        import shutil
+        import subprocess
+        node = shutil.which('node')
+        if not node:
+            pytest.skip('node not installed')
+        js = self._app_js()
+        start = js.index('const SWIPE_MIN_DISTANCE')
+        end = js.index('/**\n * Let a horizontal swipe')
+        script = js[start:end] + f'\nconsole.log(JSON.stringify({json.dumps(cases)}.map(([x, y]) => getSwipeDirection(x, y))));'
+        result = subprocess.run([node, '-e', script], capture_output=True, text=True, timeout=30)
+        assert result.returncode == 0, result.stderr
+        return json.loads(result.stdout)
+
+    def test_swipe_left_goes_to_next_word(self):
+        assert self._swipe_directions([[-120, 5]]) == [1]
+
+    def test_swipe_right_goes_to_previous_word(self):
+        assert self._swipe_directions([[120, -5]]) == [-1]
+
+    def test_short_movement_is_not_a_swipe(self):
+        """A tap or small wobble must not change the word"""
+        assert self._swipe_directions([[-59, 0], [0, 0], [59, 0]]) == [0, 0, 0]
+
+    def test_mostly_vertical_movement_is_not_a_swipe(self):
+        """Scrolling the page with a slightly diagonal finger must not navigate"""
+        assert self._swipe_directions([[-100, 90], [100, -90], [-70, 200]]) == [0, 0, 0]
+
+    def test_clearly_horizontal_diagonal_still_counts(self):
+        assert self._swipe_directions([[-150, 60]]) == [1]
+
+    def test_swipe_is_wired_to_navigate_word_on_the_card(self):
+        js = self._app_js()
+        assert 'setupSwipeNavigation();' in js
+        start = js.index('function setupSwipeNavigation()')
+        body = js[start:js.index('\n}\n', start)]
+        assert 'Elements.wordCard' in body
+        assert 'navigateWord(direction)' in body
+
+    def test_mouse_drag_is_ignored(self):
+        """Mouse dragging stays free for selecting text"""
+        js = self._app_js()
+        start = js.index('function setupSwipeNavigation()')
+        body = js[start:js.index('\n}\n', start)]
+        assert "event.pointerType === 'mouse'" in body
+
+    def test_swipe_does_not_start_on_editable_controls(self):
+        js = self._app_js()
+        assert 'textarea' in js.split('const SWIPE_IGNORE_SELECTOR')[1].split(';')[0]
+
+    def test_card_leaves_horizontal_gestures_to_the_page(self):
+        from app import app
+        with open(os.path.join(app.root_path, 'static', 'css', 'style.css'), encoding='utf-8') as f:
+            css = f.read()
+        assert '.vocab-page .word-card {\n    touch-action: pan-y pinch-zoom;' in css
+
+    def test_quiz_page_has_no_swipe_handler(self):
+        """Swipe is vocab-page only; the quiz has no 'previous word'"""
+        from app import app
+        with open(os.path.join(app.root_path, 'static', 'js', 'quiz.js'), encoding='utf-8') as f:
+            assert 'Swipe' not in f.read()

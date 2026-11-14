@@ -432,6 +432,9 @@ function setupEventListeners() {
     // Keyboard navigation (Arrow keys)
     document.addEventListener('keydown', handleKeyboardNavigation);
 
+    // Swipe navigation on the word card (touch and pen)
+    setupSwipeNavigation();
+
     // The word row re-centres when the card changes width, taking the word's
     // left edge with it, so the pill row has to be re-measured.
     window.addEventListener('resize', alignWordCategories);
@@ -1585,6 +1588,72 @@ function handleKeyboardNavigation(event) {
         event.preventDefault();
         navigateWord(1);
     }
+}
+
+// Swipe navigation. A swipe must travel this far, and be clearly more
+// horizontal than vertical, so scrolling the page never changes the word.
+const SWIPE_MIN_DISTANCE = 60;
+const SWIPE_HORIZONTAL_DOMINANCE = 1.5;
+// Starting a swipe on one of these would fight text editing or a tap target.
+const SWIPE_IGNORE_SELECTOR = 'input, textarea, select, button, a, [contenteditable="true"]';
+
+/**
+ * Turn a finger movement into a navigation direction.
+ *
+ * Swiping left moves forward (like turning a page), swiping right goes back.
+ *
+ * @param {number} dx - horizontal movement in px (negative = leftwards)
+ * @param {number} dy - vertical movement in px
+ * @returns {number} 1 for next word, -1 for previous word, 0 for no swipe
+ */
+function getSwipeDirection(dx, dy) {
+    if (Math.abs(dx) < SWIPE_MIN_DISTANCE) return 0;
+    if (Math.abs(dx) < Math.abs(dy) * SWIPE_HORIZONTAL_DOMINANCE) return 0;
+    return dx < 0 ? 1 : -1;
+}
+
+/**
+ * Let a horizontal swipe on the word card move to the next or previous word.
+ *
+ * Uses pointer events so one handler serves phones and a Windows touchscreen.
+ * Mouse input is ignored: dragging with a mouse stays free for selecting text.
+ * Goes through navigateWord(), so it behaves exactly like the Previous/Next
+ * buttons, including auto-saving an open translation edit and the bounds check.
+ */
+function setupSwipeNavigation() {
+    const card = Elements.wordCard;
+    if (!card) return;
+
+    let tracking = null; // { id, x, y } of the one pointer being followed
+
+    card.addEventListener('pointerdown', (event) => {
+        if (event.pointerType === 'mouse') return;
+        // A second finger (pinch) cancels the swipe instead of starting one.
+        if (tracking) {
+            tracking = null;
+            return;
+        }
+        if (event.target.closest(SWIPE_IGNORE_SELECTOR)) return;
+        tracking = { id: event.pointerId, x: event.clientX, y: event.clientY };
+    });
+
+    card.addEventListener('pointerup', (event) => {
+        if (!tracking || event.pointerId !== tracking.id) return;
+        const dx = event.clientX - tracking.x;
+        const dy = event.clientY - tracking.y;
+        tracking = null;
+
+        // Dragging text-selection handles also moves sideways; leave that alone.
+        const selection = window.getSelection();
+        if (selection && selection.toString().length > 0) return;
+
+        const direction = getSwipeDirection(dx, dy);
+        if (direction !== 0) navigateWord(direction);
+    });
+
+    card.addEventListener('pointercancel', () => {
+        tracking = null;
+    });
 }
 
 /**
