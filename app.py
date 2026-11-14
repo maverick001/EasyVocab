@@ -9,6 +9,7 @@ from flask import (
     render_template,
     request,
     jsonify,
+    Response,
     send_from_directory,
     session,
     redirect,
@@ -23,6 +24,7 @@ import platform
 from werkzeug.utils import secure_filename
 from config import Config
 from utils import parse_and_import_xml, XMLParserError
+from utils.word_images import CREATE_WORD_IMAGES_TABLE_SQL
 from utils.monitoring import (
     init_sentry,
     get_openai_class,
@@ -71,6 +73,10 @@ def flush_monitoring(exc):
 @app.after_request
 def add_header(response):
     """Add headers to prevent caching"""
+    # Word images set their own `private` caching: their filenames never change
+    # content, and caching them saves a database round trip per view.
+    if request.endpoint == "serve_word_image" and response.status_code in (200, 304):
+        return response
     response.headers["Cache-Control"] = (
         "no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0"
     )
@@ -337,9 +343,77 @@ def ensure_image_file_2_column():
             connection.close()
 
 
+def ensure_word_images_table():
+    """
+    Ensure the word_images table exists.
+
+    Image bytes live here, not on disk and not in git: Vercel's filesystem is
+    read-only, the image folder is gitignored, and the repo is public. words
+    keeps only the filename in image_file / image_file_2; this table maps that
+    filename to the bytes. Images are served through a login-protected route.
+    """
+    connection = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute(CREATE_WORD_IMAGES_TABLE_SQL)
+        connection.commit()
+        cursor.close()
+    except mysql.connector.Error as err:
+        print(f"[ERROR] Error ensuring word_images table: {err}")
+    finally:
+        if connection:
+            connection.close()
+
+
 # A word holds at most two images. This cap is deliberate: it keeps the data
 # model to two columns rather than a one-to-many table.
 VALID_IMAGE_SLOTS = (1, 2)
+
+IMAGE_MIME_BY_EXTENSION = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+}
+
+
+def guess_image_mime(filename):
+    """
+    MIME type for a stored image, from its filename extension.
+
+    Falls back to JPEG, which is what every upload is converted to.
+    """
+    ext = os.path.splitext(filename or "")[1].lower()
+    return IMAGE_MIME_BY_EXTENSION.get(ext, "image/jpeg")
+
+
+def delete_unreferenced_image_blobs(cursor, filenames):
+    """
+    Delete stored image bytes that no word points at any more.
+
+    Called inside the same transaction that changed words.image_file /
+    image_file_2, after the UPDATE, so a rollback restores both together. A
+    candidate still referenced by any row (images are shared by every row of a
+    word) is kept.
+
+    Args:
+        cursor: open cursor on the connection holding the transaction
+        filenames: iterable of candidate filenames; None and '' are ignored
+    """
+    candidates = sorted({f for f in filenames if f})
+    if not candidates:
+        return
+
+    marks = ",".join(["%s"] * len(candidates))
+    cursor.execute(
+        f"DELETE FROM word_images WHERE filename IN ({marks}) "
+        "AND filename NOT IN ("
+        "SELECT image_file FROM words WHERE image_file IS NOT NULL "
+        "UNION SELECT image_file_2 FROM words WHERE image_file_2 IS NOT NULL)",
+        candidates,
+    )
 
 
 def parse_image_slot(raw):
@@ -993,6 +1067,39 @@ def get_categories():
 
         return jsonify({"success": True, "categories": categories})
 
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route("/api/word-image/<filename>", methods=["GET"])
+def serve_word_image(filename):
+    """
+    Serve one stored word image.
+
+    Lives under /api/ on purpose: require_login_for_api() answers 401 to anyone
+    who has not logged in, so the images are never public. Marked `private` so
+    shared caches (Vercel's CDN) never keep a copy; the browser may, for a year,
+    because a filename is never reused for different bytes.
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT mime_type, data FROM word_images WHERE filename = %s", (filename,)
+        )
+        row = cursor.fetchone()
+        if not row:
+            return jsonify({"success": False, "error": "Image not found"}), 404
+
+        mime_type, data = row
+        response = Response(bytes(data), mimetype=mime_type or guess_image_mime(filename))
+        response.headers["Cache-Control"] = "private, max-age=31536000, immutable"
+        response.add_etag()
+        return response.make_conditional(request)
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
@@ -3087,8 +3194,8 @@ def upload_word_image(word_id):
     Upload and process an image for a specific word
 
     1. Compresses image to JPEG under 500KB
-    2. Saves to static/images/word_images with unique name
-    3. Updates database
+    2. Saves the bytes to the word_images table under a unique filename
+    3. Points words.image_file / image_file_2 at that filename
 
     Accepts an optional 'slot' form field (1 or 2). Absent means slot 1, which
     keeps every caller written before the second slot existed working.
@@ -3155,16 +3262,26 @@ def upload_word_image(word_id):
             # second would otherwise collide and silently overwrite.
             timestamp = int(time.time())
             filename = f"img_{word_id}_{slot}_{timestamp}.jpg"
-            save_path = os.path.join(
-                app.root_path, "static", "images", "word_images", filename
+
+            # The bytes go in the same transaction as the words UPDATE below,
+            # so a rejected upload (the 409 paths) leaves no stray image behind.
+            cursor.execute(
+                "INSERT INTO word_images (filename, mime_type, data) "
+                "VALUES (%s, %s, %s) "
+                "ON DUPLICATE KEY UPDATE mime_type = VALUES(mime_type), "
+                "data = VALUES(data)",
+                (filename, "image/jpeg", output_buffer.getvalue()),
             )
 
-            # Ensure directory exists
-            os.makedirs(os.path.dirname(save_path), exist_ok=True)
-
-            # Write to file
-            with open(save_path, "wb") as f:
-                f.write(output_buffer.getvalue())
+            # Replacing an occupied slot orphans the image it held. Remember
+            # what every row of this word held, to clean up after the UPDATE.
+            cursor.execute(
+                "SELECT image_file, image_file_2 FROM words WHERE word = %s",
+                (word_data["word"],),
+            )
+            previous_files = [
+                f for row in cursor.fetchall() for f in (row["image_file"], row["image_file_2"])
+            ]
 
             # slot has been validated to 1 or 2, so this is not user input.
             column = "image_file" if slot == 1 else "image_file_2"
@@ -3185,6 +3302,7 @@ def upload_word_image(word_id):
             )
 
             if cursor.rowcount == 0:
+                conn.rollback()  # discards the image bytes inserted above
                 return jsonify(
                     {
                         "success": False,
@@ -3192,6 +3310,7 @@ def upload_word_image(word_id):
                     }
                 ), 409
 
+            delete_unreferenced_image_blobs(cursor, previous_files)
             conn.commit()
 
             # Re-read after commit so the response is server truth, matching
@@ -3260,7 +3379,19 @@ def delete_word_image(word_id, slot):
         if not word_data[column]:
             return jsonify({"success": False, "error": "No image in that slot"}), 404
 
+        # Rows sharing the word text may hold different images, so gather
+        # candidates from all of them before the UPDATE changes the slots.
+        cursor.execute(
+            "SELECT image_file, image_file_2 FROM words WHERE word = %s",
+            (word_data["word"],),
+        )
+        previous_files = [
+            f for row in cursor.fetchall() for f in (row["image_file"], row["image_file_2"])
+        ]
+
         cursor.execute(build_image_removal_sql(slot), (word_data["word"],))
+        # Drop the bytes nothing points at any more, in the same transaction.
+        delete_unreferenced_image_blobs(cursor, previous_files)
         conn.commit()
 
         cursor.execute(
@@ -3294,6 +3425,7 @@ def create_app():
     init_db_pool()
     ensure_image_file_column()
     ensure_image_file_2_column()
+    ensure_word_images_table()
     ensure_ipa_column()
     return app
 
@@ -3376,6 +3508,7 @@ if __name__ == "__main__":
     ensure_word_history_table()
     ensure_image_file_column()
     ensure_image_file_2_column()
+    ensure_word_images_table()
     ensure_ipa_column()
     ensure_srs_columns()
     ensure_daily_score_column()

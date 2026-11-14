@@ -913,8 +913,9 @@ function renderImageBlocks() {
         const img = document.createElement('img');
         img.className = 'word-image-large';
         img.alt = `Image ${entry.slot}`;
-        // Timestamp defeats caching when a slot is replaced in place.
-        img.src = `/static/images/word_images/${entry.file}?t=${new Date().getTime()}`;
+        // Served from MySQL behind login. A replaced image gets a new filename,
+        // so the browser can safely cache each URL.
+        img.src = `/api/word-image/${encodeURIComponent(entry.file)}`;
 
         const actions = document.createElement('div');
         actions.className = 'image-block-actions';
