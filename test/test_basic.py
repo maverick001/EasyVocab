@@ -1697,3 +1697,89 @@ class TestSwipeNavigation:
         from app import app
         with open(os.path.join(app.root_path, 'static', 'js', 'quiz.js'), encoding='utf-8') as f:
             assert 'Swipe' not in f.read()
+
+
+class TestModelSpecificSamplePrompt:
+    """gemini-4-hydrogen gets the noun-aware prompt; everything else a plain one"""
+
+    def test_hydrogen_gets_noun_aware_prompt(self):
+        from utils.sample_prompts import build_sample_prompt
+        prompt = build_sample_prompt('gemini-4-hydrogen', 'brunt')
+        assert 'noun or noun phrase' in prompt
+        assert 'explains what it is' in prompt
+
+    def test_flash_lite_gets_plain_prompt_without_noun_rule(self):
+        from utils.sample_prompts import build_sample_prompt
+        prompt = build_sample_prompt('gemini-3.5-flash-lite', 'brunt')
+        assert 'noun' not in prompt.lower()
+        assert 'IELTS' in prompt
+
+    def test_unknown_model_falls_back_to_plain_prompt(self):
+        from utils.sample_prompts import build_sample_prompt, PLAIN_IELTS_PROMPT
+        assert build_sample_prompt('gemini-3.7-flash', 'x') == PLAIN_IELTS_PROMPT.replace('{word}', 'x')
+
+    def test_word_is_substituted_everywhere_and_braces_are_safe(self):
+        from utils.sample_prompts import build_sample_prompt
+        for model in ('gemini-4-hydrogen', 'gemini-3.5-flash-lite'):
+            prompt = build_sample_prompt(model, 'set {up}')
+            assert '{word}' not in prompt
+            assert prompt.count('"set {up}"') >= 1
+
+    def test_generate_sample_route_uses_model_specific_prompt(self, monkeypatch):
+        """The route sends hydrogen's prompt for hydrogen and the plain one for flash-lite"""
+        import app as app_module
+        sent = []
+
+        class FakeMessage:
+            content = 'A sentence.'
+
+        class FakeChoice:
+            message = FakeMessage()
+
+        class FakeResponse:
+            choices = [FakeChoice()]
+
+        def fake_completion(client, model, prompt, trace_name):
+            sent.append((model, prompt))
+            return FakeResponse()
+
+        monkeypatch.setattr(app_module, 'create_gemini_completion', fake_completion)
+        monkeypatch.setattr(app_module, 'OpenAI', lambda **kw: object())
+        monkeypatch.setitem(app_module.app.config, 'TESTING', True)
+        monkeypatch.setitem(app_module.app.config, 'GEMINI_API_KEY', 'test-key')
+        client = app_module.app.test_client()
+        for model in ('gemini-4-hydrogen', 'gemini-3.5-flash-lite'):
+            response = client.post('/api/generate-sample', json={'word': 'brunt', 'model': model})
+            assert response.status_code == 200
+        assert 'noun or noun phrase' in sent[0][1]
+        assert 'noun' not in sent[1][1].lower()
+
+    def test_config_default_model_is_hydrogen(self):
+        import importlib
+        import config
+        old = os.environ.pop('GEMINI_MODEL', None)
+        try:
+            importlib.reload(config)
+            assert config.Config.GEMINI_MODEL == 'gemini-4-hydrogen'
+        finally:
+            if old is not None:
+                os.environ['GEMINI_MODEL'] = old
+            importlib.reload(config)
+
+    def test_dropdowns_offer_only_the_two_models_with_hydrogen_selected(self):
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, 'templates', 'index.html'), encoding='utf-8') as f:
+            html = f.read()
+        for select_id in ('transModelSelect', 'modelSelect'):
+            block = re.search(rf'<select id="{select_id}".*?</select>', html, re.S).group(0)
+            values = re.findall(r'<option value="([^"]+)"', block)
+            assert values == ['gemini-4-hydrogen', 'gemini-3.5-flash-lite']
+            assert 'value="gemini-4-hydrogen" selected' in block
+
+    def test_js_fallbacks_use_hydrogen(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with open(os.path.join(root, 'static', 'js', 'app.js'), encoding='utf-8') as f:
+            js = f.read()
+        assert 'gemini-3.7' not in js
+        assert js.count("'gemini-4-hydrogen'") >= 3
