@@ -3281,3 +3281,10 @@ body.dark-mode .quiz-word {
         box-shadow: 0 0 0 3px rgba(135, 206, 235, 0.2) !important;
     }
 }
+
+/* Swipe navigation (touch and pen only; mouse is unaffected). The browser keeps
+   vertical scrolling and pinch-zoom; horizontal swipes on the card go to the page
+   script, which moves to the previous or next word. */
+.vocab-page .word-card {
+    touch-action: pan-y pinch-zoom;
+}
