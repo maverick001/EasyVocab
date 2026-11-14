@@ -344,7 +344,7 @@ function resetCard() {
  */
 function showWordImage() {
     if (currentWord && currentWord.image_file && quizImageContainer && quizImage) {
-        quizImage.src = `/static/images/word_images/${currentWord.image_file}`;
+        quizImage.src = `/api/word-image/${encodeURIComponent(currentWord.image_file)}`;
         quizImageContainer.style.display = 'block';
         // Smooth scroll to the next button to ensure it and the image are visible
         nextBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });

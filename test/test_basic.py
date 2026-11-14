@@ -1529,3 +1529,98 @@ class TestPersistentCategories:
         start = js.index('function populateCategoryDropdown(')
         body = js[start:js.index('\n}', start)]
         assert 'handleCategoryChange({ target: Elements.categorySelect })' in body
+
+
+class FakeCursor:
+    """Minimal cursor stand-in: returns canned rows and records executed SQL."""
+
+    def __init__(self, row=None):
+        self.row = row
+        self.executed = []
+
+    def execute(self, sql, params=None):
+        self.executed.append((sql, params))
+
+    def fetchone(self):
+        return self.row
+
+
+class FakeConnection:
+    def __init__(self, cursor):
+        self._cursor = cursor
+
+    def cursor(self, *args, **kwargs):
+        return self._cursor
+
+    def close(self):
+        pass
+
+
+class TestWordImagesInMysql:
+    """Images are stored in MySQL and served only to logged-in users"""
+
+    @pytest.fixture
+    def client(self):
+        from app import app
+        app.config['TESTING'] = True
+        return app.test_client()
+
+    def test_ensure_word_images_table_is_callable(self):
+        import app as app_module
+        assert callable(app_module.ensure_word_images_table)
+
+    def test_guess_image_mime(self):
+        from app import guess_image_mime
+        assert guess_image_mime('a.jpg') == 'image/jpeg'
+        assert guess_image_mime('a.PNG') == 'image/png'
+        assert guess_image_mime('a.webp') == 'image/webp'
+        assert guess_image_mime('noext') == 'image/jpeg'
+
+    def test_blob_cleanup_skips_empty_candidates(self):
+        from app import delete_unreferenced_image_blobs
+        cursor = FakeCursor()
+        delete_unreferenced_image_blobs(cursor, [None, ''])
+        assert cursor.executed == []
+
+    def test_blob_cleanup_keeps_still_referenced_images(self):
+        """The DELETE must exclude any filename a words row still points at"""
+        from app import delete_unreferenced_image_blobs
+        cursor = FakeCursor()
+        delete_unreferenced_image_blobs(cursor, ['b.jpg', 'a.jpg', 'a.jpg', None])
+        sql, params = cursor.executed[0]
+        assert 'NOT IN' in sql and 'image_file_2' in sql
+        assert params == ['a.jpg', 'b.jpg']
+
+    def test_image_route_requires_login(self, client):
+        from app import app
+        app.config['SITE_PASSWORD'] = 'secret'
+        try:
+            response = client.get('/api/word-image/x.jpg')
+            assert response.status_code == 401
+        finally:
+            app.config['SITE_PASSWORD'] = None
+
+    def test_image_route_serves_bytes_privately(self, client, monkeypatch):
+        import app as app_module
+        cursor = FakeCursor(row=('image/png', bytearray(b'\x89PNGdata')))
+        monkeypatch.setattr(app_module, 'get_db_connection', lambda: FakeConnection(cursor))
+        response = client.get('/api/word-image/x.png')
+        assert response.status_code == 200
+        assert response.mimetype == 'image/png'
+        assert response.data == b'\x89PNGdata'
+        assert 'private' in response.headers['Cache-Control']
+        assert 'immutable' in response.headers['Cache-Control']
+
+    def test_image_route_404_when_missing(self, client, monkeypatch):
+        import app as app_module
+        cursor = FakeCursor(row=None)
+        monkeypatch.setattr(app_module, 'get_db_connection', lambda: FakeConnection(cursor))
+        assert client.get('/api/word-image/nope.jpg').status_code == 404
+
+    def test_pages_no_longer_use_static_image_urls(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        for name in ('app.js', 'quiz.js'):
+            with open(os.path.join(root, 'static', 'js', name), encoding='utf-8') as f:
+                source = f.read()
+            assert '/static/images/word_images/' not in source
+            assert '/api/word-image/' in source
