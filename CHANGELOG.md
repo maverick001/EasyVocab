@@ -3,7 +3,16 @@
 
 ## [Unreleased]
 ### Changed
+- **Static File Caching**: CSS, JS, theme and favicon URLs now carry a `?v=<content hash>` and are cached for a year by the browser and Vercel's CDN, so repeat page loads no longer fetch them through the Python function. Editing a file changes its hash, so changes still appear at once.
+- **Sentry Sampling**: `SENTRY_TRACES_SAMPLE_RATE` now defaults to `0.5` (was `1.0`), halving the requests that wait on a Sentry upload.
+- **Full Backups**: `scripts/backup_db.py` now also saves `categories`, `daily_word_reviews` and every stored word image (as files next to the JSON).
 - **Faster Translation**: Gemini calls now use low reasoning effort (`GEMINI_REASONING_EFFORT`, default `low`), cutting a translation from roughly 10-50 seconds to about 2 seconds with the same quality. If a model rejects the setting the call is retried without it. Set the variable empty to restore each model's default.
+
+### Security
+- **Session Key Check**: on Vercel the app refuses to start if `SECRET_KEY` is missing or a public placeholder, instead of signing sessions with a value from the repo.
+
+### Fixed
+- **Silent API Errors**: routes that answer with a JSON 500 now write the traceback to the server log and report it to Sentry.
 
 ### Added
 - **Optional Monitoring**: Sentry (errors, request timing) and Langfuse (Gemini call traces) turn on only when their keys are set in `.env` or on Vercel. Both are forced off under `SKIP_DB=true`, and a missing package or unreachable service never breaks a request.
