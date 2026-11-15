@@ -80,7 +80,9 @@ class Config:
         os.environ.get('SENTRY_ENVIRONMENT') or os.environ.get('VERCEL_ENV') or 'local'
     )
     SENTRY_DSN = os.environ.get('SENTRY_DSN')
-    SENTRY_TRACES_SAMPLE_RATE = os.environ.get('SENTRY_TRACES_SAMPLE_RATE', '1.0')
+    # Share of requests timed by Sentry. Each traced request is sent to Sentry
+    # before the response returns on Vercel, so 1.0 slows every request.
+    SENTRY_TRACES_SAMPLE_RATE = os.environ.get('SENTRY_TRACES_SAMPLE_RATE', '0.5')
     LANGFUSE_PUBLIC_KEY = os.environ.get('LANGFUSE_PUBLIC_KEY')
     LANGFUSE_SECRET_KEY = os.environ.get('LANGFUSE_SECRET_KEY')
 
