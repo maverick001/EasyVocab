@@ -195,7 +195,13 @@ function displayWord(word) {
 
     // sentences
     if (word.example_sentence) {
-        sentencesDisplay.innerHTML = word.example_sentence.split('\n').map(s => `<p>${s}</p>`).join('');
+        // One <p> per line, set as text: sentences are typed in or written by
+        // Gemini, so they must never be parsed as HTML.
+        sentencesDisplay.replaceChildren(...word.example_sentence.split('\n').map(sentence => {
+            const p = document.createElement('p');
+            p.textContent = sentence;
+            return p;
+        }));
     } else {
         sentencesDisplay.innerHTML = '<p><em>No example sentence available.</em></p>';
     }

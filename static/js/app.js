@@ -1119,16 +1119,27 @@ async function loadCategories() {
     }
 }
 
+// Counts loadWord() calls, so a response can tell whether it is still wanted
+let latestWordRequestId = 0;
+
 /**
  * Load a specific word from a category by index
  */
 async function loadWord(category, index) {
+    // Holding an arrow key starts many loads at once, and their responses can
+    // arrive out of order. Only the most recent request may update the card;
+    // an older response landing late would put back a word already passed.
+    const requestId = ++latestWordRequestId;
+    const isLatest = () => requestId === latestWordRequestId;
+
     try {
         showLoading(true);
         hideError();
 
         const response = await fetch(`/api/words-query?category=${encodeURIComponent(category)}&index=${index}&sort_by=${AppState.currentSortBy}`);
         const data = await response.json();
+
+        if (!isLatest()) return;
 
         if (data.success && data.word) {
             displayWord(data.word);
@@ -1138,10 +1149,12 @@ async function loadWord(category, index) {
         }
 
     } catch (error) {
+        if (!isLatest()) return;
         console.error('Error loading word:', error);
         showError('Network error while loading word');
     } finally {
-        showLoading(false);
+        // A newer request is still loading, so the indicator is its to hide
+        if (isLatest()) showLoading(false);
     }
 }
 
@@ -2336,12 +2349,18 @@ async function submitNewWord() {
             console.log(`✅ Word "${word}" added successfully`);
         } else {
             if (data.duplicate) {
-                // Show error message with "Go to Word" button for duplicates
-                Elements.addWordStatus.innerHTML = `⚠️ ${data.error} 
-                    <button class="btn btn-sm btn-primary" style="margin-left: 10px;" 
-                            onclick="navigateToExistingWord('${data.existing_category}', ${data.existing_word_id})">
-                        Go to Word
-                    </button>`;
+                // Show error message with "Go to Word" button for duplicates.
+                // Built as DOM nodes, not an HTML string: the message quotes
+                // the word and category, which may hold < or ' characters.
+                const goToWordBtn = document.createElement('button');
+                goToWordBtn.type = 'button';
+                goToWordBtn.className = 'btn btn-sm btn-primary';
+                goToWordBtn.style.marginLeft = '10px';
+                goToWordBtn.textContent = 'Go to Word';
+                goToWordBtn.addEventListener('click', () => {
+                    navigateToExistingWord(data.existing_category, data.existing_word_id);
+                });
+                Elements.addWordStatus.replaceChildren(`⚠️ ${data.error} `, goToWordBtn);
             } else {
                 Elements.addWordStatus.textContent = `❌ ${data.error}`;
             }
