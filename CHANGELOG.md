@@ -3,6 +3,7 @@
 
 ## [Unreleased]
 ### Changed
+- **Category Names**: the categories 政治 and 军事 are shown as 人文 and 航天 on the vocab and quiz pages. Display only: the database, API and URLs keep the stored names (`static/js/category-names.js`).
 - **Static File Caching**: CSS, JS, theme and favicon URLs now carry a `?v=<content hash>` and are cached for a year by the browser and Vercel's CDN, so repeat page loads no longer fetch them through the Python function. Editing a file changes its hash, so changes still appear at once.
 - **Sentry Sampling**: `SENTRY_TRACES_SAMPLE_RATE` now defaults to `0.5` (was `1.0`), halving the requests that wait on a Sentry upload.
 - **Full Backups**: `scripts/backup_db.py` now also saves `categories`, `daily_word_reviews` and every stored word image (as files next to the JSON).
@@ -12,6 +13,10 @@
 - **Session Key Check**: on Vercel the app refuses to start if `SECRET_KEY` is missing or a public placeholder, instead of signing sessions with a value from the repo.
 
 ### Fixed
+- **Latest-Edits Order**: reviewing a word no longer stamps its edit time 10 hours ahead, so a word reviewed hours ago no longer sorts above one edited just now. Words reviewed before this fix keep their old stamp until next edited or reviewed.
+- **Leftover Images**: deleting a word, deleting a category or merging two entries now removes stored image bytes that no word uses any more.
+- **Text Shown As Text**: quiz example sentences and the "word already exists" message are no longer inserted as HTML; a category name containing `'` no longer breaks the Go to Word button.
+- **Arrow-Key Navigation**: holding an arrow key can no longer end on the wrong word when responses arrive out of order.
 - **Silent API Errors**: routes that answer with a JSON 500 now write the traceback to the server log and report it to Sentry.
 
 ### Added
