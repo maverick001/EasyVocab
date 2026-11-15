@@ -141,7 +141,7 @@ async function loadCategories() {
             data.categories.filter(cat => cat.word_count > 0).forEach(cat => {
                 const option = document.createElement('option');
                 option.value = cat.name;
-                option.textContent = `${displayCategory(cat.name)} (${cat.word_count})`;
+                option.textContent = `${cat.name} (${cat.word_count})`;
                 categorySelect.appendChild(option);
             });
         }
