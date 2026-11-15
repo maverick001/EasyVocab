@@ -12,6 +12,10 @@
 - **Session Key Check**: on Vercel the app refuses to start if `SECRET_KEY` is missing or a public placeholder, instead of signing sessions with a value from the repo.
 
 ### Fixed
+- **Latest-Edits Order**: reviewing a word no longer stamps its edit time 10 hours ahead, so a word reviewed hours ago no longer sorts above one edited just now. Words reviewed before this fix keep their old stamp until next edited or reviewed.
+- **Leftover Images**: deleting a word, deleting a category or merging two entries now removes stored image bytes that no word uses any more.
+- **Text Shown As Text**: quiz example sentences and the "word already exists" message are no longer inserted as HTML; a category name containing `'` no longer breaks the Go to Word button.
+- **Arrow-Key Navigation**: holding an arrow key can no longer end on the wrong word when responses arrive out of order.
 - **Silent API Errors**: routes that answer with a JSON 500 now write the traceback to the server log and report it to Sentry.
 
 ### Added
