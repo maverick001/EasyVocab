@@ -38,6 +38,7 @@ from datetime import datetime, date, timedelta, timezone
 from openai import BadRequestError
 from PIL import Image
 import io
+import hashlib
 import sys
 import time
 import traceback
@@ -90,12 +91,63 @@ def report_api_error(exc):
     capture_exception(exc)
 
 
+# Static files: a URL carrying ?v=<content hash> can be cached for a year,
+# because an edited file gets a new hash and so a new URL. s-maxage lets
+# Vercel's CDN answer without starting the Python function.
+STATIC_VERSIONED_CACHE = "public, max-age=31536000, s-maxage=31536000, immutable"
+# Without a version the browser may keep a copy but must check it is current.
+STATIC_UNVERSIONED_CACHE = "no-cache"
+
+# filename -> ((mtime, size), hash), so a file is re-read only after an edit
+_static_version_cache = {}
+
+
+def static_file_version(filename):
+    """
+    Short content hash of a file under static/, for cache-busting URLs.
+
+    Args:
+        filename: path relative to the static folder, e.g. 'css/style.css'
+
+    Returns:
+        A 10-character hex string, or None if the file cannot be read
+    """
+    path = os.path.join(app.static_folder, *filename.split("/"))
+    try:
+        stat = os.stat(path)
+        signature = (stat.st_mtime_ns, stat.st_size)
+        cached = _static_version_cache.get(filename)
+        if cached and cached[0] == signature:
+            return cached[1]
+        with open(path, "rb") as f:
+            version = hashlib.sha256(f.read()).hexdigest()[:10]
+    except OSError:
+        return None
+    _static_version_cache[filename] = (signature, version)
+    return version
+
+
+@app.url_defaults
+def add_static_version(endpoint, values):
+    """Give every url_for('static', ...) link a ?v=<content hash>"""
+    if endpoint != "static" or "v" in values:
+        return
+    version = static_file_version(values.get("filename") or "")
+    if version:
+        values["v"] = version
+
+
 @app.after_request
 def add_header(response):
-    """Add headers to prevent caching"""
+    """Set caching: long-lived for versioned static files, off for the rest"""
     # Word images set their own `private` caching: their filenames never change
     # content, and caching them saves a database round trip per view.
     if request.endpoint == "serve_word_image" and response.status_code in (200, 304):
+        return response
+    if request.endpoint == "static" and response.status_code in (200, 304):
+        response.headers["Cache-Control"] = (
+            STATIC_VERSIONED_CACHE if request.args.get("v") else STATIC_UNVERSIONED_CACHE
+        )
         return response
     response.headers["Cache-Control"] = (
         "no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0"
@@ -849,6 +901,27 @@ def increment_daily_counter(cursor, word_id=None):
 # ============================================
 # Web Routes
 # ============================================
+
+
+@app.context_processor
+def inject_theme_versions():
+    """
+    Content hashes of the GUI theme stylesheets, keyed by theme name.
+
+    app.js builds theme URLs itself, so it cannot use url_for; the page hands
+    it these to append as ?v=, which makes theme files cacheable like the rest.
+    """
+    themes_dir = os.path.join(app.static_folder, "css", "themes")
+    versions = {}
+    try:
+        for entry in sorted(os.listdir(themes_dir)):
+            if entry.startswith("theme-") and entry.endswith(".css"):
+                version = static_file_version(f"css/themes/{entry}")
+                if version:
+                    versions[entry[len("theme-"):-len(".css")]] = version
+    except OSError:
+        pass
+    return dict(theme_versions=versions)
 
 
 @app.context_processor
