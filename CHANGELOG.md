@@ -3,6 +3,7 @@
 
 ## [Unreleased]
 ### Changed
+- **Category Names**: the categories 政治 and 军事 are shown as 人文 and 航天 on the vocab and quiz pages. Display only: the database, API and URLs keep the stored names (`static/js/category-names.js`).
 - **Static File Caching**: CSS, JS, theme and favicon URLs now carry a `?v=<content hash>` and are cached for a year by the browser and Vercel's CDN, so repeat page loads no longer fetch them through the Python function. Editing a file changes its hash, so changes still appear at once.
 - **Sentry Sampling**: `SENTRY_TRACES_SAMPLE_RATE` now defaults to `0.5` (was `1.0`), halving the requests that wait on a Sentry upload.
 - **Full Backups**: `scripts/backup_db.py` now also saves `categories`, `daily_word_reviews` and every stored word image (as files next to the JSON).
