@@ -38,7 +38,10 @@ from datetime import datetime, date, timedelta, timezone
 from openai import BadRequestError
 from PIL import Image
 import io
+import hashlib
+import sys
 import time
+import traceback
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
@@ -71,12 +74,80 @@ def flush_monitoring(exc):
     flush_sentry()
 
 
+def report_api_error(exc):
+    """
+    Record an exception that a route is about to turn into a JSON 500.
+
+    The routes catch everything so the page always gets JSON back, which also
+    hides the failure from Flask and Sentry. This puts the traceback in the
+    server log (Vercel runtime logs) and sends it to Sentry when that is on.
+    Call it from inside the except block. Never raises.
+    """
+    try:
+        print(f"[ERROR] {request.method} {request.path} failed:", file=sys.stderr)
+        traceback.print_exc()
+    except Exception:
+        pass
+    capture_exception(exc)
+
+
+# Static files: a URL carrying ?v=<content hash> can be cached for a year,
+# because an edited file gets a new hash and so a new URL. s-maxage lets
+# Vercel's CDN answer without starting the Python function.
+STATIC_VERSIONED_CACHE = "public, max-age=31536000, s-maxage=31536000, immutable"
+# Without a version the browser may keep a copy but must check it is current.
+STATIC_UNVERSIONED_CACHE = "no-cache"
+
+# filename -> ((mtime, size), hash), so a file is re-read only after an edit
+_static_version_cache = {}
+
+
+def static_file_version(filename):
+    """
+    Short content hash of a file under static/, for cache-busting URLs.
+
+    Args:
+        filename: path relative to the static folder, e.g. 'css/style.css'
+
+    Returns:
+        A 10-character hex string, or None if the file cannot be read
+    """
+    path = os.path.join(app.static_folder, *filename.split("/"))
+    try:
+        stat = os.stat(path)
+        signature = (stat.st_mtime_ns, stat.st_size)
+        cached = _static_version_cache.get(filename)
+        if cached and cached[0] == signature:
+            return cached[1]
+        with open(path, "rb") as f:
+            version = hashlib.sha256(f.read()).hexdigest()[:10]
+    except OSError:
+        return None
+    _static_version_cache[filename] = (signature, version)
+    return version
+
+
+@app.url_defaults
+def add_static_version(endpoint, values):
+    """Give every url_for('static', ...) link a ?v=<content hash>"""
+    if endpoint != "static" or "v" in values:
+        return
+    version = static_file_version(values.get("filename") or "")
+    if version:
+        values["v"] = version
+
+
 @app.after_request
 def add_header(response):
-    """Add headers to prevent caching"""
+    """Set caching: long-lived for versioned static files, off for the rest"""
     # Word images set their own `private` caching: their filenames never change
     # content, and caching them saves a database round trip per view.
     if request.endpoint == "serve_word_image" and response.status_code in (200, 304):
+        return response
+    if request.endpoint == "static" and response.status_code in (200, 304):
+        response.headers["Cache-Control"] = (
+            STATIC_VERSIONED_CACHE if request.args.get("v") else STATIC_UNVERSIONED_CACHE
+        )
         return response
     response.headers["Cache-Control"] = (
         "no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0"
@@ -833,6 +904,27 @@ def increment_daily_counter(cursor, word_id=None):
 
 
 @app.context_processor
+def inject_theme_versions():
+    """
+    Content hashes of the GUI theme stylesheets, keyed by theme name.
+
+    app.js builds theme URLs itself, so it cannot use url_for; the page hands
+    it these to append as ?v=, which makes theme files cacheable like the rest.
+    """
+    themes_dir = os.path.join(app.static_folder, "css", "themes")
+    versions = {}
+    try:
+        for entry in sorted(os.listdir(themes_dir)):
+            if entry.startswith("theme-") and entry.endswith(".css"):
+                version = static_file_version(f"css/themes/{entry}")
+                if version:
+                    versions[entry[len("theme-"):-len(".css")]] = version
+    except OSError:
+        pass
+    return dict(theme_versions=versions)
+
+
+@app.context_processor
 def inject_env_info():
     """
     Inject environment information into all templates.
@@ -1018,6 +1110,7 @@ def delete_category(name):
         )
 
     except Exception as e:
+        report_api_error(e)
         if conn:
             conn.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
@@ -1069,6 +1162,7 @@ def get_categories():
         return jsonify({"success": True, "categories": categories})
 
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
@@ -1102,6 +1196,7 @@ def serve_word_image(filename):
         response.add_etag()
         return response.make_conditional(request)
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
@@ -1133,6 +1228,7 @@ def get_available_images():
 
         return jsonify({"success": True, "images": sorted(images)})
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -1271,6 +1367,7 @@ def get_word_by_category(category=None):
     except ValueError:
         return jsonify({"success": False, "error": "Invalid index parameter"}), 400
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
@@ -1398,6 +1495,7 @@ def add_word():
         )
 
     except Exception as e:
+        report_api_error(e)
         if conn:
             conn.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
@@ -1529,6 +1627,7 @@ def search_words():
         )
 
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
@@ -1593,6 +1692,7 @@ def get_word_history(word_id):
         )
 
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
@@ -1647,6 +1747,7 @@ def get_word_details(word_id):
         )
 
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
@@ -1811,6 +1912,7 @@ def update_word(word_id):
         )
 
     except Exception as e:
+        report_api_error(e)
         if conn:
             conn.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
@@ -1933,6 +2035,7 @@ def change_word_category(word_id):
         return jsonify({"success": True, "message": message, "merged": bool(existing_word)})
 
     except Exception as e:
+        report_api_error(e)
         if conn:
             conn.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
@@ -2068,6 +2171,7 @@ def add_word_category(word_id):
         )
 
     except Exception as e:
+        report_api_error(e)
         if conn:
             conn.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
@@ -2190,6 +2294,7 @@ def delete_word(word_id):
             return jsonify({"success": False, "error": "Word not found"}), 404
 
     except Exception as e:
+        report_api_error(e)
         if conn:
             conn.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
@@ -2293,6 +2398,7 @@ def increment_review_counter(word_id):
             return jsonify({"success": False, "error": "Word not found"}), 404
 
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
@@ -2389,6 +2495,7 @@ def get_word_debt():
         )
 
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
@@ -2430,6 +2537,7 @@ def get_daily_count():
 
         return jsonify({"success": True, "count": count})
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
@@ -2579,7 +2687,7 @@ def generate_sample_sentence():
             ), 500
 
     except Exception as e:
-        capture_exception(e)
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         flush_langfuse()
@@ -2654,7 +2762,7 @@ def generate_translation():
             ), 500
 
     except Exception as e:
-        capture_exception(e)
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         flush_langfuse()
@@ -2698,6 +2806,7 @@ def get_category_count(category):
         return jsonify({"success": True, "category": category, "count": count})
 
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -2827,6 +2936,7 @@ def get_next_quiz_word():
         return jsonify({"success": True, "word": word})
 
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
@@ -2944,6 +3054,7 @@ def submit_quiz_result():
             )
 
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
@@ -3028,6 +3139,7 @@ def upload_local_xml():
                 conn.close()
 
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -3109,6 +3221,7 @@ def upload_xml():
                 conn.close()
 
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -3184,6 +3297,7 @@ def get_word_position(word_id):
         )
 
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
@@ -3336,11 +3450,13 @@ def upload_word_image(word_id):
             )
 
         except Exception as e:
+            report_api_error(e)
             return jsonify(
                 {"success": False, "error": f"Image processing failed: {str(e)}"}
             ), 500
 
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
@@ -3410,6 +3526,7 @@ def delete_word_image(word_id, slot):
         )
 
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
@@ -3465,6 +3582,7 @@ def get_quiz_stats():
         return jsonify({"success": True, "stats": stats})
         
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:

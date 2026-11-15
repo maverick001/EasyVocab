@@ -243,7 +243,16 @@ function applyGuiTheme(themeName) {
     if (themeName === 'default') {
         themeLink.href = '';
     } else {
-        themeLink.href = `/static/css/themes/theme-${themeName}.css`;
+        // ?v=<content hash> from the page lets the file be cached for a long
+        // time and still refresh when it is edited. No hash, no ?v=.
+        let version = '';
+        try {
+            version = (JSON.parse(themeLink.dataset.versions || '{}'))[themeName] || '';
+        } catch (error) {
+            version = '';
+        }
+        const query = version ? `?v=${version}` : '';
+        themeLink.href = `/static/css/themes/theme-${themeName}.css${query}`;
     }
 }
 

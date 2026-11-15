@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link id="themeStylesheet" rel="stylesheet" href="">
+    <link id="themeStylesheet" rel="stylesheet" href="" data-versions='{{ theme_versions|tojson }}'>
 </head>
 
 <body class="vocab-page">
@@ -405,7 +405,7 @@
     </div>
 
     <!-- JavaScript -->
-    <script src="{{ url_for('static', filename='js/app.js') }}?v=8"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 
 </html>

@@ -10,6 +10,41 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+# Session cookies are signed with SECRET_KEY. These values are public (this
+# repo and .env.example), so anyone could forge a logged-in cookie with them.
+DEV_SECRET_KEY = 'dev-secret-key-change-in-production'
+PUBLIC_SECRET_KEYS = frozenset({DEV_SECRET_KEY, 'your-secret-key-here'})
+
+
+def resolve_secret_key(environ):
+    """
+    Pick the session signing key.
+
+    On Vercel a real SECRET_KEY is required: the app refuses to start rather
+    than sign sessions with a publicly known value. Everywhere else (local
+    runs, Docker, tests) a missing key falls back to the dev value.
+
+    Args:
+        environ: mapping of environment variables (os.environ)
+
+    Returns:
+        The key to sign sessions with
+
+    Raises:
+        RuntimeError: on Vercel when SECRET_KEY is missing or a public value
+    """
+    # The key is returned exactly as set: trimming it would change the signing
+    # key and log out existing sessions. Whitespace is ignored only for the check.
+    key = environ.get('SECRET_KEY') or ''
+    if environ.get('VERCEL') and (not key.strip() or key.strip() in PUBLIC_SECRET_KEYS):
+        raise RuntimeError(
+            'SECRET_KEY is missing or set to a publicly known placeholder. '
+            'Set a long random SECRET_KEY in the Vercel project environment '
+            'variables, then redeploy.'
+        )
+    return key or DEV_SECRET_KEY
+
+
 class Config:
     """
     Main configuration class for Flask application
@@ -17,7 +52,7 @@ class Config:
     """
 
     # Flask Configuration
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
+    SECRET_KEY = resolve_secret_key(os.environ)
     DEBUG = os.environ.get('DEBUG', 'True').lower() == 'true'
     
     # Site Password Protection (set in environment to enable)
@@ -47,7 +82,9 @@ class Config:
         os.environ.get('SENTRY_ENVIRONMENT') or os.environ.get('VERCEL_ENV') or 'local'
     )
     SENTRY_DSN = os.environ.get('SENTRY_DSN')
-    SENTRY_TRACES_SAMPLE_RATE = os.environ.get('SENTRY_TRACES_SAMPLE_RATE', '1.0')
+    # Share of requests timed by Sentry. Each traced request is sent to Sentry
+    # before the response returns on Vercel, so 1.0 slows every request.
+    SENTRY_TRACES_SAMPLE_RATE = os.environ.get('SENTRY_TRACES_SAMPLE_RATE', '0.5')
     LANGFUSE_PUBLIC_KEY = os.environ.get('LANGFUSE_PUBLIC_KEY')
     LANGFUSE_SECRET_KEY = os.environ.get('LANGFUSE_SECRET_KEY')
 

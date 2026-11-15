@@ -25,15 +25,19 @@ _sentry_active = False
 _langfuse_active = False
 
 
+# Used when SENTRY_TRACES_SAMPLE_RATE is not a number
+DEFAULT_TRACES_SAMPLE_RATE = 0.5
+
+
 def _traces_sampler(sampling_context):
-    """Sample every request except static files."""
+    """Sample the configured share of requests, and never static files."""
     environ = sampling_context.get("wsgi_environ") or {}
     if environ.get("PATH_INFO", "").startswith("/static/"):
         return 0
     try:
         return max(0.0, min(1.0, float(Config.SENTRY_TRACES_SAMPLE_RATE)))
     except (TypeError, ValueError):
-        return 1.0
+        return DEFAULT_TRACES_SAMPLE_RATE
 
 
 def init_sentry():
