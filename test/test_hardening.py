@@ -64,6 +64,11 @@ class TestSecretKey:
         from config import resolve_secret_key
         assert resolve_secret_key({'VERCEL': '1', 'SECRET_KEY': 'a-real-key'}) == 'a-real-key'
 
+    def test_key_is_returned_exactly_as_set(self):
+        """Trimming would change the signing key and log out existing sessions"""
+        from config import resolve_secret_key
+        assert resolve_secret_key({'VERCEL': '1', 'SECRET_KEY': ' padded-key '}) == ' padded-key '
+
     def test_local_run_without_key_keeps_the_dev_fallback(self):
         from config import resolve_secret_key, DEV_SECRET_KEY
         assert resolve_secret_key({}) == DEV_SECRET_KEY

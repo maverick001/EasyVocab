@@ -33,8 +33,10 @@ def resolve_secret_key(environ):
     Raises:
         RuntimeError: on Vercel when SECRET_KEY is missing or a public value
     """
-    key = (environ.get('SECRET_KEY') or '').strip()
-    if environ.get('VERCEL') and (not key or key in PUBLIC_SECRET_KEYS):
+    # The key is returned exactly as set: trimming it would change the signing
+    # key and log out existing sessions. Whitespace is ignored only for the check.
+    key = environ.get('SECRET_KEY') or ''
+    if environ.get('VERCEL') and (not key.strip() or key.strip() in PUBLIC_SECRET_KEYS):
         raise RuntimeError(
             'SECRET_KEY is missing or set to a publicly known placeholder. '
             'Set a long random SECRET_KEY in the Vercel project environment '
