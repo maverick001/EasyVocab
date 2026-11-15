@@ -38,7 +38,9 @@ from datetime import datetime, date, timedelta, timezone
 from openai import BadRequestError
 from PIL import Image
 import io
+import sys
 import time
+import traceback
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
@@ -69,6 +71,23 @@ app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 def flush_monitoring(exc):
     """Send queued Sentry events before Vercel freezes the function (Vercel only)"""
     flush_sentry()
+
+
+def report_api_error(exc):
+    """
+    Record an exception that a route is about to turn into a JSON 500.
+
+    The routes catch everything so the page always gets JSON back, which also
+    hides the failure from Flask and Sentry. This puts the traceback in the
+    server log (Vercel runtime logs) and sends it to Sentry when that is on.
+    Call it from inside the except block. Never raises.
+    """
+    try:
+        print(f"[ERROR] {request.method} {request.path} failed:", file=sys.stderr)
+        traceback.print_exc()
+    except Exception:
+        pass
+    capture_exception(exc)
 
 
 @app.after_request
@@ -1018,6 +1037,7 @@ def delete_category(name):
         )
 
     except Exception as e:
+        report_api_error(e)
         if conn:
             conn.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
@@ -1069,6 +1089,7 @@ def get_categories():
         return jsonify({"success": True, "categories": categories})
 
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
@@ -1102,6 +1123,7 @@ def serve_word_image(filename):
         response.add_etag()
         return response.make_conditional(request)
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
@@ -1133,6 +1155,7 @@ def get_available_images():
 
         return jsonify({"success": True, "images": sorted(images)})
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -1271,6 +1294,7 @@ def get_word_by_category(category=None):
     except ValueError:
         return jsonify({"success": False, "error": "Invalid index parameter"}), 400
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
@@ -1398,6 +1422,7 @@ def add_word():
         )
 
     except Exception as e:
+        report_api_error(e)
         if conn:
             conn.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
@@ -1529,6 +1554,7 @@ def search_words():
         )
 
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
@@ -1593,6 +1619,7 @@ def get_word_history(word_id):
         )
 
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
@@ -1647,6 +1674,7 @@ def get_word_details(word_id):
         )
 
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
@@ -1811,6 +1839,7 @@ def update_word(word_id):
         )
 
     except Exception as e:
+        report_api_error(e)
         if conn:
             conn.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
@@ -1933,6 +1962,7 @@ def change_word_category(word_id):
         return jsonify({"success": True, "message": message, "merged": bool(existing_word)})
 
     except Exception as e:
+        report_api_error(e)
         if conn:
             conn.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
@@ -2068,6 +2098,7 @@ def add_word_category(word_id):
         )
 
     except Exception as e:
+        report_api_error(e)
         if conn:
             conn.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
@@ -2190,6 +2221,7 @@ def delete_word(word_id):
             return jsonify({"success": False, "error": "Word not found"}), 404
 
     except Exception as e:
+        report_api_error(e)
         if conn:
             conn.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
@@ -2293,6 +2325,7 @@ def increment_review_counter(word_id):
             return jsonify({"success": False, "error": "Word not found"}), 404
 
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
@@ -2389,6 +2422,7 @@ def get_word_debt():
         )
 
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
@@ -2430,6 +2464,7 @@ def get_daily_count():
 
         return jsonify({"success": True, "count": count})
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
@@ -2579,7 +2614,7 @@ def generate_sample_sentence():
             ), 500
 
     except Exception as e:
-        capture_exception(e)
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         flush_langfuse()
@@ -2654,7 +2689,7 @@ def generate_translation():
             ), 500
 
     except Exception as e:
-        capture_exception(e)
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         flush_langfuse()
@@ -2698,6 +2733,7 @@ def get_category_count(category):
         return jsonify({"success": True, "category": category, "count": count})
 
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -2827,6 +2863,7 @@ def get_next_quiz_word():
         return jsonify({"success": True, "word": word})
 
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
@@ -2944,6 +2981,7 @@ def submit_quiz_result():
             )
 
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
@@ -3028,6 +3066,7 @@ def upload_local_xml():
                 conn.close()
 
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -3109,6 +3148,7 @@ def upload_xml():
                 conn.close()
 
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -3184,6 +3224,7 @@ def get_word_position(word_id):
         )
 
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
@@ -3336,11 +3377,13 @@ def upload_word_image(word_id):
             )
 
         except Exception as e:
+            report_api_error(e)
             return jsonify(
                 {"success": False, "error": f"Image processing failed: {str(e)}"}
             ), 500
 
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
@@ -3410,6 +3453,7 @@ def delete_word_image(word_id, slot):
         )
 
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
@@ -3465,6 +3509,7 @@ def get_quiz_stats():
         return jsonify({"success": True, "stats": stats})
         
     except Exception as e:
+        report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         if conn:
