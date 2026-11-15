@@ -488,6 +488,45 @@ def delete_unreferenced_image_blobs(cursor, filenames):
     )
 
 
+def collect_word_image_files(cursor, where_sql, params):
+    """
+    Image filenames held by the words rows matching a condition.
+
+    Call it before deleting those rows, then hand the result to
+    cleanup_orphaned_images() once they are gone.
+
+    Args:
+        cursor: open cursor with dictionary=True
+        where_sql: condition on the words table, written by the caller (never
+            taken from a request), with %s placeholders
+        params: values for the placeholders
+
+    Returns:
+        A list of filenames; may hold None and repeats, which the cleanup ignores
+    """
+    cursor.execute(
+        f"SELECT image_file, image_file_2 FROM words WHERE {where_sql}", params
+    )
+    return [
+        f for row in cursor.fetchall() for f in (row["image_file"], row["image_file_2"])
+    ]
+
+
+def cleanup_orphaned_images(cursor, filenames):
+    """
+    Remove stored image bytes left without a word after rows were deleted.
+
+    Runs inside the caller's transaction, after the rows are gone and before
+    the commit. Best effort: failing to tidy up must not stop the word or
+    category from being deleted, so a database error here is reported and the
+    caller carries on. An image still used by another row is always kept.
+    """
+    try:
+        delete_unreferenced_image_blobs(cursor, filenames)
+    except mysql.connector.Error as err:
+        report_api_error(err)
+
+
 def parse_image_slot(raw):
     """
     Interpret the 'slot' field of an image upload request.
@@ -1058,6 +1097,13 @@ def delete_category(name):
 
         ensure_category_row(cursor, UNGROUPED_CATEGORY)
 
+        # Images held by this category's rows, read before any row is dropped
+        category_images = collect_word_image_files(
+            cursor,
+            "category = %s AND (image_file IS NOT NULL OR image_file_2 IS NOT NULL)",
+            (name,),
+        )
+
         # Drop copies whose word is already in 未分组单词. The inner query is
         # wrapped in a derived table because MySQL forbids reading the table
         # being deleted from in a subquery.
@@ -1082,6 +1128,8 @@ def delete_category(name):
         words_moved = cursor.rowcount
 
         cursor.execute("DELETE FROM categories WHERE name = %s", (name,))
+        # A dropped copy may have held an image its surviving twin does not
+        cleanup_orphaned_images(cursor, category_images)
         conn.commit()
 
         # Refresh counts. Non-critical: the list reads the categories table, so
@@ -2003,6 +2051,14 @@ def change_word_category(word_id):
             (*update_values.values(), word_id),
         )
 
+        if existing_word:
+            # The absorbed row's images were carried over only where the kept
+            # row had none; any that were not are now held by nothing.
+            cleanup_orphaned_images(
+                cursor,
+                [existing_word.get("image_file"), existing_word.get("image_file_2")],
+            )
+
         # Create history record for the moved word, recording what it holds
         # after any merge rather than what it held before
         moved_word = {**current_word, **update_values}
@@ -2256,6 +2312,11 @@ def delete_word(word_id):
                 }
             ), 200
 
+        # Images held by any row of this word, read before the rows go
+        word_images = collect_word_image_files(
+            cursor, "word = %s", (current_word["word"],)
+        )
+
         # Perform deletion based on the selected categories/scope
         if selected_categories is not None:
             # Delete from exactly the categories the user selected
@@ -2277,6 +2338,8 @@ def delete_word(word_id):
             rows_affected = cursor.rowcount
             message = f'Word "{current_word["word"]}" deleted from category "{current_word["category"]}"'
 
+        # Deleting the last row of a word leaves its images held by nothing
+        cleanup_orphaned_images(cursor, word_images)
         conn.commit()
 
         # Update category counts and log daily activity
@@ -2331,13 +2394,18 @@ def increment_review_counter(word_id):
         if not target:
             return jsonify({"success": False, "error": "Word not found"}), 404
 
-        # Increment review_count and update last_reviewed and updated_at timestamps
+        # Increment review_count and update last_reviewed and updated_at.
+        # updated_at takes the plain current time, the same clock that edits
+        # (ON UPDATE CURRENT_TIMESTAMP) and flashcards (NOW()) write. It used to
+        # be stamped 10 hours ahead here, which sorted a word reviewed hours ago
+        # above one edited just now under "latest edits". last_reviewed keeps
+        # its +10h: it is a display value in AEST and nothing sorts across it.
         cursor.execute(
             """
             UPDATE words
             SET review_count = review_count + 1,
                 last_reviewed = DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 10 HOUR),
-                updated_at = DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 10 HOUR)
+                updated_at = CURRENT_TIMESTAMP
             WHERE word = %s
         """,
             (target["word"],),
