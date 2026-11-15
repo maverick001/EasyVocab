@@ -1073,21 +1073,21 @@ async function deleteCurrentCategory() {
     const detail = count > 0
         ? `Its ${count} word${count === 1 ? '' : 's'} will move to "${UNGROUPED_CATEGORY}".`
         : 'It has no words.';
-    if (!confirm(`Delete category "${displayCategory(category)}"? ${detail}`)) return;
+    if (!confirm(`Delete category "${category}"? ${detail}`)) return;
 
     try {
         const response = await fetch(`/api/categories/${encodeURIComponent(category)}`, { method: 'DELETE' });
         const data = await response.json();
 
         if (!data.success) {
-            showError(displayCategoryInMessage(data.error) || 'Failed to delete category');
+            showError(data.error || 'Failed to delete category');
             return;
         }
 
         // Reloading rebuilds both dropdowns. If the category on screen was the one
         // deleted, the view goes back to the welcome screen.
         await loadCategories();
-        showToast(displayCategoryInMessage(data.message));
+        showToast(data.message);
     } catch (error) {
         console.error('Error deleting category:', error);
         showError('Network error while deleting category');
@@ -1327,7 +1327,7 @@ function populateCategoryDropdown(categories) {
     nonEmpty.forEach(cat => {
         const option = document.createElement('option');
         option.value = cat.name;
-        option.textContent = `${displayCategory(cat.name)} (${cat.word_count})`;
+        option.textContent = `${cat.name} (${cat.word_count})`;
         Elements.categorySelect.appendChild(option);
     });
 
@@ -1337,7 +1337,7 @@ function populateCategoryDropdown(categories) {
     sortedCategories.forEach(cat => {
         const option = document.createElement('option');
         option.value = cat.name;
-        option.textContent = `${displayCategory(cat.name)} (${cat.word_count})`;
+        option.textContent = `${cat.name} (${cat.word_count})`;
         Elements.changeCategorySelect.appendChild(option);
     });
 
@@ -1373,7 +1373,7 @@ function renderWordCategories(categories) {
     const list = Array.isArray(categories) ? categories : [];
 
     Elements.wordCategories.innerHTML = list
-        .map(name => `<span class="word-category-tag">${escapeHTML(displayCategory(name))}</span>`)
+        .map(name => `<span class="word-category-tag">${escapeHTML(name)}</span>`)
         .join('');
 
     alignWordCategories();
@@ -1992,7 +1992,7 @@ async function openAddWordModal() {
         AppState.categories.forEach(cat => {
             const option = document.createElement('option');
             option.value = cat.name;
-            option.textContent = `${displayCategory(cat.name)} (${cat.word_count})`;
+            option.textContent = `${cat.name} (${cat.word_count})`;
             Elements.newCategory.appendChild(option);
         });
     } else {
@@ -2264,8 +2264,7 @@ async function submitNewWord() {
     if (Elements.newCategory.style.display !== 'none') {
         category = Elements.newCategory.value.trim();
     } else {
-        // A typed display name means the category it stands for
-        category = storedCategory(Elements.newCategoryInput.value.trim());
+        category = Elements.newCategoryInput.value.trim();
     }
 
     const sample = Elements.newSample.value.trim();
@@ -2324,7 +2323,7 @@ async function submitNewWord() {
                 Elements.addWordStatus.textContent = '⚠️ Word added, but screenshot failed to upload';
                 Elements.addWordStatus.className = 'form-status error';
             } else {
-                Elements.addWordStatus.textContent = `✅ ${displayCategoryInMessage(data.message)}`;
+                Elements.addWordStatus.textContent = `✅ ${data.message}`;
                 Elements.addWordStatus.className = 'form-status success';
             }
 
@@ -2361,9 +2360,9 @@ async function submitNewWord() {
                 goToWordBtn.addEventListener('click', () => {
                     navigateToExistingWord(data.existing_category, data.existing_word_id);
                 });
-                Elements.addWordStatus.replaceChildren(`⚠️ ${displayCategoryInMessage(data.error)} `, goToWordBtn);
+                Elements.addWordStatus.replaceChildren(`⚠️ ${data.error} `, goToWordBtn);
             } else {
-                Elements.addWordStatus.textContent = `❌ ${displayCategoryInMessage(data.error)}`;
+                Elements.addWordStatus.textContent = `❌ ${data.error}`;
             }
             Elements.addWordStatus.className = 'form-status error';
         }
@@ -2495,7 +2494,7 @@ function displaySearchResults(data) {
             <div class="search-result-word">${escapeHTML(result.word)}</div>
             <div class="search-result-translation">${escapeHTML(result.translation)}</div>
             <div class="search-result-meta">
-                <span class="search-result-category">${escapeHTML(displayCategory(result.category))}</span>
+                <span class="search-result-category">${escapeHTML(result.category)}</span>
                 <span>Reviews: ${result.review_count}</span>
             </div>
         `;
@@ -2958,7 +2957,7 @@ async function changeWordCategory() {
             // entries into one. That is a deletion the user did not explicitly
             // ask for, so say so rather than letting a card quietly disappear.
             if (data.merged) {
-                showToast(displayCategoryInMessage(data.message));
+                showToast(data.message);
             }
 
             // Increment daily progress counter (max once per word per day)
@@ -2979,7 +2978,7 @@ async function changeWordCategory() {
             navigateWord(1);
 
         } else {
-            showError(displayCategoryInMessage(data.error) || 'Failed to change category');
+            showError(data.error || 'Failed to change category');
         }
 
     } catch (error) {
@@ -3039,8 +3038,8 @@ async function addWordToCategory() {
             AppState.currentWord.categories = data.categories;
             renderWordCategories(data.categories);
 
-            const categories = (data.categories || []).map(displayCategory).join(', ');
-            showToast(`Added "${AppState.currentWord.word}" to ${displayCategory(newCategory)} — now in ${categories}`);
+            const categories = (data.categories || []).join(', ');
+            showToast(`Added "${AppState.currentWord.word}" to ${newCategory} — now in ${categories}`);
 
             // Save current category before reloading
             const savedCategory = AppState.currentCategory;
@@ -3060,9 +3059,9 @@ async function addWordToCategory() {
             // Check if this is a duplicate word error
             if (data.duplicate) {
                 // Show popup warning for duplicate
-                alert(displayCategoryInMessage(data.error) || 'This word already exists in the target category');
+                alert(data.error || 'This word already exists in the target category');
             } else {
-                showError(displayCategoryInMessage(data.error) || 'Failed to add category');
+                showError(data.error || 'Failed to add category');
             }
         }
 
@@ -3120,7 +3119,7 @@ function showDeleteWordModal(wordId, wordText, currentCategory, otherCategories)
     Elements.deleteCategoryList.innerHTML = allCategories.map((cat, index) => `
         <label class="category-checkbox-item">
             <input type="checkbox" value="${escapeHTML(cat)}" ${cat === currentCategory ? 'checked' : ''} data-index="${index}">
-            <span>${escapeHTML(displayCategory(cat))}${cat === currentCategory ? ' (current)' : ''}</span>
+            <span>${escapeHTML(cat)}${cat === currentCategory ? ' (current)' : ''}</span>
         </label>
     `).join('');
 
@@ -3162,7 +3161,7 @@ async function performDelete(wordId, categories) {
         const data = await response.json();
 
         if (data.success) {
-            await handleDeleteSuccess(displayCategoryInMessage(data.message));
+            await handleDeleteSuccess(data.message);
         } else {
             showError(data.error || 'Failed to delete word');
         }
