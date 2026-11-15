@@ -10,6 +10,39 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+# Session cookies are signed with SECRET_KEY. These values are public (this
+# repo and .env.example), so anyone could forge a logged-in cookie with them.
+DEV_SECRET_KEY = 'dev-secret-key-change-in-production'
+PUBLIC_SECRET_KEYS = frozenset({DEV_SECRET_KEY, 'your-secret-key-here'})
+
+
+def resolve_secret_key(environ):
+    """
+    Pick the session signing key.
+
+    On Vercel a real SECRET_KEY is required: the app refuses to start rather
+    than sign sessions with a publicly known value. Everywhere else (local
+    runs, Docker, tests) a missing key falls back to the dev value.
+
+    Args:
+        environ: mapping of environment variables (os.environ)
+
+    Returns:
+        The key to sign sessions with
+
+    Raises:
+        RuntimeError: on Vercel when SECRET_KEY is missing or a public value
+    """
+    key = (environ.get('SECRET_KEY') or '').strip()
+    if environ.get('VERCEL') and (not key or key in PUBLIC_SECRET_KEYS):
+        raise RuntimeError(
+            'SECRET_KEY is missing or set to a publicly known placeholder. '
+            'Set a long random SECRET_KEY in the Vercel project environment '
+            'variables, then redeploy.'
+        )
+    return key or DEV_SECRET_KEY
+
+
 class Config:
     """
     Main configuration class for Flask application
@@ -17,7 +50,7 @@ class Config:
     """
 
     # Flask Configuration
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
+    SECRET_KEY = resolve_secret_key(os.environ)
     DEBUG = os.environ.get('DEBUG', 'True').lower() == 'true'
     
     # Site Password Protection (set in environment to enable)
