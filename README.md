@@ -3,7 +3,7 @@
 **EasyVocab** is a personal vocabulary builder web app designed for English learners. It allows you to build your own vocabulary, review words and phrases in example sentences, and track your daily progress.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Python](https://img.shields.io/badge/python-3.8%2B-blue)
+![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![Flask](https://img.shields.io/badge/flask-3.0.0-green)
 ![MySQL](https://img.shields.io/badge/mysql-8.0-orange)
 
@@ -15,7 +15,8 @@
 
 - **Cloud Hosted**: Deployed on Vercel with Aiven MySQL database for access anywhere
 - **Secure Access**: Password-protected site with login rate limiting to prevent brute force attacks
-- **AI-Powered Word Entry**: Auto-generate translations and example sentences with Google Gemini (Gemini 3.7 Flash by default)
+- **AI-Powered Word Entry**: Auto-generate translations and example sentences with Google Gemini (Gemini 4 Hydrogen by default, or Gemini 3.5 Flash-Lite)
+- **Private Word Images**: Attach pictures to a word; they live in your database and are shown only to logged-in users
 - **Smart Quiz**: Spaced repetition based on the Ebbinghaus forgetting curve, with a flashcard mode, a multiple-choice mode, Image-only / IPA-only filters and a daily progress chart
 - **Browse by Category**: Organize and review vocabulary by 20+ categories, and file a word under more than one category
 - **Interactive Word Cards**: Word, translation, example sentences, IPA, an optional picture and the word's categories on one card
@@ -57,81 +58,52 @@
   </tr>
 </table>
 
-## 📋 Prerequisites
+## 🚀 Quick Start
 
-Before you begin, ensure you have the following installed:
+You need **Python 3.11+**, **MySQL 8.0+** (local or hosted, e.g. Aiven) and **Git**. A free [Gemini API key](https://aistudio.google.com/apikey) is optional and only needed for the AI buttons.
 
-- **Python 3.8+**
-- **MySQL 8.0+** 
-- **Anaconda** 
-- **Git** 
-
-## 🚀 Installation & Setup
-
-### Step 1: Install Python Dependencies
+**1. Install**
 
 ```bash
-# Install required packages
+git clone https://github.com/maverick001/EasyVocab.git
+cd EasyVocab
+python -m venv .venv
+.venv\Scripts\Activate.ps1        # macOS / Linux: source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Step 2: Setup MySQL Database
-
-1. **Open MySQL Workbench** and connect to your MySQL server
-
-2. **Run the initialization script**:
-   - Open the file `database/init_database.sql` in MySQL Workbench
-   - Execute the entire script (this will create the database, tables, indexes, and stored procedures)
-
-3. **Verify the setup**:
-   ```sql
-   USE bkdict_db;
-   SHOW TABLES;
-   -- Should show: words, categories, and category_stats view
-   ```
-
-### Step 3: Configure Environment Variables
-
-1. **Copy the example environment file**:
-   ```bash
-   copy .env.example .env
-   ```
-
-2. **Edit `.env` file** with your MySQL credentials:
-   ```env
-   DB_HOST=localhost
-   DB_PORT=3306
-   DB_USER=root
-   DB_NAME=bkdict_db
-   DB_PASSWORD=your_mysql_password_here
-      ```
-
-## ▶️ Running the Application
-
-### Start the Flask Server
+**2. Create the database.** Run these four scripts once each, in this order (MySQL Workbench or the command line):
 
 ```bash
-# Make sure you're in the BKDict directory and conda environment is activated
+mysql -u root -p < database/init_database.sql
+mysql -u root -p < database/add_review_fields.sql
+mysql -u root -p < database/update_schema_debt.sql
+mysql -u root -p < database/create_daily_word_reviews.sql
+```
+
+The scripts use the database name `bkdict_db`; edit the `CREATE DATABASE` and `USE` lines if your host gives you another name. The app creates its remaining tables and columns itself on first start.
+
+**3. Configure.** Copy `.env.example` to `.env` (`copy` on Windows, `cp` elsewhere) and fill in:
+
+| Setting | Value |
+|---------|-------|
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Your MySQL details (locally: `localhost`, `3306`, your user, `bkdict_db`) |
+| `SECRET_KEY` | A long random string: `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `SITE_PASSWORD` | The login password. An empty value turns the login off |
+| `GOOGLE_API_KEY` | Your Gemini key (AI buttons only) |
+
+> Replace every placeholder in `.env`, such as `your-site-password-here`, or it becomes your real value. `.env` is ignored by Git; never put real values in `.env.example`.
+
+**4. Run**
+
+```bash
 python app.py
 ```
 
-### Access the Application
+Open **http://localhost:5001** and log in. The server is reachable from other devices on your network, so keep `SITE_PASSWORD` set.
 
-Open your web browser and navigate to:
-```
-http://localhost:5001
-```
+**5. Add words.** Click **Import XML File** and pick a file in the format below. The repo has no sample word lists, so write a small one.
 
-## 📖 Usage Guide
-
-### 1. Importing Vocabulary from XML Files
-
-1. Click the **"Import XML File"** button in the control panel
-2. Select your XML file (must follow the BKDict XML format)
-3. Click **"Upload"** and wait for processing
-4. You'll see a success message with import statistics
-
-**XML Format Example**:
 ```xml
 <wordbook>
   <item>
@@ -142,115 +114,30 @@ http://localhost:5001
 </wordbook>
 ```
 
-### 2. Browsing Vocabulary
+**6. Check (optional).** `python -m pytest test -q` runs the tests; no database needed.
 
-1. Select a category from the dropdown menu
-2. The first word in that category will be displayed
-3. Use the **← → arrow keys** or click **Previous/Next** buttons to navigate
-4. The position indicator shows your current location (e.g., "Word 5 of 120")
+**Common problems:** *can't connect to MySQL* → check the `DB_*` values and that MySQL is running. *"Gemini API Key not configured"* → set `GOOGLE_API_KEY`. After editing `.env`, restart the app.
 
-### 3. Editing Translations
+### Docker (experimental, untested)
 
-1. Click the **"Edit"** button next to the translation
-2. Modify the text in the textarea
-3. Click **"Save"** to update or **"Cancel"** to discard changes
+`docker compose up --build` uses the included `Dockerfile` and `docker-compose.yml`, which have not been built or tested yet. Inside a container `DB_HOST=localhost` points at the container, so use `host.docker.internal` (Docker Desktop) or your hosted database. Compose does not start MySQL, and the image uses Python 3.9 rather than the tested 3.11.
 
-### 4. Adding/Editing Sample Sentences
+## 📖 Using the App
 
-1. Click the **"Edit"** button next to "Sample Sentence"
-2. Type or paste your example sentence
-3. Click **"Save"** to store the sentence
+- **Browse:** pick a category, then move between words with the **← →** keys or the Previous/Next buttons.
+- **Edit:** use **Edit** next to the translation or the sample sentence, then **Save**.
+- **Images and AI models:** a word can have up to two pictures, stored in the MySQL table `word_images` and shown only to logged-in users, never kept on disk or in Git. Upgrading from pictures in `static/images/word_images/`? Run `python scripts/migrate_images_to_mysql.py` (add `--apply` to write). Two Gemini models are offered in the dropdowns (default set by `GEMINI_MODEL`):
+  - `gemini-4-hydrogen`: a noun or noun phrase gets a sentence explaining what it is; any other word gets a plain everyday sentence.
+  - `gemini-3.5-flash-lite`: one plain IELTS-level sentence for every word.
 
-### 5. Keyboard Shortcuts
+## 🛠️ Optional Monitoring
 
-- **← (Left Arrow)**: Go to previous word
-- **→ (Right Arrow)**: Go to next word
+[Sentry](https://sentry.io) (errors) and [Langfuse](https://langfuse.com) (Gemini call traces) stay off until you set `SENTRY_DSN` or the `LANGFUSE_*` keys in `.env`; neither runs when `SKIP_DB=true`. Sentry comes with `requirements.txt`. Langfuse does not (its dependencies clash with the pinned `mysql-connector-python`), so install it yourself with `pip install langfuse` where you start the app. Traces go to Langfuse's cloud, not to your disk, and a Vercel deployment sends none.
 
-## 🗂️ Project Structure
+## 📊 Database
 
-```
-BKDict/
-├── app.py                      # Main Flask application
-├── config.py                   # Configuration settings
-├── requirements.txt            # Python dependencies
-├── README.md                   # This file
-├── .env.example               # Environment variables template
-├── .env                       # Your environment variables (create this)
-│
-├── database/
-│   └── init_database.sql      # Database initialization script
-│
-├── utils/
-│   ├── __init__.py
-│   └── xml_parser.py          # XML parsing and import logic
-│
-├── templates/
-│   └── index.html             # Main HTML template
-│
-├── static/
-│   ├── css/
-│   │   └── style.css          # Stylesheet (light blue theme)
-│   └── js/
-│       └── app.js             # Frontend JavaScript logic
-│
-├── data/
-│   ├── Science.xml               # Example vocabulary file
-│   └── IT_CS.xml                 # Example vocabulary file
-│
-└── uploads/                   # Temporary storage for uploaded files
-```
-
-## 🎨 Design Features
-
-- **Color Scheme**: Light blue default theme, plus Minimalist, Cyberpunk, Glassmorphism and Duolingo-like themes and dark mode
-- **Typography**: Clean, readable fonts (Inter; Nunito in the Duolingo-like theme)
-- **Responsive**: Adapts to desktop screens and phones
-
-
-## 🛠️ Advanced Configuration
-
-### Monitoring (optional)
-
-[Sentry](https://sentry.io) (errors and request timing) and [Langfuse](https://langfuse.com)
-(Gemini call traces) are optional. Each stays off until you add its keys to `.env`
-(see `.env.example`): `SENTRY_DSN`, and `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` /
-`LANGFUSE_BASE_URL`. Neither runs when `SKIP_DB=true`, so tests never send data.
-Langfuse needs Python 3.11 or newer; on older versions only Sentry is used.
-
-### Database Connection Pool Size
-
-Edit `config.py`:
-```python
-DB_POOL_SIZE = 5  # Increase for more concurrent users
-```
-
-## 📊 Database Schema
-
-### `words` Table
-| Column | Type | Description |
-|--------|------|-------------|
-| id | INT | Primary key (auto-increment) |
-| word | VARCHAR(255) | The English word or phrase |
-| translation | TEXT | Translation |
-| category | VARCHAR(100) | Category tag |
-| sample_sentence | TEXT | User-added example sentence |
-| created_at | TIMESTAMP | Record creation time |
-| updated_at | TIMESTAMP | Last update time |
-
-**Constraints**:
-- UNIQUE (word, category) - Allows same word in different categories
-
-### `categories` Table
-| Column | Type | Description |
-|--------|------|-------------|
-| id | INT | Primary key |
-| name | VARCHAR(100) | Category name |
-| word_count | INT | Number of words in category |
-| last_updated | TIMESTAMP | Last modification time |
-
+The core tables are `words` and `categories`. The setup scripts and the app's first start also create `word_images`, `word_history`, `daily_study_log` and `daily_word_reviews`.
 
 ## 📝 License
 
 This project is licensed under the MIT License.
-
-##
