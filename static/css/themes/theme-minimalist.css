@@ -1,103 +1,275 @@
 /*
- * Theme: Modern Minimalist (Apple-like)
- * Clean, flat design with generous whitespace
- * Inter font for professional, modern aesthetic
+ * Theme: Ghibli-style (hand-drawn cartoon countryside)
+ * Bright cel-shaded sky, puffy clouds, green hills, ink outlines and chunky
+ * rounded controls. Dark mode turns the same landscape into a night scene.
+ *
+ * The file name and the theme key stay "minimalist" (this theme replaced the
+ * old Minimalist look), so a saved selection carries over.
  *
  * NOTE: This file loads AFTER style.css, so its rules override the base
- * component styling. Everything here only applies when the Minimalist
- * theme is active. Main-page surfaces only; quiz/login untouched.
+ * component styling. On the vocab page it applies only while this theme is
+ * selected. quiz.html links it directly, so the quiz always has this look
+ * (see the "Quiz page" section). The login page is untouched.
+ *
+ * All artwork is original inline SVG (data URIs), so there are no image files
+ * to cache or commit. Inside a data URI "#" must be written "%23".
  */
 
 :root {
     /* Typography */
-    --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-main: 'Nunito', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-display: 'Fredoka', 'Nunito', 'Segoe UI', sans-serif;
 
-    /* Colors - Minimalist Palette */
-    --primary-blue: #3B82F6;
-    --primary-dark: #2563EB;
-    --border-color: #E5E7EB;
-    --shadow: rgba(0, 0, 0, 0.04);
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-    --success: #10B981;
+    /* Ink: the outline colour of everything */
+    --ink: #2B2440;
+    --btn-ink: #2B2440;
+    --line: #C9D3E0;
+
+    /* Paint box */
+    --sky: #5CC8FF;
+    --sky-pale: #BFEAFF;
+    --leaf: #7ED957;
+    --leaf-deep: #2F9E44;
+    --sun: #FFD23F;
+    --torii: #FF6B57;
+    --blossom: #FF9EB5;
+    --wisteria: #C9A7FF;
+    --paper: #FFF4D6;
+    --disabled: #D9D5E3;
+
+    /* Variables the base stylesheet reads */
+    --primary-blue: #1E9BE9;
+    --primary-dark: #14609E;
+    --primary-light: #BFEAFF;
+    --accent-blue: #2F9E44;
+    --border-color: var(--ink);
+    --shadow: rgba(43, 36, 64, 0.18);
+    --success: #2F9E44;
     --warning: #F59E0B;
-    --error: #EF4444;
+    --error: #E8412C;
+    --success-color: #2F9E44;
+    --error-color: #E8412C;
 
-    /* Soft, neutral elevation (replaces heavy blue drop-shadows) */
-    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-    --shadow-card-hover: 0 6px 20px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
-    --focus-ring: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    /* The base stylesheet uses these three without defining them */
+    --primary-color: #14609E;
+    --text-color: #2B2440;
+    --danger-color: #E8412C;
 
-    /* Spacing - Generous for minimalist feel */
+    /* Solid offset shadows instead of soft blurs */
+    --shadow-btn: 0 4px 0 var(--ink);
+    --shadow-btn-hover: 0 6px 0 var(--ink);
+    --shadow-btn-active: 0 1px 0 var(--ink);
+    --shadow-card: 0 7px 0 var(--ink);
+    --focus-ring: 0 0 0 4px rgba(255, 210, 63, 0.75);
+
+    /* Spacing: unchanged from the previous look of this theme */
     --spacing-xs: 0.5rem;
     --spacing-sm: 1rem;
     --spacing-md: 2rem;
     --spacing-lg: 3rem;
     --spacing-xl: 4rem;
 
-    /* Border Radius - Subtle */
-    --radius-sm: 4px;
-    --radius-md: 6px;
-    --radius-lg: 8px;
+    /* Border Radius: chunky */
+    --radius-sm: 12px;
+    --radius-md: 16px;
+    --radius-lg: 22px;
 
     /* Background Colors */
-    --bg-main: #FAFAFA;
-    --bg-card: #FFFFFF;
-    --bg-hover: #F5F5F5;
+    --bg-main: #EAF6FE;
+    --bg-card: #FFFDF3;
+    --bg-hover: #FFF3C4;
 
     /* Text Colors */
-    --text-primary: #1F2937;
-    --text-secondary: #6B7280;
-    --text-light: #9CA3AF;
-    --success-color: #10B981;
-    --error-color: #EF4444;
-    --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-    --transition-speed: 0.2s;
+    --text-primary: #2B2440;
+    --text-secondary: #5B5674;
+    --text-light: #8D89A3;
+    --card-shadow: 0 7px 0 var(--ink);
+    --transition-speed: 0.15s;
+
+    /* Sky */
+    --sky-gradient: linear-gradient(180deg, #2FA4F2 0%, #5CC8FF 45%, #BDEBFF 100%);
+
+    /* ---- Artwork ---- */
+    --art-clouds: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 400'><defs><g id='c'><g fill='%23bfe6fb'><circle cx='50' cy='66' r='30'/><circle cx='100' cy='50' r='44'/><circle cx='156' cy='62' r='34'/><rect x='50' y='62' width='110' height='34' rx='12'/></g><g fill='%23fff'><circle cx='48' cy='58' r='28'/><circle cx='98' cy='42' r='42'/><circle cx='152' cy='54' r='32'/><rect x='24' y='54' width='156' height='28' rx='14'/></g></g></defs><use href='%23c' x='60' y='40'/><use href='%23c' transform='translate(420 150) scale(.6)'/><use href='%23c' transform='translate(700 30) scale(1.25)'/><use href='%23c' transform='translate(1080 190) scale(.75)'/><use href='%23c' transform='translate(1300 60) scale(.95)'/><use href='%23c' transform='translate(250 270) scale(.5)'/></svg>");
+
+    --art-ground: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 360'><defs><g id='t'><rect x='-5' y='0' width='10' height='30' fill='%237a4a2b' stroke='%232b2440' stroke-width='2.5'/><circle cy='-16' r='30' fill='%232f9e44' stroke='%232b2440' stroke-width='3'/><circle cx='-9' cy='-25' r='12' fill='%2378d64b'/></g></defs><path d='M830 360 1085 92q15-14 30 0L1370 360z' fill='%234f8fe0'/><path d='M1100 85l15 7 255 268h-190z' fill='%233a74c8'/><path d='M1035 145l50-53q15-14 30 0l50 53-22-10-20 24-18-22-20 26-17-26z' fill='%23fff'/><path d='M-10 370V262q210-70 420-18t420-8 400 6 380-34v170z' fill='%239be3a8'/><path d='M-10 370V300q170-62 360-14t380-10 400 4 480-30v120z' fill='%235cc85a' stroke='%232b2440' stroke-width='3'/><use href='%23t' transform='translate(120 262)'/><use href='%23t' transform='translate(196 274) scale(.75)'/><use href='%23t' transform='translate(905 240)'/><use href='%23t' transform='translate(972 252) scale(.7)'/><use href='%23t' transform='translate(1470 268) scale(.9)'/><g transform='translate(430 252) scale(1.1)' stroke='%232b2440' stroke-width='2.5' fill='%23e8412c'><rect x='-34' y='0' width='11' height='66'/><rect x='23' y='0' width='11' height='66'/><rect x='-44' y='18' width='88' height='8'/><path d='M-56-4q56 8 112 0l-4 12q-52 6-104 0z'/><path d='M-61-13q61 10 122 0l-4 10q-57 8-114 0z' fill='%232b2440'/></g><path d='M-10 370V330q250-50 520-6t540-8 560-2v56z' fill='%233fae49' stroke='%232b2440' stroke-width='3'/><g fill='%23ffd23f'><circle cx='90' cy='340' r='4'/><circle cx='300' cy='322' r='4'/><circle cx='660' cy='346' r='4'/><circle cx='1010' cy='336' r='4'/><circle cx='1290' cy='318' r='4'/><circle cx='1520' cy='330' r='4'/></g><g fill='%23fff'><circle cx='150' cy='330' r='3.5'/><circle cx='520' cy='340' r='3.5'/><circle cx='830' cy='350' r='3.5'/><circle cx='1180' cy='326' r='3.5'/><circle cx='1420' cy='316' r='3.5'/></g></svg>");
+
+    --art-header: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 150' preserveAspectRatio='xMidYMax slice'><defs><g id='c'><g fill='%23bfe6fb'><circle cx='50' cy='66' r='30'/><circle cx='100' cy='50' r='44'/><circle cx='156' cy='62' r='34'/><rect x='50' y='62' width='110' height='34' rx='12'/></g><g fill='%23fff'><circle cx='48' cy='58' r='28'/><circle cx='98' cy='42' r='42'/><circle cx='152' cy='54' r='32'/><rect x='24' y='54' width='156' height='28' rx='14'/></g></g><g id='t'><rect x='-5' y='0' width='10' height='30' fill='%237a4a2b' stroke='%232b2440' stroke-width='2.5'/><circle cy='-16' r='30' fill='%232f9e44' stroke='%232b2440' stroke-width='3'/><circle cx='-9' cy='-25' r='12' fill='%2378d64b'/></g></defs><use href='%23c' transform='translate(150 14) scale(.5)'/><use href='%23c' transform='translate(560 8) scale(.38)'/><use href='%23c' transform='translate(960 18) scale(.42)'/><use href='%23c' transform='translate(1340 10) scale(.5)'/><path d='M250 150 388 34q12-10 24 0L550 150z' fill='%234f8fe0'/><path d='M400 29l12 5 138 116h-90z' fill='%233a74c8'/><path d='M355 62l33-28q12-10 24 0l33 28-14-5-12 14-11-13-12 15-11-15z' fill='%23fff'/><path d='M-10 160V112q200-40 400-10t400-6 400 4 420-14v74z' fill='%239be3a8'/><use href='%23t' transform='translate(170 98) scale(.55)'/><use href='%23t' transform='translate(640 96) scale(.45)'/><use href='%23t' transform='translate(1105 94) scale(.5)'/><use href='%23t' transform='translate(1470 104) scale(.55)'/><g transform='translate(1020 60) scale(.8)' stroke='%232b2440' stroke-width='2.5' fill='%23e8412c'><rect x='-34' y='0' width='11' height='66'/><rect x='23' y='0' width='11' height='66'/><rect x='-44' y='18' width='88' height='8'/><path d='M-56-4q56 8 112 0l-4 12q-52 6-104 0z'/><path d='M-61-13q61 10 122 0l-4 10q-57 8-114 0z' fill='%232b2440'/></g><path d='M-10 160V132q220-30 430-6t420-4 400 2 370-12v48z' fill='%234cbb3f' stroke='%232b2440' stroke-width='3'/></svg>");
+
+    --art-canopy-left: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 120'><defs><g id='l'><circle cx='20' cy='10' r='46'/><circle cx='84' cy='0' r='50'/><circle cx='146' cy='4' r='40'/><circle cx='196' cy='-6' r='34'/><circle cx='40' cy='54' r='30'/></g></defs><use href='%23l' fill='%232b2440' stroke='%232b2440' stroke-width='7'/><use href='%23l' fill='%232f9e44'/><g fill='%234cbb3f'><circle cx='30' cy='2' r='34'/><circle cx='96' cy='-8' r='38'/><circle cx='154' cy='-2' r='28'/><circle cx='42' cy='48' r='20'/></g><g fill='%23c8e64a'><circle cx='22' cy='-2' r='17'/><circle cx='90' cy='-16' r='21'/><circle cx='152' cy='-10' r='13'/><circle cx='38' cy='42' r='9'/></g></svg>");
+
+    --art-canopy-right: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 120'><defs><g id='l'><circle cx='20' cy='10' r='46'/><circle cx='84' cy='0' r='50'/><circle cx='146' cy='4' r='40'/><circle cx='196' cy='-6' r='34'/><circle cx='40' cy='54' r='30'/></g></defs><g transform='translate(240 0) scale(-1 1)'><use href='%23l' fill='%232b2440' stroke='%232b2440' stroke-width='7'/><use href='%23l' fill='%232f9e44'/><g fill='%234cbb3f'><circle cx='30' cy='2' r='34'/><circle cx='96' cy='-8' r='38'/><circle cx='154' cy='-2' r='28'/><circle cx='42' cy='48' r='20'/></g><g fill='%23c8e64a'><circle cx='22' cy='-2' r='17'/><circle cx='90' cy='-16' r='21'/><circle cx='152' cy='-10' r='13'/><circle cx='38' cy='42' r='9'/></g></g></svg>");
+
+    --art-sprig: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 64'><path d='M6 58q44-4 106-46' fill='none' stroke='%237a4a2b' stroke-width='5' stroke-linecap='round'/><g fill='%234cbb3f' stroke='%232b2440' stroke-width='2.5'><ellipse cx='30' cy='40' rx='16' ry='8' transform='rotate(-58 30 40)'/><ellipse cx='52' cy='54' rx='15' ry='7.5' transform='rotate(18 52 54)'/><ellipse cx='60' cy='26' rx='16' ry='8' transform='rotate(-66 60 26)'/><ellipse cx='84' cy='42' rx='15' ry='7.5' transform='rotate(8 84 42)'/><ellipse cx='92' cy='14' rx='14' ry='7' transform='rotate(-70 92 14)'/></g><g fill='%23e8412c' stroke='%232b2440' stroke-width='2'><circle cx='108' cy='20' r='5.5'/><circle cx='100' cy='30' r='5'/></g></svg>");
+
+    --art-stars: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400'><g fill='%23fff6cf'><circle cx='30' cy='40' r='1.8'/><circle cx='120' cy='18' r='1.2'/><circle cx='210' cy='70' r='2'/><circle cx='330' cy='36' r='1.4'/><circle cx='380' cy='130' r='1.8'/><circle cx='70' cy='150' r='1.3'/><circle cx='160' cy='210' r='1.9'/><circle cx='280' cy='180' r='1.2'/><circle cx='40' cy='290' r='1.7'/><circle cx='230' cy='320' r='1.3'/><circle cx='350' cy='300' r='2'/><circle cx='130' cy='370' r='1.2'/><path d='M300 96l3 9 9 3-9 3-3 9-3-9-9-3 9-3z'/><path d='M96 250l2.5 7 7 2.5-7 2.5-2.5 7-2.5-7-7-2.5 7-2.5z'/></g></svg>");
+
+    --art-moon: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><circle cx='60' cy='60' r='58' fill='%23fff3b8' opacity='.14'/><circle cx='60' cy='60' r='46' fill='%23fff3b8' opacity='.2'/><circle cx='60' cy='60' r='34' fill='%23fff3b8' stroke='%23070a1a' stroke-width='3'/><g fill='%23f1dc8c'><circle cx='48' cy='50' r='7'/><circle cx='70' cy='68' r='9'/><circle cx='72' cy='44' r='4'/></g></svg>");
+
+    --art-fireflies: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 300'><defs><radialGradient id='g'><stop offset='0' stop-color='%23fff7a8'/><stop offset='.35' stop-color='%23ffe45c' stop-opacity='.9'/><stop offset='1' stop-color='%23ffe45c' stop-opacity='0'/></radialGradient></defs><g fill='url(%23g)'><circle cx='60' cy='210' r='9'/><circle cx='170' cy='120' r='7'/><circle cx='250' cy='240' r='10'/><circle cx='340' cy='160' r='7'/><circle cx='430' cy='70' r='6'/><circle cx='500' cy='220' r='9'/><circle cx='560' cy='130' r='7'/><circle cx='110' cy='50' r='5'/></g></svg>");
 }
 
-/* Dark Mode Overrides */
+/* Night scene */
 body.dark-mode {
-    --primary-blue: #60A5FA;
-    --primary-dark: #3B82F6;
-    --border-color: #374151;
-    --shadow: rgba(0, 0, 0, 0.2);
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
-    --shadow-md: 0 1px 3px 0 rgba(0, 0, 0, 0.2);
-    --success: #10B981;
-    --warning: #F59E0B;
-    --error: #EF4444;
+    --ink: #070A1A;
+    --line: #47528F;
 
-    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
-    --shadow-card-hover: 0 6px 20px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.4);
-    --focus-ring: 0 0 0 3px rgba(96, 165, 250, 0.25);
+    --primary-blue: #6CC4FF;
+    --primary-dark: #FFDF7E;
+    --primary-light: #34407A;
+    --accent-blue: #7ED957;
+    --border-color: var(--ink);
+    --shadow: rgba(0, 0, 0, 0.4);
+    --success: #7ED957;
+    --warning: #FFD23F;
+    --error: #FF7A66;
+    --success-color: #7ED957;
+    --error-color: #FF7A66;
 
-    --bg-main: #111827;
-    --bg-card: #1F2937;
-    --bg-hover: #374151;
+    --primary-color: #FFDF7E;
+    --text-color: #F6EFD9;
+    --danger-color: #FF7A66;
 
-    --text-primary: #F9FAFB;
-    --text-secondary: #D1D5DB;
-    --text-light: #9CA3AF;
-    --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+    --paper: #3A4590;
+    --disabled: #4A527F;
+    --focus-ring: 0 0 0 4px rgba(255, 223, 126, 0.6);
+
+    --bg-main: #1A2148;
+    --bg-card: #283364;
+    --bg-hover: #36427E;
+
+    --text-primary: #F6EFD9;
+    --text-secondary: #C6C9E8;
+    --text-light: #9499C4;
+
+    --sky-gradient: linear-gradient(180deg, #080C2A 0%, #172055 50%, #3B4196 100%);
 }
 
 /* ============================================
-   Typography — drop text shadows
-   (Inter is applied globally via style.css using var(--font-main))
+   Backdrop: sky, drifting clouds, hills
+   All three layers are fixed and sit behind the page content.
+   ============================================ */
+body {
+    background: var(--sky-gradient) fixed;
+}
+
+body.dark-mode {
+    background: var(--art-stars) 0 0 / 400px 400px fixed, var(--sky-gradient) fixed;
+}
+
+/* Clouds: a strip twice the viewport wide holding two identical tiles, slid
+   left by exactly one tile, so the loop has no seam. */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 200vw;
+    height: 100vh;
+    z-index: -1;
+    pointer-events: none;
+    background: var(--art-clouds) 0 0 / 50% auto repeat-x;
+    animation: ghibli-cloud-drift 240s linear infinite;
+}
+
+body.dark-mode::before {
+    opacity: 0.16;
+}
+
+@keyframes ghibli-cloud-drift {
+    to {
+        transform: translateX(-50%);
+    }
+}
+
+/* Hills, mountain and trees along the bottom, leafy branches in the top corners */
+.container::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        var(--art-canopy-left) left top / 260px auto no-repeat,
+        var(--art-canopy-right) right top / 260px auto no-repeat,
+        var(--art-ground) center bottom / max(100%, 1100px) auto no-repeat;
+}
+
+body.dark-mode .container::before {
+    filter: brightness(0.4) saturate(0.85) hue-rotate(28deg);
+}
+
+/* Fireflies over the night hills */
+body.dark-mode .container::after {
+    content: '';
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 46vh;
+    z-index: -1;
+    pointer-events: none;
+    background: var(--art-fireflies) center bottom / 600px auto repeat-x;
+    animation: ghibli-twinkle 4.5s ease-in-out infinite alternate;
+}
+
+@keyframes ghibli-twinkle {
+    from {
+        opacity: 0.35;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* Room under the last card so the hills show at the end of the page */
+.container {
+    padding-bottom: 9rem;
+}
+
+/* ============================================
+   Typography
    ============================================ */
 .app-title,
-.word-display {
-    text-shadow: none;
+.word-display,
+.section-title,
+.welcome-message h2,
+.modal-header h2,
+.search-results-header h3,
+.btn,
+.status-badge,
+.review-counter-badge,
+.control-label,
+.action-label {
+    font-family: var(--font-display);
 }
 
 .app-title {
-    font-weight: 600;
-    letter-spacing: -0.02em;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: #FFFFFF;
+    text-shadow:
+        -2px -2px 0 var(--ink), 2px -2px 0 var(--ink),
+        -2px 2px 0 var(--ink), 2px 2px 0 var(--ink),
+        0 -3px 0 var(--ink), 0 3px 0 var(--ink),
+        -3px 0 0 var(--ink), 3px 0 0 var(--ink),
+        0 7px 0 var(--ink);
+}
+
+body.dark-mode .app-title {
+    color: #FFE9A8;
 }
 
 .word-display {
-    font-weight: 600;
-    letter-spacing: -0.02em;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: var(--primary-dark);
+    text-shadow: 0 3px 0 var(--sun);
+}
+
+body.dark-mode .word-display {
+    text-shadow: 0 3px 0 var(--ink);
 }
 
 .section-title {
@@ -109,56 +281,130 @@ body.dark-mode {
 }
 
 /* ============================================
-   Surfaces — soft neutral elevation, light borders
+   Header: a little landscape of its own
    ============================================ */
 .app-header {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
+    background: var(--sky-gradient);
+    border: 3px solid var(--ink);
     box-shadow: var(--shadow-card);
     backdrop-filter: none;
+    overflow: hidden;
+    /* Own stacking context, so the artwork below (z-index -1) sits above the
+       header's sky but under the title and controls, positioned or not. */
+    isolation: isolate;
 }
 
+body.dark-mode .app-header {
+    background: var(--sky-gradient);
+    box-shadow: var(--shadow-card);
+}
+
+.app-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        var(--art-canopy-left) left -6px top -4px / 150px auto no-repeat,
+        var(--art-canopy-right) right -6px top -4px / 150px auto no-repeat,
+        var(--art-header) center bottom / 100% 100% no-repeat;
+}
+
+body.dark-mode .app-header::before {
+    filter: brightness(0.42) saturate(0.85) hue-rotate(28deg);
+}
+
+/* Night sky in the header: stars and a moon */
+body.dark-mode .app-header::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        var(--art-moon) 33% 8px / 74px auto no-repeat,
+        var(--art-stars) 0 0 / 300px 300px repeat;
+    -webkit-mask-image: linear-gradient(180deg, #000 30%, transparent 78%);
+    mask-image: linear-gradient(180deg, #000 30%, transparent 78%);
+}
+
+/* ============================================
+   Cards: cream paper, ink outline, solid shadow
+   ============================================ */
 .control-panel,
 .search-results-panel,
-.welcome-message {
-    border: 1px solid var(--border-color);
+.welcome-message,
+.word-card {
+    background: var(--bg-card);
+    border: 3px solid var(--ink);
+    box-shadow: var(--shadow-card);
+}
+
+body.dark-mode .control-panel,
+body.dark-mode .search-results-panel,
+body.dark-mode .welcome-message,
+body.dark-mode .word-card,
+body.dark-mode .word-card:hover {
     box-shadow: var(--shadow-card);
 }
 
 .word-card {
-    border: 1px solid var(--border-color);
-    box-shadow: var(--shadow-card);
-    transition: box-shadow var(--transition-speed) ease;
+    position: relative;
+    transition: none;
 }
 
 .word-card:hover {
-    box-shadow: var(--shadow-card-hover);
+    box-shadow: var(--shadow-card);
+}
+
+.welcome-message,
+.quiz-card {
+    position: relative;
+}
+
+/* A leafy sprig resting on the top edge of the main cards */
+.word-card::before,
+.welcome-message::before,
+.quiz-card::before {
+    content: '';
+    position: absolute;
+    top: -40px;
+    right: 44px;
+    width: 104px;
+    height: 56px;
+    pointer-events: none;
+    background: var(--art-sprig) center / contain no-repeat;
 }
 
 .app-footer {
     background: var(--bg-card);
-    border-top: 1px solid var(--border-color);
+    border-top: 3px solid var(--ink);
 }
 
 .primary-controls {
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 2px dashed var(--line);
 }
 
 .navigation-buttons {
-    border-top: 1px solid var(--border-color);
+    border-top: 2px dashed var(--line);
 }
 
 .word-section {
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 2px dashed var(--line);
 }
 
 /* ============================================
-   Buttons — flat fills, no shimmer, no bounce
+   Buttons: flat paint, ink outline, press-down shadow
    ============================================ */
 .btn {
-    transition: background var(--transition-speed) ease,
+    border: 2.5px solid var(--ink);
+    border-radius: 14px;
+    color: var(--btn-ink);
+    box-shadow: var(--shadow-btn);
+    transition: transform var(--transition-speed) ease,
         box-shadow var(--transition-speed) ease,
-        color var(--transition-speed) ease;
+        filter var(--transition-speed) ease;
 }
 
 /* Remove the diagonal shimmer sweep */
@@ -166,112 +412,170 @@ body.dark-mode {
     content: none;
 }
 
-/* Calm hover: no vertical jump, subtle shadow only */
 .btn:hover {
-    transform: none;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-btn-hover);
+    filter: brightness(1.06);
 }
 
 .btn:active {
+    transform: translateY(3px);
+    box-shadow: var(--shadow-btn-active);
+}
+
+.btn:disabled,
+.btn:disabled:hover,
+.btn:disabled:active {
+    background: var(--disabled);
+    color: var(--text-light);
+    cursor: not-allowed;
     transform: none;
+    filter: none;
+    box-shadow: 0 2px 0 var(--ink);
+    opacity: 0.75;
 }
 
 .btn-primary,
-.btn-generate,
-.btn-nav {
-    background: var(--primary-blue);
-    color: #fff;
-    box-shadow: var(--shadow-sm);
-}
-
 .btn-primary:hover,
-.btn-generate:hover,
-.btn-nav:hover {
-    background: var(--primary-dark);
-    box-shadow: var(--shadow-md);
+.btn-nav,
+.btn-nav:hover,
+.btn-import,
+.btn-import:hover,
+.results-actions .btn-primary {
+    background: var(--sky);
+    color: var(--btn-ink);
 }
 
-.btn-import {
-    background: #3B82F6;
-    color: #fff;
-    box-shadow: var(--shadow-sm);
+.btn-generate,
+.btn-generate:hover {
+    background: var(--sun);
+    color: var(--btn-ink);
+    border: 2.5px solid var(--ink);
 }
 
-.btn-import:hover {
-    background: #2563EB;
-    box-shadow: var(--shadow-md);
+.btn-add-word,
+.btn-add-word:hover,
+.btn-save,
+.btn-save:hover,
+.btn-add,
+.btn-add:hover {
+    background: var(--leaf);
+    color: var(--btn-ink);
 }
 
-.btn-add-word {
-    background: #10B981;
-    color: #fff;
-    box-shadow: var(--shadow-sm);
-}
-
-.btn-add-word:hover {
-    background: #059669;
-    box-shadow: var(--shadow-md);
-}
-
-.btn-quiz {
-    background: #8B5CF6;
-    color: #fff;
-    box-shadow: var(--shadow-sm);
-}
-
+.btn-quiz,
 .btn-quiz:hover {
-    background: #7C3AED;
-    box-shadow: var(--shadow-md);
+    background: var(--torii);
+    color: var(--btn-ink);
 }
 
-.btn-save {
-    background: var(--success);
-    color: #fff;
-    box-shadow: var(--shadow-sm);
+.btn-secondary,
+.btn-secondary:hover {
+    background: var(--sky-pale);
+    color: var(--btn-ink);
 }
 
-.btn-save:hover {
-    background: #059669;
-    box-shadow: var(--shadow-md);
-}
-
-.btn-cancel {
-    background: transparent;
-    color: var(--text-secondary);
-    border: 1px solid var(--border-color);
-}
-
+.btn-cancel,
 .btn-cancel:hover {
-    background: var(--bg-hover);
+    background: var(--paper);
+    color: var(--btn-ink);
+    border: 2.5px solid var(--ink);
+}
+
+body.dark-mode .btn-cancel,
+body.dark-mode .btn-cancel:hover {
     color: var(--text-primary);
 }
 
-.btn-delete {
-    background: var(--error);
-    color: #fff;
-}
-
+.btn-delete,
 .btn-delete:hover {
-    background: #DC2626;
+    background: var(--torii);
+    color: var(--btn-ink);
 }
 
-/* Dark-mode toggle — flatten gradient to a quiet surface */
-.theme-toggle {
-    background: var(--bg-hover);
-    box-shadow: var(--shadow-sm);
+/* The base rule uses !important for this one */
+.btn-delete-inline,
+.btn-delete-inline:hover {
+    background: var(--torii) !important;
+    color: var(--btn-ink) !important;
+    box-shadow: var(--shadow-btn);
 }
 
-.theme-toggle:hover {
-    transform: none;
-    box-shadow: var(--shadow-md);
+.btn-delete-inline:hover {
+    box-shadow: var(--shadow-btn-hover);
+}
+
+.btn-image,
+.btn-image:hover {
+    background: var(--blossom);
+    color: var(--btn-ink);
+}
+
+.btn-view-image,
+.btn-view-image:hover {
+    background: var(--wisteria);
+    color: var(--btn-ink);
+}
+
+/* Icon-only pencil: no outline, no shadow */
+.btn-edit-word,
+.btn-edit-word:hover,
+.btn-edit-word:active {
+    border: none;
+    box-shadow: none;
+    background: transparent;
+    filter: none;
+}
+
+.btn-edit-word:hover {
+    transform: scale(1.15);
+}
+
+.btn-ipa-word {
+    border: 2px solid var(--ink);
+    border-radius: 9px;
+    background: var(--paper);
+    color: var(--text-primary);
+    box-shadow: 0 2px 0 var(--ink);
+}
+
+.btn-ipa-word:hover {
+    border-color: var(--ink);
+    color: var(--text-primary);
+    box-shadow: 0 3px 0 var(--ink);
+    transform: translateY(-1px);
+}
+
+.btn-close,
+.btn-close-results {
+    color: var(--text-secondary);
+}
+
+/* Dark-mode toggle: a little sun (or moon) button */
+.theme-toggle,
+body.dark-mode .theme-toggle {
+    background: var(--sun);
+    border: 2.5px solid var(--ink);
+    box-shadow: 0 3px 0 var(--ink);
 }
 
 body.dark-mode .theme-toggle {
-    background: var(--bg-hover);
-    box-shadow: var(--shadow-sm);
+    background: #3A4590;
+}
+
+.theme-toggle:hover,
+body.dark-mode .theme-toggle:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 0 var(--ink);
+}
+
+.theme-toggle:active {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 var(--ink);
 }
 
 /* ============================================
-   Inputs & selects — 1px borders, crisp focus ring
+   Inputs & selects: ink outline, sunny focus ring
    ============================================ */
 .category-select,
 .sort-select,
@@ -286,7 +590,44 @@ body.dark-mode .theme-toggle {
 .word-input,
 .file-input,
 .ipa-input {
-    border: 1px solid var(--border-color);
+    border: 2px solid var(--ink);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+body.dark-mode .category-select,
+body.dark-mode .sort-select,
+body.dark-mode .model-select,
+body.dark-mode .history-select,
+body.dark-mode .category-change-select,
+body.dark-mode .theme-select,
+body.dark-mode .form-input,
+body.dark-mode .form-textarea,
+body.dark-mode .content-textarea,
+body.dark-mode .search-input,
+body.dark-mode .word-input,
+body.dark-mode .file-input,
+body.dark-mode .ipa-input {
+    background: var(--bg-main);
+    border-color: var(--ink);
+}
+
+.search-input::placeholder,
+.form-input::placeholder,
+.form-textarea::placeholder,
+.content-textarea::placeholder {
+    color: var(--text-light);
+}
+
+.category-select:hover,
+.sort-select:hover,
+.model-select:hover,
+.history-select:hover,
+.category-change-select:hover,
+.theme-select:hover {
+    border-color: var(--ink);
+    box-shadow: 0 3px 0 var(--ink);
 }
 
 .category-select:focus,
@@ -299,110 +640,420 @@ body.dark-mode .theme-toggle {
 .form-textarea:focus,
 .content-textarea:focus,
 .search-input:focus,
-.word-input:focus {
+.word-input:focus,
+.ipa-input:focus {
     outline: none;
-    border-color: var(--primary-blue);
+    border-color: var(--ink);
     box-shadow: var(--focus-ring);
 }
 
+.form-group label {
+    color: var(--text-primary);
+}
+
 /* ============================================
-   Content display — thinner accent, no slide
+   Content display: note paper with a leaf-green spine
    ============================================ */
 .content-display {
-    border: 1px solid var(--border-color);
-    border-left: 3px solid var(--primary-blue);
+    border: 2px solid var(--ink);
+    border-left: 8px solid var(--leaf-deep);
+    border-radius: var(--radius-md);
+}
+
+body.dark-mode .content-display {
+    border-left-color: var(--leaf);
 }
 
 .content-display.editable-field:hover {
     background: var(--bg-hover);
+    border-left-color: var(--leaf-deep);
     transform: none;
 }
 
+body.dark-mode .content-display.editable-field:hover {
+    border-left-color: var(--leaf);
+}
+
 .sentence-edit-item {
-    border-left: 3px solid var(--primary-blue);
+    border: 2px solid var(--ink);
+    border-left: 8px solid var(--leaf-deep);
+}
+
+.paste-area {
+    border: 2.5px dashed var(--ink);
 }
 
 /* ============================================
-   Word actions strip & modal — quiet borders
+   Word actions strip, dropdowns, search results, modal
    ============================================ */
 .word-actions {
-    background: var(--bg-hover);
-    border: 1px solid var(--border-color);
+    background: #E9F8D9;
+    border: 2px dashed var(--ink);
 }
 
-.modal-content {
-    box-shadow: var(--shadow-card-hover);
+body.dark-mode .word-actions {
+    background: rgba(126, 217, 87, 0.1);
+    border-color: var(--ink);
+}
+
+.debt-dropdown,
+.ipa-dropdown {
+    background: var(--bg-card);
+    border: 2px solid var(--ink);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 4px 0 var(--ink);
+}
+
+.debt-item {
+    border-bottom-color: var(--line);
+}
+
+.debt-item:hover {
+    background: var(--bg-hover);
+}
+
+.search-results-header {
+    border-bottom: 2px dashed var(--line);
+}
+
+.search-count,
+.search-result-translation,
+.search-result-meta,
+.search-no-results {
+    color: var(--text-secondary);
+}
+
+.search-result-item {
+    background: var(--bg-main);
+    border: 2px solid var(--ink);
+}
+
+.search-result-item:hover,
+body.dark-mode .search-result-item:hover {
+    background: var(--bg-hover);
+    border-color: var(--ink);
+}
+
+.search-result-word {
+    color: var(--text-primary);
+}
+
+.search-result-category,
+.word-category-tag {
+    background: var(--paper);
+    color: var(--text-primary);
+    border: 2px solid var(--ink);
+}
+
+.category-checkbox-item,
+body.dark-mode .category-checkbox-item {
+    border: 2px solid var(--ink);
+}
+
+.modal {
+    background-color: rgba(20, 40, 90, 0.55);
+}
+
+.modal-content,
+body.dark-mode .modal-content {
+    background: var(--bg-card);
+    border: 3px solid var(--ink);
+    box-shadow: 0 8px 0 var(--ink);
 }
 
 .modal-header,
 .modal-footer {
-    border-color: var(--border-color);
+    border-color: var(--line);
+    border-style: dashed;
+}
+
+.modal-header h2,
+.search-results-header h3 {
+    color: var(--primary-dark);
+}
+
+.toast {
+    background: var(--leaf);
+    color: var(--btn-ink);
+    border: 2.5px solid var(--ink);
+    box-shadow: 0 4px 0 var(--ink);
 }
 
 /* ============================================
-   Badges — flat tints, keep semantic meaning
+   Badges: little stickers
    ============================================ */
 .status-badge {
-    box-shadow: none;
+    border: 2px solid var(--ink);
+    box-shadow: 0 3px 0 var(--ink);
 }
 
 .position-badge {
-    color: var(--primary-dark);
-    background: rgba(59, 130, 246, 0.1);
-    border: 1px solid rgba(59, 130, 246, 0.25);
+    color: var(--btn-ink);
+    background: var(--sky-pale);
+    border: 2px solid var(--ink);
 }
 
 .daily-badge {
-    color: #92400E;
-    background: rgba(245, 158, 11, 0.15);
-    border: 1px solid rgba(245, 158, 11, 0.35);
-    box-shadow: none;
+    color: var(--btn-ink);
+    background: var(--sun);
+    border: 2px solid var(--ink);
+    box-shadow: 0 3px 0 var(--ink);
 }
 
 .daily-badge:hover {
-    transform: none;
-    box-shadow: none;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 0 var(--ink);
 }
 
 .daily-badge.completed {
-    color: #065F46;
-    background: rgba(16, 185, 129, 0.15);
-    border-color: rgba(16, 185, 129, 0.35);
-    box-shadow: none;
+    color: var(--btn-ink);
+    background: var(--leaf);
+    border-color: var(--ink);
+    box-shadow: 0 3px 0 var(--ink);
 }
 
 .debt-badge {
-    background: rgba(59, 130, 246, 0.1);
-    color: var(--primary-dark);
-    border: 1px solid rgba(59, 130, 246, 0.25);
+    background: var(--sky-pale);
+    color: var(--btn-ink);
+    border: 2px solid var(--ink);
 }
 
 .debt-badge:hover {
-    background: rgba(59, 130, 246, 0.18);
-    transform: none;
-    box-shadow: none;
+    background: var(--sky);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 0 var(--ink);
 }
 
 .review-counter-badge {
-    background: rgba(139, 92, 246, 0.12);
-    color: #6D28D9;
-    box-shadow: none;
+    background: var(--wisteria);
+    color: var(--btn-ink);
+    border: 2.5px solid var(--ink);
+    box-shadow: 0 3px 0 var(--ink);
 }
 
 .review-counter-badge:hover {
-    background: rgba(139, 92, 246, 0.2);
-    transform: none;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 0 var(--ink);
+}
+
+.review-counter-badge:active {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 var(--ink);
+    animation: none;
+}
+
+/* ============================================
+   Quiz page
+   quiz.html links this file itself, so the quiz always uses this theme.
+   Everything above (backdrop, header, buttons) already applies there; the
+   rules below cover the quiz-only pieces. quiz.html carries inline styles and
+   style.css has !important rules for its header controls, so several rules
+   here need !important and a body.quiz-page prefix to win.
+   ============================================ */
+
+/* Let the scenery show: only the cards inside are painted */
+.quiz-page .quiz-container {
+    background: transparent;
     box-shadow: none;
+    padding: 0;
 }
 
-body.dark-mode .review-counter-badge {
-    color: #C4B5FD;
+.quiz-card,
+.quiz-loading,
+.quiz-error,
+.quiz-empty,
+.quiz-chart-container {
+    background: var(--bg-card);
+    border: 3px solid var(--ink);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
 }
 
-body.dark-mode .daily-badge {
-    color: #FCD34D;
+.quiz-chart-container {
+    padding: 1.5rem;
 }
 
-body.dark-mode .daily-badge.completed {
-    color: #6EE7B7;
+/* These two are narrower than the quiz card; centre them under it */
+.quiz-chart-container,
+.quiz-page #quizImageContainer {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.quiz-page #quizImageContainer {
+    background: var(--bg-card) !important;
+    border: 3px solid var(--ink) !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--shadow-card) !important;
+}
+
+.quiz-word,
+.quiz-empty h2,
+.quiz-chart-container h3,
+.quiz-choice-btn,
+.quiz-mode-toggle {
+    font-family: var(--font-display);
+}
+
+.quiz-word,
+body.dark-mode .quiz-word {
+    color: var(--primary-dark);
+    text-shadow: 0 3px 0 var(--sun);
+}
+
+body.dark-mode .quiz-word {
+    text-shadow: 0 3px 0 var(--ink);
+}
+
+.quiz-empty h2,
+.quiz-chart-container h3 {
+    color: var(--primary-dark);
+}
+
+.quiz-translation {
+    border-top: 2px dashed var(--line);
+}
+
+.quiz-ipa,
+body.dark-mode .quiz-ipa {
+    color: var(--text-primary);
+    background: var(--paper);
+    border: 2px solid var(--ink);
+}
+
+.btn-remember,
+.btn-remember:hover {
+    background: var(--leaf);
+    color: var(--btn-ink);
+}
+
+.btn-not-remember,
+.btn-not-remember:hover {
+    background: var(--torii);
+    color: var(--btn-ink);
+}
+
+.btn-next,
+.btn-next:hover {
+    background: var(--sky);
+    color: var(--btn-ink);
+}
+
+.quiz-page .btn-exit-quiz,
+.quiz-page #themeToggle {
+    border-radius: 14px !important;
+}
+
+.quiz-page .btn-exit-quiz {
+    text-decoration: none;
+}
+
+/* Multiple-choice answers */
+.quiz-choice-btn {
+    background: var(--bg-main);
+    color: var(--text-primary);
+    border: 2.5px solid var(--ink);
+    border-radius: 14px;
+    box-shadow: 0 3px 0 var(--ink);
+    font-weight: 500;
+    transition: transform var(--transition-speed) ease,
+        box-shadow var(--transition-speed) ease;
+}
+
+.quiz-choice-btn:hover:not(:disabled) {
+    background: var(--bg-hover);
+    border-color: var(--ink);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 0 var(--ink);
+}
+
+.quiz-choice-btn.correct,
+body.dark-mode .quiz-choice-btn.correct {
+    background-color: var(--leaf);
+    border-color: var(--ink);
+    color: var(--btn-ink);
+}
+
+.quiz-choice-btn.incorrect,
+body.dark-mode .quiz-choice-btn.incorrect {
+    background-color: var(--torii);
+    border-color: var(--ink);
+    color: var(--btn-ink);
+}
+
+/* Header controls: category, Quiz Mode switch, filter */
+body.quiz-page #categorySelect,
+body.quiz-page #quizFilterSelect,
+body.quiz-page .quiz-mode-toggle {
+    background: var(--bg-card) !important;
+    color: var(--text-primary) !important;
+    border: 2px solid var(--ink) !important;
+    border-radius: var(--radius-sm) !important;
+    box-shadow: none !important;
+}
+
+body.quiz-page #categorySelect:hover,
+body.quiz-page #quizFilterSelect:hover {
+    border-color: var(--ink) !important;
+    box-shadow: 0 3px 0 var(--ink) !important;
+}
+
+body.quiz-page #categorySelect:focus,
+body.quiz-page #quizFilterSelect:focus {
+    border-color: var(--ink) !important;
+    box-shadow: var(--focus-ring) !important;
+}
+
+input:checked + .slider {
+    background-color: var(--leaf-deep);
+}
+
+body.dark-mode input:checked + .slider {
+    background-color: var(--leaf);
+}
+
+/* ============================================
+   Phones and reduced motion
+   ============================================ */
+@media (max-width: 768px) {
+    /* No oversized strip on phones: still clouds, drawn at a readable size */
+    body::before {
+        width: 100%;
+        background-size: 900px auto;
+        animation: none;
+    }
+
+    .vocab-page .container {
+        padding-bottom: 6rem;
+    }
+
+    .container::before {
+        background-size: 150px auto, 150px auto, max(100%, 1100px) auto;
+    }
+
+    .app-header::before {
+        background-size: 96px auto, 96px auto, 100% 100%;
+    }
+
+    .word-card::before,
+    .welcome-message::before,
+    .quiz-card::before {
+        top: -30px;
+        right: 20px;
+        width: 76px;
+        height: 42px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body::before,
+    body.dark-mode .container::after {
+        animation: none;
+    }
+
+    .btn,
+    .btn:hover,
+    .btn:active {
+        transition: none;
+    }
 }
