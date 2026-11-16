@@ -44,8 +44,9 @@ const editWordBtn = document.getElementById('editWordBtn');
  * Initialize quiz on page load
  */
 document.addEventListener('DOMContentLoaded', async () => {
-    // Initialize Theme
-    const savedTheme = localStorage.getItem('theme') || 'light';
+    // Initialize Theme. 'bkdict-theme' is the key the vocab page uses, so
+    // dark mode is one setting shared by both pages.
+    const savedTheme = localStorage.getItem('bkdict-theme') || 'light';
     if (savedTheme === 'dark') {
         document.body.classList.add('dark-mode');
     }
@@ -56,7 +57,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         themeToggle.addEventListener('click', () => {
             document.body.classList.toggle('dark-mode');
             const newTheme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
-            localStorage.setItem('theme', newTheme);
+            localStorage.setItem('bkdict-theme', newTheme);
             if (quizChartInstance) {
                 quizChartInstance.options.scales.x.ticks.color = newTheme === 'dark' ? '#fff' : '#666';
                 quizChartInstance.options.scales.y.ticks.color = newTheme === 'dark' ? '#fff' : '#666';
