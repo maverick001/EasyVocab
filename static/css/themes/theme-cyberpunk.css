@@ -122,3 +122,8 @@ body.dark-mode {
 .navigation-buttons {
     border-top: none;
 }
+
+/* Add New Word window has a white panel in light mode, so its title must be dark */
+body:not(.dark-mode) .modal-header h2 {
+    color: #000;
+}
