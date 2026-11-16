@@ -158,3 +158,18 @@ body.dark-mode #sampleDisplay .empty-hint {
     background-color: #90EE90;
     color: #1a1a2e;
 }
+
+/* Add New Word window has a white panel in light mode, so its title must be dark */
+body:not(.dark-mode) .modal-header h2 {
+    color: #000;
+}
+
+/* Cancel buttons inside the white modal: --text-light is translucent white in this theme, so they vanish */
+body:not(.dark-mode) .modal-content .btn-cancel {
+    background: #7F8C8D;
+    color: #fff;
+}
+
+body:not(.dark-mode) .modal-content .btn-cancel:hover {
+    background: #5D6D7E;
+}
