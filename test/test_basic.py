@@ -1002,6 +1002,24 @@ class TestEditCountsAsReview:
         )
 
 
+class TestMoveCountsAsReview:
+    """A category move is a review, on the same once-a-day cap as edits"""
+
+    TODAY = date(2026, 8, 8)
+
+    def test_first_move_of_a_never_reviewed_word_counts(self):
+        from app import move_counts_as_review
+        assert move_counts_as_review(None, self.TODAY)
+
+    def test_move_after_an_earlier_day_counts(self):
+        from app import move_counts_as_review
+        assert move_counts_as_review(date(2026, 8, 7), self.TODAY)
+
+    def test_move_after_a_review_today_does_not_count(self):
+        from app import move_counts_as_review
+        assert not move_counts_as_review(self.TODAY, self.TODAY)
+
+
 class TestCategoryMergeValues:
     """
     Tests for the values a word keeps when a move lands on a category it is
