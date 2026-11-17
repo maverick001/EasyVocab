@@ -276,6 +276,38 @@ class TestOrphanedImagesAreRemoved:
         assert response.get_json()['merged'] is False
         assert cursor.index_of(BLOB_DELETE) == -1
 
+    def test_move_counts_as_a_review(self, run_route):
+        cursor = ScriptedCursor({
+            'SELECT * FROM words WHERE id = %s': [{
+                'id': 7, 'word': 'brunt', 'category': 'AI', 'translation': '冲击',
+                'example_sentence': None, 'image_file': None, 'image_file_2': None,
+                'last_sample_review_date': None,
+            }],
+        })
+        response, cursor, _ = run_route(
+            'put', '/api/words/7/category', cursor, json={'new_category': 'Science'}
+        )
+        assert response.status_code == 200
+        assert response.get_json()['review_counted'] is True
+        assert cursor.index_of('review_count = review_count + 1') > -1
+        assert cursor.index_of('last_sample_review_date = CURDATE()') > -1
+
+    def test_second_review_the_same_day_is_not_counted(self, run_route):
+        from datetime import date
+        cursor = ScriptedCursor({
+            'SELECT * FROM words WHERE id = %s': [{
+                'id': 7, 'word': 'brunt', 'category': 'AI', 'translation': '冲击',
+                'example_sentence': None, 'image_file': None, 'image_file_2': None,
+                'last_sample_review_date': date.today(),
+            }],
+        })
+        response, cursor, _ = run_route(
+            'put', '/api/words/7/category', cursor, json={'new_category': 'Science'}
+        )
+        assert response.status_code == 200
+        assert response.get_json()['review_counted'] is False
+        assert cursor.index_of('review_count = review_count + 1') == -1
+
 
 class TestNoDatabaseTextAsHtml:
     """Words, categories and sentences are set as text, never parsed as HTML"""

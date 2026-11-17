@@ -663,6 +663,24 @@ def edit_counts_as_review(data, current_values, last_review_date, today):
     )
 
 
+def move_counts_as_review(last_review_date, today):
+    """
+    Whether moving a word to another category should bump review_count.
+
+    Filing a word under the right category means reading it, so a move is a
+    review. It follows the same daily cap as edits: the first review of the
+    day counts and the rest are free, whichever kind of review it was.
+
+    Args:
+        last_review_date: The word's last_sample_review_date, or None
+        today: Today's date, in the timezone the cap is written with
+
+    Returns:
+        True if the move should count as a review of the word
+    """
+    return last_review_date != today
+
+
 # What a surviving row takes from the duplicate it absorbs when a move lands on
 # a category the word is already filed under. Content and assets are filled in
 # only where the surviving row has nothing, so the entry on screen stays the one
@@ -2051,6 +2069,25 @@ def change_word_category(word_id):
             (*update_values.values(), word_id),
         )
 
+        # A move counts as a review, once per word per day. The merged values
+        # decide the cap, so a review done under either row is not counted twice.
+        # Every row sharing the word text is bumped, as an edit does.
+        review_counted = move_counts_as_review(
+            {**current_word, **update_values}.get("last_sample_review_date"),
+            date.today(),
+        )
+        if review_counted:
+            cursor.execute(
+                """
+                UPDATE words
+                SET review_count = review_count + 1,
+                    last_reviewed = DATE_ADD(NOW(), INTERVAL 10 HOUR),
+                    last_sample_review_date = CURDATE()
+                WHERE word = %s
+                """,
+                (current_word["word"],),
+            )
+
         if existing_word:
             # The absorbed row's images were carried over only where the kept
             # row had none; any that were not are now held by nothing.
@@ -2088,7 +2125,14 @@ def change_word_category(word_id):
                 f'the two entries were merged into one'
             )
 
-        return jsonify({"success": True, "message": message, "merged": bool(existing_word)})
+        return jsonify(
+            {
+                "success": True,
+                "message": message,
+                "merged": bool(existing_word),
+                "review_counted": review_counted,
+            }
+        )
 
     except Exception as e:
         report_api_error(e)
