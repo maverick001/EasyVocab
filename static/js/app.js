@@ -1879,13 +1879,13 @@ async function generateTranslation() {
             // Get current translation
             const currentTranslation = AppState.currentWord.translation || '';
 
-            // Format the generated translation: replace newlines with ；
-            const formattedTranslation = data.translation.replace(/\n/g, '；');
+            // Format the generated translation: replace newlines with ，
+            const formattedTranslation = data.translation.replace(/\n/g, '，');
 
-            // Append new translation to existing (with ； separator if there's existing content)
+            // Append new translation to existing (with ， separator if there's existing content)
             let updatedTranslation;
             if (currentTranslation.trim()) {
-                updatedTranslation = currentTranslation + '；' + formattedTranslation;
+                updatedTranslation = currentTranslation + '，' + formattedTranslation;
             } else {
                 updatedTranslation = formattedTranslation;
             }
@@ -2186,15 +2186,15 @@ async function generateNewWordTranslation() {
             if (mode === 'normal') {
                 // Normal flow: Fill Translation field
 
-                // Format the generated translation: replace newlines with ；
-                const formattedTranslation = data.translation.replace(/\n/g, '；');
+                // Format the generated translation: replace newlines with ，
+                const formattedTranslation = data.translation.replace(/\n/g, '，');
 
                 // Get current translation
                 const currentTranslation = Elements.newTranslation.value.trim();
 
-                // Append new translation to existing (with ； separator if there's existing content)
+                // Append new translation to existing (with ， separator if there's existing content)
                 if (currentTranslation) {
-                    Elements.newTranslation.value = currentTranslation + '；' + formattedTranslation;
+                    Elements.newTranslation.value = currentTranslation + '，' + formattedTranslation;
                 } else {
                     Elements.newTranslation.value = formattedTranslation;
                 }
@@ -2202,8 +2202,8 @@ async function generateNewWordTranslation() {
                 Elements.addWordStatus.textContent = '✅ Translation generated!';
             } else {
                 // Reverse flow: Fill Word field
-                // Ensure we handle potential multiple lines/formats nicely, though prompt asks for semicolons
-                const formattedWord = data.translation.replace(/\n/g, '; ');
+                // Ensure we handle potential multiple lines/formats nicely, though the prompt asks for Chinese commas
+                const formattedWord = data.translation.replace(/\n/g, ', ');
                 Elements.newWord.value = formattedWord;
 
                 Elements.addWordStatus.textContent = '✅ English word generated!';
