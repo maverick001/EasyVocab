@@ -641,3 +641,32 @@ class TestFrontEndWiring:
                             'static', 'js', 'settings.js')
         with open(path, encoding='utf-8') as handle:
             assert 'innerHTML' not in handle.read()
+
+
+class TestVocabularyLinkReturnsToWord:
+    """The Settings "← Vocabulary" link reopens the word you left, not Welcome."""
+
+    ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def _read(self, *parts):
+        with open(os.path.join(self.ROOT, *parts), encoding='utf-8') as handle:
+            return handle.read()
+
+    def test_app_and_settings_share_the_same_storage_key(self):
+        key = 'bkdict-last-word-id'
+        assert key in self._read('static', 'js', 'app.js')
+        assert key in self._read('static', 'js', 'settings.js')
+
+    def test_word_is_remembered_when_displayed_and_forgotten_at_welcome(self):
+        source = self._read('static', 'js', 'app.js')
+        display = source[source.index('function displayWord('):]
+        assert 'rememberLastWord(wordData.id)' in display[:400]
+        # Both "no category / empty category" Welcome branches clear it
+        assert source.count('forgetLastWord();') == 2
+
+    def test_link_has_a_hook_and_falls_back_to_the_plain_page(self):
+        html = self._read('templates', 'settings.html')
+        assert 'id="vocabLink"' in html and 'href="/"' in html
+        js = self._read('static', 'js', 'settings.js')
+        assert "'/?word_id=' + lastWordId" in js
+        assert r"/^\d+$/.test(" in js  # only a numeric id can reach the URL
