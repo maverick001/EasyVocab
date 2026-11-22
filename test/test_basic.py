@@ -748,6 +748,25 @@ class TestWordCategoryDisplay:
         measure_at = body.index('getBoundingClientRect')
         assert reset_at < measure_at
 
+    def test_alignment_skips_a_hidden_word(self):
+        """
+        In word edit mode the display is inside a display:none container and
+        measures as zero. A resize then padded the row by about its own width and
+        squeezed the pills to one character per line. The function must bail out
+        before touching the padding, and leaving edit mode must re-align.
+        """
+        from app import app
+        with open(os.path.join(app.root_path, 'static', 'js', 'app.js'), encoding='utf-8') as f:
+            js = f.read()
+        start = js.index('function alignWordCategories(')
+        body = js[start:js.index('\n}', start)]
+        guard_at = body.index('getClientRects().length === 0')
+        assert guard_at < body.index("paddingLeft = '0px'")
+
+        toggle = js[js.index('function toggleEditMode('):]
+        word_branch = toggle[:toggle.index("type === 'translation'")]
+        assert 'alignWordCategories()' in word_branch
+
     def test_category_names_are_escaped(self):
         """
         Category names come from the Add New Word modal and from XML import, so
