@@ -13,6 +13,10 @@ python-dotenv==1.0.0
 
 # Additional Utilities
 requests>=2.31.0
+
+# IANA timezone data for the Settings page timezone (zoneinfo). Windows has no
+# system copy, so without this ZoneInfo("Australia/Sydney") raises there.
+tzdata>=2024.1
 # (lxml is optional - Python's built-in xml.etree.ElementTree is used by default)
 # lxml==5.1.0
 
