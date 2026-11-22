@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Add to BKDict",
+  "version": "1.0.0",
+  "description": "Highlight a word on any page, right-click, and search it in your local EasyVocab (BKDict) app.",
+  "permissions": ["contextMenus", "storage", "notifications", "scripting"],
+  "host_permissions": [
+    "http://127.0.0.1:5001/*",
+    "http://localhost:5001/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://127.0.0.1:5001/*", "http://localhost:5001/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
