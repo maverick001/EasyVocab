@@ -18,6 +18,7 @@ const AppState = {
     categories: [], // Store categories globally
     wordHistory: [],  // Store modification history for current word
     dailyProgress: 0,  // Daily activity counter (resets at midnight)
+    dailyTarget: 100,  // Daily goal; replaced by the saved setting from /api/daily-count
     countedWordIds: new Set(),  // Track which words were counted today (max 1 per word per day)
     totalDebt: 0,
     debtBreakdown: [],
@@ -2685,6 +2686,9 @@ async function initializeDailyCounter() {
 
         if (data.success) {
             AppState.dailyProgress = data.count;
+            if (Number.isInteger(data.target) && data.target > 0) {
+                AppState.dailyTarget = data.target;
+            }
             console.log(`📊 Daily count from database: ${data.count}`);
         } else {
             console.error('Failed to fetch daily count:', data.error);
@@ -2719,8 +2723,8 @@ function incrementDailyCounter(wordId) {
     AppState.countedWordIds.add(wordId);
     AppState.dailyProgress++;
 
-    // If user has exceeded daily quota (100), decrement total debt
-    if (AppState.dailyProgress > 100 && AppState.totalDebt > 0) {
+    // If user has exceeded the daily target, decrement total debt
+    if (AppState.dailyProgress > AppState.dailyTarget && AppState.totalDebt > 0) {
         AppState.totalDebt--;
         updateDebtDisplay();
         console.log('📉 Debt reduced by 1 due to extra review!');
@@ -2750,8 +2754,8 @@ function updateDailyCounterDisplay() {
     if (Elements.dailyCounter) {
         Elements.dailyCounter.textContent = `Word Today: ${AppState.dailyProgress}`;
 
-        // Change color to green when >= 100
-        if (AppState.dailyProgress >= 100) {
+        // Change color to green when the daily target is reached
+        if (AppState.dailyProgress >= AppState.dailyTarget) {
             Elements.dailyCounter.classList.add('completed');
         } else {
             Elements.dailyCounter.classList.remove('completed');
@@ -2832,7 +2836,7 @@ function updateDebtDisplay() {
                 } else if (item.debt > 0) {
                     debtClass = 'debt-amount debt-deficit';  // Red - missed quota
                 } else {
-                    debtClass = 'debt-amount debt-neutral';  // Neutral - exactly 100
+                    debtClass = 'debt-amount debt-neutral';  // Neutral - exactly on target
                 }
 
                 // Format date label

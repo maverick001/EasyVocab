@@ -277,6 +277,7 @@ class TestOrphanedImagesAreRemoved:
         assert cursor.index_of(BLOB_DELETE) == -1
 
     def test_move_counts_as_a_review(self, run_route):
+        from datetime import date
         cursor = ScriptedCursor({
             'SELECT * FROM words WHERE id = %s': [{
                 'id': 7, 'word': 'brunt', 'category': 'AI', 'translation': '冲击',
@@ -290,7 +291,9 @@ class TestOrphanedImagesAreRemoved:
         assert response.status_code == 200
         assert response.get_json()['review_counted'] is True
         assert cursor.index_of('review_count = review_count + 1') > -1
-        assert cursor.index_of('last_sample_review_date = CURDATE()') > -1
+        assert cursor.index_of('last_sample_review_date = %s') > -1
+        # the stored date is the review day, passed as a parameter
+        assert cursor.params_of('last_sample_review_date = %s')[0] == date.today()
 
     def test_second_review_the_same_day_is_not_counted(self, run_route):
         from datetime import date

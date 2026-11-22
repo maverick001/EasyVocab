@@ -4,9 +4,10 @@
  * yellow / green accents, cut-corner panels with corner brackets, outlined
  * neon buttons and a techno display font on headings.
  *
- * Only the vocab page loads this file (through the theme picker). Every rule is
- * prefixed with body.vocab-page: that scopes the look to that page and also
- * out-ranks the `body.dark-mode .x` rules in style.css.
+ * Only the vocab page and the settings page load this file (the theme is picked
+ * on the vocab page). Every rule is prefixed with body.vocab-page or
+ * body.settings-page: that scopes the look to those pages and also out-ranks
+ * the `body.dark-mode .x` rules in style.css.
  *
  * The rules below stay away from layout properties (padding, width, position
  * of existing boxes), so the phone layout blocks in style.css keep working.
@@ -18,7 +19,8 @@
 /* ============================================
    Palette
    ============================================ */
-body.vocab-page {
+body.vocab-page,
+body.settings-page {
     --neon-cyan: #05e0f5;
     --neon-pink: #ff2a6d;
     --neon-yellow: #f9f002;
@@ -74,7 +76,8 @@ body.vocab-page {
 }
 
 /* The dark-mode toggle switches to a blacked-out variant without the glows */
-body.vocab-page.dark-mode {
+body.vocab-page.dark-mode,
+body.settings-page.dark-mode {
     --primary-blue: var(--neon-cyan);
     --primary-light: #7df4ff;
     --primary-dark: var(--neon-cyan);
@@ -98,7 +101,8 @@ body.vocab-page.dark-mode {
     background: var(--bg-main);
 }
 
-body.vocab-page ::selection {
+body.vocab-page ::selection,
+body.settings-page ::selection {
     background: var(--neon-pink);
     color: #fff;
 }
@@ -106,14 +110,16 @@ body.vocab-page ::selection {
 /* ============================================
    Header
    ============================================ */
-body.vocab-page .app-header {
+body.vocab-page .app-header,
+body.settings-page .app-header {
     background: rgba(10, 12, 21, 0.55);
     border-bottom: 1px solid var(--border-color);
     border-radius: 0;
     box-shadow: none;
 }
 
-body.vocab-page .app-title {
+body.vocab-page .app-title,
+body.settings-page .app-title {
     font-family: var(--font-display);
     font-size: 2rem;
     font-weight: 700;
@@ -125,7 +131,8 @@ body.vocab-page .app-title {
         0 0 22px rgba(var(--neon-cyan-rgb), 0.55);
 }
 
-body.vocab-page .app-title::before {
+body.vocab-page .app-title::before,
+body.settings-page .app-title::before {
     content: '//';
     margin-right: 0.5em;
     font-style: italic;
@@ -158,7 +165,8 @@ body.vocab-page .theme-toggle:hover {
 body.vocab-page .control-panel,
 body.vocab-page .word-card,
 body.vocab-page .welcome-message,
-body.vocab-page .search-results-panel {
+body.vocab-page .search-results-panel,
+body.settings-page .settings-card {
     --frame: var(--neon-cyan);
     position: relative;
     isolation: isolate;
@@ -179,7 +187,8 @@ body.vocab-page .welcome-message {
 body.vocab-page .control-panel::before,
 body.vocab-page .word-card::before,
 body.vocab-page .welcome-message::before,
-body.vocab-page .search-results-panel::before {
+body.vocab-page .search-results-panel::before,
+body.settings-page .settings-card::before {
     content: '';
     position: absolute;
     inset: -1px;
@@ -306,7 +315,8 @@ body.vocab-page .word-section {
 /* ============================================
    Buttons: outlined neon with one cut corner
    ============================================ */
-body.vocab-page .btn {
+body.vocab-page .btn,
+body.settings-page .btn {
     --btn-c: var(--neon-cyan);
     --btn-cut: 10px;
     font-family: var(--font-ui);
@@ -326,7 +336,8 @@ body.vocab-page .btn {
     transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, color 0.2s ease;
 }
 
-body.vocab-page .btn:hover {
+body.vocab-page .btn:hover,
+body.settings-page .btn:hover {
     color: #fff;
     background:
         linear-gradient(to top left, transparent calc(50% - 1.5px), var(--btn-c) calc(50% - 1.5px), var(--btn-c) calc(50% + 1.5px), transparent calc(50% + 1.5px)) bottom right / var(--btn-cut) var(--btn-cut) no-repeat border-box,
@@ -335,7 +346,9 @@ body.vocab-page .btn:hover {
 }
 
 body.vocab-page .btn:disabled,
-body.vocab-page .btn:disabled:hover {
+body.vocab-page .btn:disabled:hover,
+body.settings-page .btn:disabled,
+body.settings-page .btn:disabled:hover {
     --btn-c: var(--text-light);
     color: var(--text-light);
     text-shadow: none;
@@ -346,7 +359,8 @@ body.vocab-page .btn:disabled:hover {
 }
 
 /* The shine sweep from style.css is white; tint it to the button colour */
-body.vocab-page .btn::before {
+body.vocab-page .btn::before,
+body.settings-page .btn::before {
     background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--btn-c) 30%, transparent), transparent);
 }
 
@@ -355,7 +369,8 @@ body.vocab-page .btn-sm {
 }
 
 body.vocab-page .btn-secondary,
-body.vocab-page .btn-add {
+body.vocab-page .btn-add,
+body.settings-page .btn-secondary {
     --btn-c: #7fb6ff;
 }
 
@@ -365,7 +380,8 @@ body.vocab-page .btn-save {
 }
 
 body.vocab-page .btn-quiz,
-body.vocab-page .btn-image {
+body.vocab-page .btn-image,
+body.settings-page .btn-quiz {
     --btn-c: var(--neon-pink);
 }
 
@@ -840,12 +856,14 @@ body.vocab-page .env-badge svg {
    Phones
    ============================================ */
 @media (max-width: 768px) {
-    body.vocab-page {
+    body.vocab-page,
+    body.settings-page {
         --cut: 14px;
         --bracket: 24px;
     }
 
-    body.vocab-page .app-title {
+    body.vocab-page .app-title,
+    body.settings-page .app-title {
         font-size: 1.35rem;
         letter-spacing: 0.1em;
     }
@@ -857,4 +875,84 @@ body.vocab-page .env-badge svg {
     body.vocab-page .welcome-message p {
         letter-spacing: 0.1em;
     }
+}
+
+/* ============================================
+   Settings page (body.settings-page)
+   The palette, header, panel frame and buttons above are shared with the vocab
+   page; these are the settings-only pieces.
+   ============================================ */
+body.settings-page .settings-card h2 {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--neon-cyan);
+}
+
+body.settings-page .settings-label {
+    font-family: var(--font-ui);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+body.settings-page .settings-hint {
+    color: var(--text-light);
+}
+
+body.settings-page .settings-field input[type="number"],
+body.settings-page .settings-field input[type="date"],
+body.settings-page .settings-field input[type="text"] {
+    background: var(--bg-input);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    box-shadow: none;
+}
+
+body.settings-page .settings-field input:hover {
+    border-color: rgba(var(--neon-cyan-rgb), 0.6);
+}
+
+body.settings-page .settings-field input:focus {
+    outline: none;
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 0 1px rgba(var(--neon-cyan-rgb), 0.35), 0 0 14px rgba(var(--neon-cyan-rgb), 0.3);
+}
+
+body.settings-page .settings-field input[type="checkbox"] {
+    accent-color: var(--neon-cyan);
+}
+
+body.settings-page .settings-status {
+    color: var(--neon-green);
+}
+
+body.settings-page .settings-status.error {
+    color: var(--neon-pink);
+}
+
+/* style.css fills the active range button solid; keep it an outlined neon one */
+body.settings-page .range-btn.active {
+    color: #fff;
+    background: color-mix(in srgb, var(--btn-c) 30%, transparent);
+    box-shadow: inset 0 0 16px color-mix(in srgb, var(--btn-c) 45%, transparent);
+}
+
+body.settings-page .chart-bar {
+    fill: var(--neon-cyan);
+}
+
+body.settings-page .chart-bar.met {
+    fill: var(--neon-green);
+}
+
+body.settings-page .chart-target {
+    stroke: var(--neon-yellow);
+}
+
+body.settings-page .chart-label {
+    fill: var(--text-secondary);
+    font-family: var(--font-mono);
 }

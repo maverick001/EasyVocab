@@ -81,6 +81,15 @@
                 <a href="/" class="btn btn-primary" style="margin-top: 1rem;">Back to Vocabulary</a>
             </div>
 
+            <!-- Session complete (only when a session length is set on the Settings page) -->
+            <div id="quizSessionDone" class="quiz-empty" style="display: none;">
+                <div class="quiz-empty-icon">✅</div>
+                <h2>Session complete</h2>
+                <p id="quizSessionDoneText"></p>
+                <button id="newSessionBtn" class="btn btn-primary" style="margin-top: 1rem;">Start another session</button>
+                <a href="/" class="btn btn-secondary" style="margin-top: 1rem;">Back to Vocabulary</a>
+            </div>
+
             <!-- Quiz Card (Shared for both modes) -->
             <div id="quizCard" class="quiz-card" style="display: none;">
                 <div class="quiz-card-toolbar">
@@ -128,7 +137,9 @@
             </div>
             
             <!-- Exit Quiz Button -->
-            <div class="quiz-footer-actions" style="display: flex; justify-content: flex-end; margin-top: 1.5rem;">
+            <div class="quiz-footer-actions" style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+                <a href="/settings" class="btn btn-secondary"
+                    style="padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: 600;">⚙️ Settings</a>
                 <a href="/" class="btn btn-secondary btn-exit-quiz"
                     style="padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: 600;">Exit Quiz</a>
             </div>
