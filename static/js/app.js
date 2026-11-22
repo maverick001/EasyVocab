@@ -1394,6 +1394,13 @@ function renderWordCategories(categories) {
 function alignWordCategories() {
     if (!Elements.wordCategories || !Elements.wordDisplay) return;
 
+    // While the word is being edited its container is display:none, so every
+    // measurement reads zero. A resize in that state would read the word as
+    // sitting at x=0 and pad the row by about its own width, squeezing the
+    // pills until the label wraps one character per line. Keep the last good
+    // alignment instead; toggleEditMode() re-measures when editing ends.
+    if (Elements.wordDisplay.getClientRects().length === 0) return;
+
     // Measure from a known zero. Leaving the previous word's padding in place
     // would bake it into the reading and walk the row further each time.
     Elements.wordCategories.style.paddingLeft = '0px';
@@ -1507,6 +1514,10 @@ function toggleEditMode(type, isEditing) {
             Elements.wordInput.value = AppState.currentWord?.word || '';
             Elements.wordInput.focus();
             Elements.wordInput.select();
+        } else {
+            // The word may have changed or the window resized while editing
+            // (alignWordCategories skips hidden words), so centre the pills again.
+            alignWordCategories();
         }
     } else if (type === 'translation') {
         AppState.isEditingTranslation = isEditing;
