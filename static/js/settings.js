@@ -13,6 +13,16 @@
     const rangeButtons = document.querySelectorAll('.range-btn');
     let currentDays = 30;
 
+    // "← Vocabulary" reopens the word that was on screen (saved by app.js for
+    // this tab). With nothing saved the link stays "/" and shows the Welcome page.
+    try {
+        const lastWordId = sessionStorage.getItem('bkdict-last-word-id');
+        const vocabLink = document.getElementById('vocabLink');
+        if (vocabLink && /^\d+$/.test(lastWordId || '')) {
+            vocabLink.href = '/?word_id=' + lastWordId;
+        }
+    } catch (e) { /* storage blocked: keep the plain link */ }
+
     // Same key as the vocab and quiz pages, so dark mode carries over
     try {
         if (localStorage.getItem('bkdict-theme') === 'dark') {

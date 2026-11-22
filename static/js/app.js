@@ -1421,12 +1421,30 @@ function alignWordCategories() {
     }
 }
 
+// The Settings page's "Vocabulary" link reads this key (settings.js) so it can
+// reopen the word you were on. sessionStorage: it lasts for this tab only, so
+// a fresh visit to the app still opens on the Welcome message.
+const LAST_WORD_KEY = 'bkdict-last-word-id';
+
+function rememberLastWord(wordId) {
+    try {
+        sessionStorage.setItem(LAST_WORD_KEY, String(wordId));
+    } catch (e) { /* storage blocked: the link just goes to the Welcome page */ }
+}
+
+function forgetLastWord() {
+    try {
+        sessionStorage.removeItem(LAST_WORD_KEY);
+    } catch (e) { /* nothing to clear */ }
+}
+
 /**
  * Display word data in the UI
  */
 function displayWord(wordData) {
     // Update app state
     AppState.currentWord = wordData;
+    rememberLastWord(wordData.id);
     AppState.currentIndex = wordData.current_index;
     AppState.totalInCategory = wordData.total_in_category;
 
@@ -1565,6 +1583,7 @@ function handleCategoryChange(event) {
         Elements.welcomeMessage.style.display = 'block';
         setHeaderControlsVisible(false);
         AppState.currentCategory = null;
+        forgetLastWord();
     }
 }
 
@@ -3220,6 +3239,7 @@ async function handleDeleteSuccess(message) {
         Elements.welcomeMessage.style.display = 'block';
         setHeaderControlsVisible(false);
         AppState.currentCategory = null;
+        forgetLastWord();
         Elements.categorySelect.value = '';
     }
 }
