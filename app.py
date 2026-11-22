@@ -25,6 +25,18 @@ from werkzeug.utils import secure_filename
 from config import Config
 from utils import parse_and_import_xml, XMLParserError
 from utils.word_images import CREATE_WORD_IMAGES_TABLE_SQL
+from utils.settings import (
+    CREATE_APP_SETTINGS_TABLE_SQL,
+    DEFAULT_SETTINGS,
+    HISTORY_RANGES,
+    calculate_debt,
+    parse_settings,
+    parse_start_date,
+    resolve_timezone,
+    serialize_setting,
+    validate_settings,
+    zero_fill_history,
+)
 from utils.sample_prompts import build_sample_prompt
 from utils.monitoring import (
     init_sentry,
@@ -436,6 +448,143 @@ def ensure_word_images_table():
     finally:
         if connection:
             connection.close()
+
+
+def ensure_app_settings_table():
+    """Ensure the app_settings table (key/value, see utils/settings.py) exists"""
+    connection = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute(CREATE_APP_SETTINGS_TABLE_SQL)
+        connection.commit()
+        cursor.close()
+    except mysql.connector.Error as err:
+        print(f"[ERROR] Error ensuring app_settings table: {err}")
+    finally:
+        if connection:
+            connection.close()
+
+
+# ============================================
+# Settings
+# ============================================
+# Values are stored as strings in app_settings and read through
+# utils.settings.parse_settings, so a missing table, a missing row or a bad
+# value all fall back to DEFAULT_SETTINGS (the behaviour before settings existed).
+
+
+def load_settings(cursor):
+    """All settings as typed values, defaults filling any gap"""
+    try:
+        cursor.execute("SELECT setting_key, setting_value FROM app_settings")
+        rows = cursor.fetchall()
+    except Exception:
+        return dict(DEFAULT_SETTINGS)  # table not created yet
+    stored = {}
+    for row in rows or []:
+        try:
+            stored[row["setting_key"]] = row["setting_value"]
+        except (TypeError, KeyError):
+            continue
+    return parse_settings(stored)
+
+
+def get_setting(key, default=None):
+    """One setting, on its own connection. Any failure returns the default."""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        return load_settings(cursor).get(key, default)
+    except Exception:
+        return default
+    finally:
+        if conn:
+            conn.close()
+
+
+def set_setting(key, value, cursor=None):
+    """
+    Store one setting. With no cursor it opens its own connection and commits.
+    The table is created on demand so the first save works on a database that
+    has not been migrated yet.
+    """
+    own = cursor is None
+    conn = None
+    try:
+        if own:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute(CREATE_APP_SETTINGS_TABLE_SQL)
+        cursor.execute(
+            """
+            INSERT INTO app_settings (setting_key, setting_value)
+            VALUES (%s, %s)
+            ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
+            """,
+            (key, serialize_setting(key, value)),
+        )
+        if own:
+            conn.commit()
+    finally:
+        if own and conn:
+            conn.close()
+
+
+_TZ_CACHE_SECONDS = 60
+_tz_cache = {"tz": None, "expires": 0.0, "explicit": False}
+
+
+def reset_tz_cache():
+    _tz_cache["tz"] = None
+    _tz_cache["expires"] = 0.0
+    _tz_cache["explicit"] = False
+
+
+def app_tz():
+    """
+    The timezone that decides what "today" is for the daily counter, debt and
+    history. Default is the fixed UTC+10 the app always used. Cached briefly so
+    the many callers do not each read the database.
+    """
+    now = time.monotonic()
+    if _tz_cache["tz"] is not None and now < _tz_cache["expires"]:
+        return _tz_cache["tz"]
+    name = get_setting("timezone", "")
+    tz = resolve_timezone(name)
+    _tz_cache["tz"] = tz
+    _tz_cache["explicit"] = bool(name)
+    _tz_cache["expires"] = now + _TZ_CACHE_SECONDS
+    return tz
+
+
+def review_today():
+    """
+    The date the once-a-day review cap (last_sample_review_date) works in.
+
+    With no timezone chosen this is the server's own date, exactly as before
+    settings existed. Once a timezone is chosen it is that zone's date, so the
+    cap rolls over at the same midnight as the daily counter and debt.
+    """
+    tz = app_tz()  # also refreshes the explicit flag
+    if _tz_cache["explicit"]:
+        return datetime.now(tz).date()
+    return date.today()
+
+
+def tz_interval_sql():
+    """
+    SQL interval that shifts a UTC timestamp into the app timezone, for
+    DATE_ADD(NOW(), <this>). The default zone gives exactly "INTERVAL 10 HOUR",
+    the text these queries always had. The value is an integer computed here,
+    never user input, so it is safe to put in the statement.
+    """
+    offset = datetime.now(app_tz()).utcoffset() or timedelta(0)
+    seconds = int(offset.total_seconds())
+    if seconds % 3600 == 0:
+        return f"INTERVAL {seconds // 3600} HOUR"
+    return f"INTERVAL {seconds} SECOND"
 
 
 # A word holds at most two images. This cap is deliberate: it keeps the data
@@ -907,9 +1056,8 @@ def increment_daily_counter(cursor, word_id=None):
     Returns:
         Boolean indicating if increment was applied
     """
-    # Use AEST timezone (UTC+10) for date
-    AEST = timezone(timedelta(hours=10))
-    today_aest = datetime.now(AEST).strftime("%Y-%m-%d")
+    # "Today" in the configured timezone (default fixed UTC+10)
+    today_aest = datetime.now(app_tz()).strftime("%Y-%m-%d")
 
     # If word_id provided, try to check if already counted today
     # Wrapped in try-except in case daily_word_reviews table doesn't exist yet
@@ -1034,6 +1182,18 @@ def quiz():
         Rendered HTML template
     """
     return render_template("quiz.html")
+
+
+@app.route("/settings")
+@login_required
+def settings_page():
+    """
+    Serve the settings page (daily target, debt rules, timezone, review history)
+
+    Returns:
+        Rendered HTML template
+    """
+    return render_template("settings.html")
 
 
 @app.route("/favicon.ico")
@@ -1717,16 +1877,17 @@ def get_word_history(word_id):
         cursor = conn.cursor(dictionary=True)
 
         # Get history records grouped by date (one record per day, latest from each day)
-        # Use AEST (UTC+10) for date grouping
+        # Group by day in the app timezone (default fixed UTC+10)
+        tz_interval = tz_interval_sql()
         cursor.execute(
-            """
+            f"""
             SELECT
                 id,
                 word,
                 translation,
                 example_sentence,
                 category,
-                DATE(DATE_ADD(modified_at, INTERVAL 10 HOUR)) as modified_date,
+                DATE(DATE_ADD(modified_at, {tz_interval})) as modified_date,
                 modification_type
             FROM word_history
             WHERE word_id = %s
@@ -1734,7 +1895,7 @@ def get_word_history(word_id):
                 SELECT MAX(id)
                 FROM word_history
                 WHERE word_id = %s
-                GROUP BY DATE(DATE_ADD(modified_at, INTERVAL 10 HOUR))
+                GROUP BY DATE(DATE_ADD(modified_at, {tz_interval}))
             )
             ORDER BY modified_date DESC
         """,
@@ -1869,6 +2030,9 @@ def update_word(word_id):
         last_sample_date = current_word_data.get("last_sample_review_date")
         current_category = current_word_data["category"]
 
+        # The review cap and its stored date use one day, in the app timezone
+        review_day = review_today()
+
         # Update fields across ALL instances of this word
         shared_update_fields = []
         shared_params = []
@@ -1895,11 +2059,12 @@ def update_word(word_id):
                     "example_sentence": current_sample,
                 },
                 last_sample_date,
-                date.today(),
+                review_day,
             ):
                 shared_update_fields.append("review_count = review_count + 1")
-                shared_update_fields.append("last_reviewed = DATE_ADD(NOW(), INTERVAL 10 HOUR)")
-                shared_update_fields.append("last_sample_review_date = CURDATE()")
+                shared_update_fields.append(f"last_reviewed = DATE_ADD(NOW(), {tz_interval_sql()})")
+                shared_update_fields.append("last_sample_review_date = %s")
+                shared_params.append(review_day)
 
         if shared_update_fields:
             # Update ALL rows with the same word text
@@ -2072,20 +2237,21 @@ def change_word_category(word_id):
         # A move counts as a review, once per word per day. The merged values
         # decide the cap, so a review done under either row is not counted twice.
         # Every row sharing the word text is bumped, as an edit does.
+        review_day = review_today()
         review_counted = move_counts_as_review(
             {**current_word, **update_values}.get("last_sample_review_date"),
-            date.today(),
+            review_day,
         )
         if review_counted:
             cursor.execute(
-                """
+                f"""
                 UPDATE words
                 SET review_count = review_count + 1,
-                    last_reviewed = DATE_ADD(NOW(), INTERVAL 10 HOUR),
-                    last_sample_review_date = CURDATE()
+                    last_reviewed = DATE_ADD(NOW(), {tz_interval_sql()}),
+                    last_sample_review_date = %s
                 WHERE word = %s
                 """,
-                (current_word["word"],),
+                (review_day, current_word["word"]),
             )
 
         if existing_word:
@@ -2443,12 +2609,12 @@ def increment_review_counter(word_id):
         # (ON UPDATE CURRENT_TIMESTAMP) and flashcards (NOW()) write. It used to
         # be stamped 10 hours ahead here, which sorted a word reviewed hours ago
         # above one edited just now under "latest edits". last_reviewed keeps
-        # its +10h: it is a display value in AEST and nothing sorts across it.
+        # the app-timezone shift: it is a display value and nothing sorts across it.
         cursor.execute(
-            """
+            f"""
             UPDATE words
             SET review_count = review_count + 1,
-                last_reviewed = DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 10 HOUR),
+                last_reviewed = DATE_ADD(CURRENT_TIMESTAMP, {tz_interval_sql()}),
                 updated_at = CURRENT_TIMESTAMP
             WHERE word = %s
         """,
@@ -2470,12 +2636,13 @@ def increment_review_counter(word_id):
         if result:
             # One history entry per word per day: the history dropdown shows
             # one date per day anyway, so only the first review today writes one
+            tz_interval = tz_interval_sql()
             cursor.execute(
-                """
+                f"""
                 SELECT 1 FROM word_history
                 WHERE word_id = %s
-                AND DATE(DATE_ADD(modified_at, INTERVAL 10 HOUR))
-                    = DATE(DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 10 HOUR))
+                AND DATE(DATE_ADD(modified_at, {tz_interval}))
+                    = DATE(DATE_ADD(CURRENT_TIMESTAMP, {tz_interval}))
                 LIMIT 1
             """,
                 (word_id,),
@@ -2521,15 +2688,20 @@ def increment_review_counter(word_id):
 def get_word_debt():
     """
     Calculate and return total word debt and daily breakdown
-    Debt = 100 - review_count for each day
-    - Days with no activity get +100 debt
-    - Days exceeding 100 get negative debt (surplus)
+    Debt = daily target - review_count for each day (target is a setting, default 100)
+    - Days with no activity add the full target to the debt
+    - Days exceeding the target get negative debt (surplus)
     - Today's deficit is not counted until the day ends
+    - Debt can be switched off, or counted only from a start date (settings)
     """
     conn = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
+
+        settings = load_settings(cursor)
+        if not settings["debt_enabled"]:
+            return jsonify({"success": True, "total_debt": 0, "breakdown": []})
 
         # Get the earliest date from the database
         cursor.execute("""
@@ -2561,46 +2733,14 @@ def get_word_debt():
                 log_date = log_date.date()
             daily_counts[log_date] = log["review_count"]
 
-        # Use AEST timezone (UTC+10) for consistent date handling
-        AEST = timezone(timedelta(hours=10))
-        today = datetime.now(AEST).date()
-        total_debt = 0
-        debt_breakdown = []
-
-        # Iterate through every day from earliest_date to yesterday
-        current_date = earliest_date
-        while current_date < today:  # Exclude today
-            count = daily_counts.get(current_date, 0)  # Default to 0 if no record
-
-            # Deficit increases debt, surplus decreases debt
-            daily_debt = 100 - count
-            total_debt += daily_debt
-
-            current_date += timedelta(days=1)
-
-        # Handle today separately: only apply surplus if > 100
-        today_count = daily_counts.get(today, 0)
-        if today_count > 100:
-            total_debt -= today_count - 100
-
-        # Ensure total debt doesn't go below 0
-        if total_debt < 0:
-            total_debt = 0
-
-        # Build breakdown for the past 20 days (starting from YESTERDAY, not today)
-        # Today is excluded since user is still reviewing
-        breakdown_date = today - timedelta(days=1)  # Start from yesterday
-        for i in range(20):
-            if breakdown_date < earliest_date:
-                break
-
-            count = daily_counts.get(breakdown_date, 0)
-            daily_debt = 100 - count
-            debt_breakdown.append(
-                {"date": breakdown_date.strftime("%Y-%m-%d"), "debt": daily_debt}
-            )
-
-            breakdown_date -= timedelta(days=1)
+        today = datetime.now(app_tz()).date()
+        total_debt, debt_breakdown = calculate_debt(
+            daily_counts,
+            earliest_date,
+            today,
+            settings["daily_target"],
+            parse_start_date(settings["debt_start_date"]),
+        )
 
         return jsonify(
             {"success": True, "total_debt": total_debt, "breakdown": debt_breakdown}
@@ -2633,21 +2773,121 @@ def get_daily_count():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Use AEST timezone (UTC+10) for consistency
-        AEST = timezone(timedelta(hours=10))
-        today_aest = datetime.now(AEST).strftime("%Y-%m-%d")
+        today_aest = datetime.now(app_tz()).strftime("%Y-%m-%d")
 
         cursor.execute("""
-            SELECT review_count 
-            FROM daily_study_log 
+            SELECT review_count
+            FROM daily_study_log
             WHERE date = %s
         """, (today_aest,))
-        
+
         result = cursor.fetchone()
 
         count = result["review_count"] if result else 0
+        target = load_settings(cursor)["daily_target"]
 
-        return jsonify({"success": True, "count": count})
+        return jsonify({"success": True, "count": count, "target": target})
+    except Exception as e:
+        report_api_error(e)
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route("/api/settings", methods=["GET"])
+def get_settings():
+    """Current settings as typed values (defaults fill anything not saved yet)"""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        return jsonify({"success": True, "settings": load_settings(cursor)})
+    except Exception as e:
+        report_api_error(e)
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route("/api/settings", methods=["POST"])
+def update_settings():
+    """
+    Save one or more settings. Body: JSON object with any of daily_target,
+    debt_enabled, debt_start_date, timezone. Nothing is saved unless every
+    given value is valid.
+    """
+    clean, errors = validate_settings(request.get_json(silent=True))
+    if errors:
+        first = next(iter(errors.values()))
+        return jsonify({"success": False, "error": first, "errors": errors}), 400
+    if not clean:
+        return jsonify({"success": False, "error": "No settings given"}), 400
+
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(CREATE_APP_SETTINGS_TABLE_SQL)
+        for key, value in clean.items():
+            set_setting(key, value, cursor=cursor)
+        conn.commit()
+        reset_tz_cache()
+        return jsonify({"success": True, "settings": load_settings(cursor)})
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        report_api_error(e)
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route("/api/review-history", methods=["GET"])
+def get_review_history():
+    """
+    Daily review counts for the last 7, 30 or 90 days (?days=), oldest first,
+    with days that have no log row filled in as 0. Includes the daily target
+    so the chart can draw its goal line.
+    """
+    try:
+        days = int(request.args.get("days", 30))
+    except ValueError:
+        days = None
+    if days not in HISTORY_RANGES:
+        return jsonify(
+            {
+                "success": False,
+                "error": "days must be one of "
+                + ", ".join(str(d) for d in HISTORY_RANGES),
+            }
+        ), 400
+
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        today = datetime.now(app_tz()).date()
+        since = today - timedelta(days=days - 1)
+        cursor.execute(
+            """
+            SELECT date, review_count
+            FROM daily_study_log
+            WHERE date >= %s AND date <= %s
+            """,
+            (since, today),
+        )
+        rows = cursor.fetchall() or []
+        return jsonify(
+            {
+                "success": True,
+                "days": days,
+                "target": load_settings(cursor)["daily_target"],
+                "history": zero_fill_history(rows, today, days),
+            }
+        )
     except Exception as e:
         report_api_error(e)
         return jsonify({"success": False, "error": str(e)}), 500
@@ -2933,7 +3173,7 @@ def get_next_quiz_word():
     
     Returns:
         JSON response with word data. 
-        If mode='quiz', includes 'options' (list of 4 strings).
+        If mode='quiz', includes 'options' (list of strings; 4 unless the quiz_choice_count setting says otherwise).
     """
     conn = None
     try:
@@ -2998,7 +3238,8 @@ def get_next_quiz_word():
 
         # If mode is quiz, generate distractors
         if mode == 'quiz':
-            # Get 3 distractors
+            # Wrong answers = the saved choice count (default 4) minus the right one
+            wrong_count = load_settings(cursor)["quiz_choice_count"] - 1
             # Try to get from same category first
             distractor_query = """
                 SELECT translation FROM words 
@@ -3011,14 +3252,15 @@ def get_next_quiz_word():
                 distractor_query += " AND category = %s"
                 distractor_params.append(category)
                 
-            distractor_query += " ORDER BY RAND() LIMIT 3"
+            distractor_query += " ORDER BY RAND() LIMIT %s"
+            distractor_params.append(wrong_count)
             
             cursor.execute(distractor_query, distractor_params)
             distractors = [row['translation'] for row in cursor.fetchall()]
             
             # If not enough, fetch from any category
-            if len(distractors) < 3:
-                needed = 3 - len(distractors)
+            if len(distractors) < wrong_count:
+                needed = wrong_count - len(distractors)
                 
                 fallback_query = f"""
                     SELECT translation FROM words 
@@ -3083,8 +3325,8 @@ def submit_quiz_result():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Helper for AEST date
-        AEST = timezone(timedelta(hours=10))
+        # Helper for today's date in the configured timezone
+        AEST = app_tz()
         today_aest = datetime.now(AEST).strftime("%Y-%m-%d")
 
         if mode == 'quiz':
@@ -3657,6 +3899,7 @@ def create_app():
     ensure_image_file_column()
     ensure_image_file_2_column()
     ensure_word_images_table()
+    ensure_app_settings_table()
     ensure_ipa_column()
     return app
 
@@ -3741,6 +3984,7 @@ if __name__ == "__main__":
     ensure_image_file_column()
     ensure_image_file_2_column()
     ensure_word_images_table()
+    ensure_app_settings_table()
     ensure_ipa_column()
     ensure_srs_columns()
     ensure_daily_score_column()

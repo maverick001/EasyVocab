@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - BKDict</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@300;400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- GUI theme chosen on the vocab page; settings.js fills in the href from localStorage -->
+    <link id="themeStylesheet" rel="stylesheet" href="" data-versions='{{ theme_versions|tojson }}'>
+</head>
+
+<body class="settings-page">
+    <div class="container">
+
+        <header class="app-header">
+            <h1 class="app-title">⚙️ Settings</h1>
+            <nav class="settings-nav">
+                <a href="/" class="btn btn-secondary">← Vocabulary</a>
+                <a href="/quiz" class="btn btn-quiz">🎯 Quiz Me</a>
+            </nav>
+        </header>
+
+        <section class="settings-card">
+            <h2>Goals and preferences</h2>
+            <form id="settingsForm" novalidate>
+
+                <label class="settings-field" for="dailyTarget">
+                    <span class="settings-label">Daily review target</span>
+                    <input type="number" id="dailyTarget" name="daily_target" min="1" max="1000" step="1" inputmode="numeric">
+                    <span class="settings-hint">Words to review each day (1 to 1000). Default 100.</span>
+                </label>
+
+                <label class="settings-field settings-check" for="debtEnabled">
+                    <input type="checkbox" id="debtEnabled" name="debt_enabled">
+                    <span class="settings-label">Track word debt</span>
+                    <span class="settings-hint">Each day below the target adds to your debt; each day above it pays the debt down.</span>
+                </label>
+
+                <label class="settings-field" for="debtStartDate">
+                    <span class="settings-label">Count debt from</span>
+                    <input type="date" id="debtStartDate" name="debt_start_date">
+                    <span class="settings-hint">Leave empty to count from the first logged day. Earlier days are ignored.</span>
+                </label>
+
+                <label class="settings-field" for="timezone">
+                    <span class="settings-label">Timezone</span>
+                    <input type="text" id="timezone" name="timezone" list="timezoneList" autocomplete="off" placeholder="Fixed UTC+10 (default)">
+                    <datalist id="timezoneList">
+                        <option value="Australia/Sydney"></option>
+                        <option value="Australia/Brisbane"></option>
+                        <option value="Australia/Perth"></option>
+                        <option value="Asia/Shanghai"></option>
+                        <option value="Asia/Tokyo"></option>
+                        <option value="UTC"></option>
+                        <option value="Europe/London"></option>
+                        <option value="America/New_York"></option>
+                        <option value="America/Los_Angeles"></option>
+                    </datalist>
+                    <span class="settings-hint">Decides when a day starts for the daily counter, debt, "last reviewed" times and the chart below. Leave empty for fixed UTC+10.</span>
+                </label>
+
+                <label class="settings-field" for="quizChoiceCount">
+                    <span class="settings-label">Quiz answer choices</span>
+                    <input type="number" id="quizChoiceCount" name="quiz_choice_count" min="2" max="6" step="1" inputmode="numeric">
+                    <span class="settings-hint">How many answers to pick from in quiz mode (2 to 6). Default 4.</span>
+                </label>
+
+                <label class="settings-field" for="quizSessionSize">
+                    <span class="settings-label">Quiz session length</span>
+                    <input type="number" id="quizSessionSize" name="quiz_session_size" min="0" max="200" step="1" inputmode="numeric">
+                    <span class="settings-hint">Words per quiz session, then a "session complete" screen (0 to 200). 0 means no limit, as before.</span>
+                </label>
+
+                <div class="settings-actions">
+                    <button type="submit" id="saveBtn" class="btn btn-primary">Save</button>
+                    <span id="saveStatus" class="settings-status" role="status" aria-live="polite"></span>
+                </div>
+            </form>
+        </section>
+
+        <section class="settings-card">
+            <div class="settings-chart-head">
+                <h2>Daily review history</h2>
+                <div class="settings-range" role="group" aria-label="History range">
+                    <button type="button" class="btn btn-secondary range-btn" data-days="7">7 days</button>
+                    <button type="button" class="btn btn-secondary range-btn active" data-days="30">30 days</button>
+                    <button type="button" class="btn btn-secondary range-btn" data-days="90">90 days</button>
+                </div>
+            </div>
+            <div id="historyChart" class="settings-chart" aria-label="Bar chart of words reviewed per day"></div>
+            <p id="historySummary" class="settings-hint"></p>
+        </section>
+
+    </div>
+    <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+</body>
+
+</html>

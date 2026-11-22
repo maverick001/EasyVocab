@@ -6,12 +6,18 @@
 let currentWord = null;
 let currentMode = 'flashcard'; // 'flashcard' or 'quiz'
 let quizChartInstance = null;
+// Session length from the Settings page: 0 = no limit (the behaviour before it existed)
+let sessionLimit = 0;
+let sessionAnswered = 0;
 
 // DOM Elements
 const quizLoading = document.getElementById('quizLoading');
 const quizError = document.getElementById('quizError');
 const quizErrorText = document.getElementById('quizErrorText');
 const quizEmpty = document.getElementById('quizEmpty');
+const quizSessionDone = document.getElementById('quizSessionDone');
+const quizSessionDoneText = document.getElementById('quizSessionDoneText');
+const newSessionBtn = document.getElementById('newSessionBtn');
 const quizCard = document.getElementById('quizCard');
 const categorySelect = document.getElementById('categorySelect');
 const modeToggle = document.getElementById('modeToggle');
@@ -87,6 +93,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     await loadCategories();
+    await loadQuizPreferences();
     loadNextWord();
 
     // Event listeners
@@ -94,6 +101,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     notRememberBtn.addEventListener('click', () => handleResult('not_remember'));
     nextBtn.addEventListener('click', loadNextWord);
     retryBtn.addEventListener('click', loadNextWord);
+    if (newSessionBtn) {
+        newSessionBtn.addEventListener('click', () => {
+            sessionAnswered = 0;
+            loadNextWord();
+        });
+    }
     if (editWordBtn) {
         editWordBtn.addEventListener('click', () => {
             if (!currentWord) return;
@@ -152,10 +165,42 @@ async function loadCategories() {
 }
 
 /**
+ * Read the quiz session length from the saved settings. Any failure leaves
+ * it at 0 (no limit), so the quiz works exactly as before.
+ */
+async function loadQuizPreferences() {
+    try {
+        const response = await fetch('/api/settings');
+        const data = await response.json();
+        if (data.success && Number.isInteger(data.settings.quiz_session_size)) {
+            sessionLimit = data.settings.quiz_session_size;
+        }
+    } catch (error) {
+        console.error('Could not load quiz settings:', error);
+    }
+}
+
+/**
+ * Show the end-of-session card
+ */
+function showSessionDone() {
+    quizLoading.style.display = 'none';
+    quizError.style.display = 'none';
+    quizEmpty.style.display = 'none';
+    quizCard.style.display = 'none';
+    quizSessionDoneText.textContent = `You reviewed ${sessionAnswered} words this session.`;
+    quizSessionDone.style.display = 'block';
+}
+
+/**
  * Load the next word for review
  */
 async function loadNextWord() {
     try {
+        if (sessionLimit > 0 && sessionAnswered >= sessionLimit) {
+            showSessionDone();
+            return;
+        }
         showLoading();
         resetCard();
 
@@ -299,6 +344,7 @@ async function handleResult(result) {
  * Submit result to API
  */
 async function submitResult(result) {
+    sessionAnswered++;
     try {
         const response = await fetch('/api/quiz/result', {
             method: 'POST',
@@ -372,6 +418,7 @@ function showIpa() {
  * Show loading state
  */
 function showLoading() {
+    if (quizSessionDone) quizSessionDone.style.display = 'none';
     quizLoading.style.display = 'block';
     quizError.style.display = 'none';
     quizEmpty.style.display = 'none';
