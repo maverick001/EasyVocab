@@ -332,10 +332,24 @@ class TestClassifyWordTypes:
         class Response:
             choices = [Choice()]
 
+        used = []
+
+        def fake_completion(client, model, prompt, trace_name):
+            used.append(model)
+            return Response()
+
         monkeypatch.setitem(module.app.config, "GEMINI_API_KEY", "test-key")
+        monkeypatch.setitem(module.app.config, "GEMINI_TYPE_MODEL", "small-fast-model")
         monkeypatch.setattr(module, "OpenAI", lambda **kw: object())
-        monkeypatch.setattr(module, "create_gemini_completion", lambda *a, **kw: Response())
+        monkeypatch.setattr(module, "create_gemini_completion", fake_completion)
         assert module.classify_word_types("fast", "快的") == ("adj", "adv")
+        # The type lookup has its own small model, not the translation model
+        assert used == ["small-fast-model"]
+
+    def test_default_type_model_is_the_fast_one(self):
+        from config import Config
+
+        assert Config.GEMINI_TYPE_MODEL == "gemini-3.5-flash-lite"
 
     def test_an_api_error_means_no_answer(self, monkeypatch):
         import app as module

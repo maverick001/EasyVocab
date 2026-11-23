@@ -84,7 +84,7 @@ def pending_words(cursor, has_column):
 
 def ask_gemini(client, prompt):
     kwargs = {
-        "model": Config.GEMINI_MODEL,
+        "model": Config.GEMINI_TYPE_MODEL,
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0,
     }

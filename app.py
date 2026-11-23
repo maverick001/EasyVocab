@@ -3234,7 +3234,7 @@ def classify_word_types(word, translation):
         )
         response = create_gemini_completion(
             client,
-            app.config["GEMINI_MODEL"],
+            app.config["GEMINI_TYPE_MODEL"],
             build_type_prompt(word, translation),
             "classify-word-type",
         )
