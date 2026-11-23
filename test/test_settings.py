@@ -540,6 +540,12 @@ class QuizCursor(FakeCursor):
 
 
 class TestQuizChoiceCount:
+    @pytest.fixture(autouse=True)
+    def random_options(self, app_module, monkeypatch):
+        # These tests are about how many choices there are. Keeping them the same
+        # word type is covered in test_word_types.py (and needs no Gemini here).
+        monkeypatch.setattr(app_module, 'find_same_type_distractors', lambda *args: None)
+
     def test_default_is_four_choices(self, call):
         response, _ = call('get', '/api/quiz/next-word?mode=quiz', QuizCursor())
         options = response.get_json()['word']['options']

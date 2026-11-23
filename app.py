@@ -38,6 +38,15 @@ from utils.settings import (
     zero_fill_history,
 )
 from utils.sample_prompts import build_sample_prompt
+from utils.word_types import (
+    build_type_prompt,
+    effective_types,
+    join_ai_pos,
+    parse_type_reply,
+    parse_word_types,
+    split_ai_pos,
+    type_match_sql,
+)
 from utils.monitoring import (
     init_sentry,
     get_openai_class,
@@ -942,6 +951,54 @@ def ensure_ipa_column():
     finally:
         if connection:
             connection.close()
+
+
+_ai_pos_column_ready = False
+
+
+def ensure_ai_pos_column():
+    """
+    Make sure words.ai_pos exists; True when it does.
+
+    ai_pos caches the word type Gemini gave a word whose translation has no
+    "n./v./adj." prefix (see utils/word_types.py). Vercel never runs the startup
+    ensure_* calls, so the quiz calls this itself; once the column is known to
+    exist the check is skipped for the life of the process.
+    """
+    global _ai_pos_column_ready
+    if _ai_pos_column_ready:
+        return True
+
+    connection = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+            SELECT COUNT(*)
+            FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = %s
+            AND TABLE_NAME = 'words'
+            AND COLUMN_NAME = 'ai_pos'
+        """,
+            (app.config["DB_NAME"],),
+        )
+
+        if cursor.fetchone()[0] == 0:
+            print("Adding ai_pos column to words table...")
+            cursor.execute(
+                "ALTER TABLE words ADD COLUMN ai_pos VARCHAR(50) DEFAULT NULL"
+            )
+            connection.commit()
+
+        cursor.close()
+        _ai_pos_column_ready = True
+    except mysql.connector.Error as err:
+        print(f"[ERROR] Error ensuring ai_pos column: {err}")
+    finally:
+        if connection:
+            connection.close()
+    return _ai_pos_column_ready
 
 
 def ensure_srs_columns():
@@ -3163,6 +3220,154 @@ def get_category_count(category):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+def classify_word_types(word, translation):
+    """
+    Ask Gemini for a word's types: a tuple, () for "none", None if it could not
+    answer (no API key, error, unusable reply). Only a tuple is worth caching.
+    """
+    if not app.config["GEMINI_API_KEY"]:
+        return None
+    try:
+        client = OpenAI(
+            api_key=app.config["GEMINI_API_KEY"],
+            base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+        )
+        response = create_gemini_completion(
+            client,
+            app.config["GEMINI_MODEL"],
+            build_type_prompt(word, translation),
+            "classify-word-type",
+        )
+        if not response.choices or not response.choices[0].message.content:
+            return None
+        return parse_type_reply(clean_gemini_response(response.choices[0].message.content))
+    except Exception as e:
+        report_api_error(e)
+        return None
+    finally:
+        flush_langfuse()
+
+
+def quiz_word_types(conn, cursor, word, use_ai_cache):
+    """
+    The types of the quiz word: its translation prefixes, else the cached Gemini
+    answer, else a fresh Gemini answer that is cached for next time. () when the
+    type cannot be found.
+    """
+    types = parse_word_types(word["translation"])
+    if types or not use_ai_cache:
+        return types
+
+    cursor.execute("SELECT ai_pos FROM words WHERE id = %s", (word["id"],))
+    row = cursor.fetchone()
+    if row and row["ai_pos"] is not None:
+        return split_ai_pos(row["ai_pos"])
+
+    asked = classify_word_types(word["word"], word["translation"])
+    if asked is None:
+        return ()
+    # Every row of this word shares one translation, so tag them all
+    cursor.execute(
+        "UPDATE words SET ai_pos = %s WHERE word = %s AND translation = %s",
+        (join_ai_pos(asked), word["word"], word["translation"]),
+    )
+    conn.commit()
+    return asked
+
+
+def find_same_type_distractors(conn, cursor, word, category, wrong_count):
+    """
+    Wrong answers that are the same kind of word as the right one.
+
+    Fills from the chosen category first, then from every category. Never mixes
+    types, so the list can be shorter than wrong_count. None means the word's
+    type is unknown or nothing of that type exists; the caller then falls back
+    to random wrong answers.
+    """
+    use_ai_cache = ensure_ai_pos_column()
+    types = quiz_word_types(conn, cursor, word, use_ai_cache)
+    if not types:
+        return None
+
+    condition, condition_params = type_match_sql(types, use_ai_cache)
+    columns = "translation, ai_pos" if use_ai_cache else "translation"
+    chosen = []
+
+    def fill(category_sql, category_params):
+        need = wrong_count - len(chosen)
+        if need <= 0:
+            return
+        exclude = [word["translation"]] + chosen
+        cursor.execute(
+            f"""
+            SELECT {columns} FROM words
+            WHERE id != %s
+            AND translation NOT IN ({", ".join(["%s"] * len(exclude))})
+            AND {condition}
+            {category_sql}
+            ORDER BY RAND() LIMIT %s
+            """,
+            [word["id"], *exclude, *condition_params, *category_params, need * 3],
+        )
+        for row in cursor.fetchall():
+            # Re-check in Python so a regex that differs between MySQL builds
+            # can never let a wrong type through
+            row_types = effective_types(row["translation"], row.get("ai_pos"))
+            if set(row_types) & set(types) and row["translation"] not in chosen:
+                chosen.append(row["translation"])
+                if len(chosen) == wrong_count:
+                    return
+
+    if category and category != "All":
+        fill("AND category = %s", [category])
+    fill("", [])
+    return chosen or None
+
+
+def random_distractors(cursor, word, category, wrong_count):
+    """Random wrong answers, same category first. Used when no word type is known."""
+    distractor_query = """
+        SELECT translation FROM words
+        WHERE id != %s
+        AND translation != %s
+    """
+    distractor_params = [word['id'], word['translation']]
+
+    if category and category != "All":
+        distractor_query += " AND category = %s"
+        distractor_params.append(category)
+
+    distractor_query += " ORDER BY RAND() LIMIT %s"
+    distractor_params.append(wrong_count)
+
+    cursor.execute(distractor_query, distractor_params)
+    distractors = [row['translation'] for row in cursor.fetchall()]
+
+    # If not enough, fetch from any category
+    if len(distractors) < wrong_count:
+        needed = wrong_count - len(distractors)
+
+        fallback_query = """
+            SELECT translation FROM words
+            WHERE id != %s
+            AND translation != %s
+        """
+        if distractors:
+            fallback_query += f" AND translation NOT IN ({', '.join(['%s'] * len(distractors))})"
+
+        fallback_query += " ORDER BY RAND() LIMIT %s"
+
+        fallback_params = [word['id'], word['translation']]
+        if distractors:
+            fallback_params.extend(distractors)
+        fallback_params.append(needed)
+
+        cursor.execute(fallback_query, fallback_params)
+        distractors.extend(row['translation'] for row in cursor.fetchall())
+
+    return distractors
+
+
 @app.route("/api/quiz/next-word", methods=["GET"])
 def get_next_quiz_word():
     """
@@ -3175,6 +3380,8 @@ def get_next_quiz_word():
     Returns:
         JSON response with word data. 
         If mode='quiz', includes 'options' (list of strings; 4 unless the quiz_choice_count setting says otherwise).
+        The wrong options are the same word type (n./v./adj. ...) as the right one, so
+        there are fewer than that when too few words of that type exist.
     """
     conn = None
     try:
@@ -3241,47 +3448,17 @@ def get_next_quiz_word():
         if mode == 'quiz':
             # Wrong answers = the saved choice count (default 4) minus the right one
             wrong_count = load_settings(cursor)["quiz_choice_count"] - 1
-            # Try to get from same category first
-            distractor_query = """
-                SELECT translation FROM words 
-                WHERE id != %s 
-                AND translation != %s
-            """
-            distractor_params = [word['id'], word['translation']]
-            
-            if category and category != "All":
-                distractor_query += " AND category = %s"
-                distractor_params.append(category)
-                
-            distractor_query += " ORDER BY RAND() LIMIT %s"
-            distractor_params.append(wrong_count)
-            
-            cursor.execute(distractor_query, distractor_params)
-            distractors = [row['translation'] for row in cursor.fetchall()]
-            
-            # If not enough, fetch from any category
-            if len(distractors) < wrong_count:
-                needed = wrong_count - len(distractors)
-                
-                fallback_query = f"""
-                    SELECT translation FROM words 
-                    WHERE id != %s
-                    AND translation != %s
-                """
-                if distractors:
-                     fallback_query += f" AND translation NOT IN ({', '.join(['%s'] * len(distractors))})"
-                
-                fallback_query += " ORDER BY RAND() LIMIT %s"
-                
-                fallback_params = [word['id'], word['translation']] 
-                if distractors:
-                    fallback_params.extend(distractors)
-                fallback_params.append(needed)
-                
-                cursor.execute(fallback_query, fallback_params)
-                more_distractors = [row['translation'] for row in cursor.fetchall()]
-                distractors.extend(more_distractors)
-            
+
+            # Wrong answers are the same kind of word (n./v./adj. ...) as the
+            # right one. The quiz still works when that cannot be worked out.
+            try:
+                distractors = find_same_type_distractors(conn, cursor, word, category, wrong_count)
+            except mysql.connector.Error as err:
+                report_api_error(err)
+                distractors = None
+            if distractors is None:
+                distractors = random_distractors(cursor, word, category, wrong_count)
+
             # Combine and shuffle
             import random
             options = distractors + [word['translation']]
@@ -3902,6 +4079,7 @@ def create_app():
     ensure_word_images_table()
     ensure_app_settings_table()
     ensure_ipa_column()
+    ensure_ai_pos_column()
     return app
 
 
@@ -3987,6 +4165,7 @@ if __name__ == "__main__":
     ensure_word_images_table()
     ensure_app_settings_table()
     ensure_ipa_column()
+    ensure_ai_pos_column()
     ensure_srs_columns()
     ensure_daily_score_column()
 
