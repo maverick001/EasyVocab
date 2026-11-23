@@ -2772,7 +2772,7 @@ function saveDailyProgress() {
  */
 function updateDailyCounterDisplay() {
     if (Elements.dailyCounter) {
-        Elements.dailyCounter.textContent = `Word Today: ${AppState.dailyProgress}`;
+        Elements.dailyCounter.textContent = `Word Today:  ${AppState.dailyProgress}`;
 
         // Change color to green when the daily target is reached
         if (AppState.dailyProgress >= AppState.dailyTarget) {
@@ -2831,7 +2831,7 @@ async function loadDebtData() {
 function updateDebtDisplay() {
     if (!Elements.wordDebtBtn) return;
 
-    Elements.wordDebtBtn.textContent = `Word Debt: ${AppState.totalDebt}`;
+    Elements.wordDebtBtn.textContent = `Word Debt:  ${AppState.totalDebt}`;
 
     // Populate dropdown
     if (Elements.wordDebtDropdown) {
