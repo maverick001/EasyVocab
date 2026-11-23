@@ -866,8 +866,11 @@ button {
     border: 1px solid rgba(135, 206, 235, 0.4);
 }
 
-/* Daily Progress Badge */
-.daily-badge {
+/* Daily Progress Badge and Word Debt Badge share one set of rules so they
+   always match in size and style. Yellow by default; green when the daily
+   target is reached (.completed) or the debt is 0 or negative (.debt-clear). */
+.daily-badge,
+.debt-badge {
     color: #1a1a1a;
     background: linear-gradient(135deg, #ffe066, #ffd700);
     border: 1px solid #e6c200;
@@ -878,37 +881,38 @@ button {
     line-height: 1;
 }
 
-.daily-badge:hover {
+.daily-badge:hover,
+.debt-badge:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(255, 215, 0, 0.45);
 }
 
-.daily-badge.completed {
+.daily-badge.completed,
+.debt-badge.debt-clear {
     background: linear-gradient(135deg, #90EE90, #32CD32);
     border-color: #28a428;
     box-shadow: 0 2px 8px rgba(50, 205, 50, 0.35);
 }
 
-/* Word Debt Badge */
+/* Word Debt Badge: a <button>, so undo the browser's default text styling
+   (spans inherit these from their parent, buttons do not). */
 .debt-wrapper {
     position: relative;
 }
 
-.debt-badge {
-    background: #B0E0E6;
-    color: #333;
-    border: 1px solid #87CEEB;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-family: inherit;
-    box-sizing: border-box;
-    line-height: 1;
+/* Number inside a badge is red while the badge is yellow: target not yet met
+   (no .completed) or debt above 0 (no .debt-clear). */
+.daily-badge:not(.completed) .badge-amount,
+.debt-badge:not(.debt-clear) .badge-amount {
+    color: #c62828;
 }
 
-.debt-badge:hover {
-    background: #87CEEB;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+.debt-badge {
+    cursor: pointer;
+    letter-spacing: inherit;
+    word-spacing: inherit;
+    text-transform: inherit;
+    text-shadow: inherit;
 }
 
 /* Word Debt Dropdown */

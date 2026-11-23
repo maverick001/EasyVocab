@@ -495,18 +495,22 @@ body.vocab-page .review-counter-badge {
     box-shadow: none;
 }
 
-body.vocab-page .daily-badge {
+/* Daily and Word Debt badges share one set of rules (same size and style) */
+body.vocab-page .daily-badge,
+body.vocab-page .debt-badge {
     color: var(--neon-yellow);
     background: rgba(249, 240, 2, 0.07);
     border: 1px solid var(--neon-yellow);
     text-shadow: 0 0 10px rgba(249, 240, 2, 0.6);
 }
 
-body.vocab-page .daily-badge:hover {
+body.vocab-page .daily-badge:hover,
+body.vocab-page .debt-badge:hover {
     box-shadow: 0 0 14px rgba(249, 240, 2, 0.35);
 }
 
-body.vocab-page .daily-badge.completed {
+body.vocab-page .daily-badge.completed,
+body.vocab-page .debt-badge.debt-clear {
     color: var(--neon-green);
     background: rgba(0, 255, 159, 0.08);
     border-color: var(--neon-green);
@@ -514,17 +518,11 @@ body.vocab-page .daily-badge.completed {
     box-shadow: none;
 }
 
-body.vocab-page .debt-badge {
-    font-size: 0.78rem;
-    color: var(--neon-cyan);
-    background: rgba(var(--neon-cyan-rgb), 0.07);
-    border: 1px solid var(--neon-cyan);
-    text-shadow: 0 0 10px rgba(var(--neon-cyan-rgb), 0.6);
-}
-
-body.vocab-page .debt-badge:hover {
-    background: rgba(var(--neon-cyan-rgb), 0.2);
-    box-shadow: 0 0 14px rgba(var(--neon-cyan-rgb), 0.35);
+/* Badge number in neon red/pink while the badge is yellow */
+body.vocab-page .daily-badge:not(.completed) .badge-amount,
+body.vocab-page .debt-badge:not(.debt-clear) .badge-amount {
+    color: var(--neon-pink);
+    text-shadow: 0 0 10px rgba(var(--neon-pink-rgb), 0.6);
 }
 
 body.vocab-page .review-counter-badge {

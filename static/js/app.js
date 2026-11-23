@@ -2772,7 +2772,13 @@ function saveDailyProgress() {
  */
 function updateDailyCounterDisplay() {
     if (Elements.dailyCounter) {
-        Elements.dailyCounter.textContent = `Word Today:  ${AppState.dailyProgress}`;
+        // Label plus a separate <span> for the number, so CSS can colour it red
+        // until the target is met (see .daily-badge:not(.completed) .badge-amount)
+        Elements.dailyCounter.textContent = 'Word Today:  ';
+        const dailyAmount = document.createElement('span');
+        dailyAmount.className = 'badge-amount';
+        dailyAmount.textContent = AppState.dailyProgress;
+        Elements.dailyCounter.appendChild(dailyAmount);
 
         // Change color to green when the daily target is reached
         if (AppState.dailyProgress >= AppState.dailyTarget) {
@@ -2831,7 +2837,16 @@ async function loadDebtData() {
 function updateDebtDisplay() {
     if (!Elements.wordDebtBtn) return;
 
-    Elements.wordDebtBtn.textContent = `Word Debt:  ${AppState.totalDebt}`;
+    // Label plus a separate <span> for the number, so CSS can colour it red
+    // while debt > 0 (see .debt-badge:not(.debt-clear) .badge-amount)
+    Elements.wordDebtBtn.textContent = 'Word Debt:  ';
+    const debtAmount = document.createElement('span');
+    debtAmount.className = 'badge-amount';
+    debtAmount.textContent = AppState.totalDebt;
+    Elements.wordDebtBtn.appendChild(debtAmount);
+
+    // Yellow while there is debt; green when it is 0 or negative
+    Elements.wordDebtBtn.classList.toggle('debt-clear', AppState.totalDebt <= 0);
 
     // Populate dropdown
     if (Elements.wordDebtDropdown) {
