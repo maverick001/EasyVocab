@@ -465,7 +465,7 @@ body.dark-mode .word-card:hover {
 
 .btn-quiz,
 .btn-quiz:hover {
-    background: var(--torii);
+    background: var(--wisteria);
     color: var(--btn-ink);
 }
 
@@ -507,7 +507,7 @@ body.dark-mode .btn-cancel:hover {
 
 .btn-image,
 .btn-image:hover {
-    background: var(--blossom);
+    background: var(--wisteria);
     color: var(--btn-ink);
 }
 

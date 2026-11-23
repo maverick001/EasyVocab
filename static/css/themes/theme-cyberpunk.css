@@ -25,6 +25,7 @@ body.settings-page {
     --neon-pink: #ff2a6d;
     --neon-yellow: #f9f002;
     --neon-green: #00ff9f;
+    --neon-purple: #b44dff;
     --neon-cyan-rgb: 5, 224, 245;
     --neon-pink-rgb: 255, 42, 109;
 
@@ -380,9 +381,13 @@ body.vocab-page .btn-save {
 }
 
 body.vocab-page .btn-quiz,
-body.vocab-page .btn-image,
 body.settings-page .btn-quiz {
-    --btn-c: var(--neon-pink);
+    --btn-c: var(--neon-purple);
+}
+
+/* Add Image: same purple as Quiz Me */
+body.vocab-page .btn-image {
+    --btn-c: var(--neon-purple);
 }
 
 body.vocab-page .btn-generate {

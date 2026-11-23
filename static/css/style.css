@@ -2291,10 +2291,11 @@ body.dark-mode .search-results-panel {
    ============================================ */
 
 /* Image Button */
+/* Purple, same colours as .btn-quiz */
 .btn-image {
     color: white;
-    background: linear-gradient(135deg, #FF6B6B, #EE5253);
-    box-shadow: 0 2px 8px rgba(238, 82, 83, 0.3);
+    background: linear-gradient(135deg, #a78bfa, #8b5cf6);
+    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
 }
 
 /* "Add Image" beside the translation model picker (was inline in index.html) */
@@ -2305,9 +2306,9 @@ body.dark-mode .search-results-panel {
 }
 
 .btn-image:hover {
-    background: linear-gradient(135deg, #EE5253, #D63031);
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(238, 82, 83, 0.4);
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
 }
 
 .btn-view-image {
