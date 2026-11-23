@@ -366,6 +366,11 @@ button {
     text-shadow: 2px 2px 4px var(--shadow);
 }
 
+/* Vocab page: the title is clickable (back to the welcome page) */
+.vocab-page .app-title {
+    cursor: pointer;
+}
+
 .app-subtitle {
     font-size: 1.1rem;
     color: var(--text-secondary);

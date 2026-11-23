@@ -442,6 +442,18 @@ function setupEventListeners() {
     // Keyboard navigation (Arrow keys)
     document.addEventListener('keydown', handleKeyboardNavigation);
 
+    // App title: click (or Enter/Space when focused) returns to the welcome page
+    const appTitle = document.getElementById('appTitle');
+    if (appTitle) {
+        appTitle.addEventListener('click', goToWelcomePage);
+        appTitle.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                goToWelcomePage();
+            }
+        });
+    }
+
     // Swipe navigation on the word card (touch and pen)
     setupSwipeNavigation();
 
@@ -1626,6 +1638,13 @@ async function navigateWord(direction) {
  * Handle keyboard navigation (arrow keys)
  */
 function handleKeyboardNavigation(event) {
+    // Welcome screen: Enter does the same as clicking its "Enter" button
+    if (event.key === 'Enter' && shouldEnterFromWelcome(event)) {
+        event.preventDefault();
+        loadFirstCategory();
+        return;
+    }
+
     // Ignore if user is typing in an input field
     if (event.target.tagName === 'TEXTAREA' || event.target.tagName === 'INPUT') {
         return;
@@ -1641,6 +1660,64 @@ function handleKeyboardNavigation(event) {
         event.preventDefault();
         navigateWord(1);
     }
+}
+
+// Elements that already handle Enter themselves (or take typed text), so the
+// welcome-screen shortcut must leave them alone.
+const WELCOME_ENTER_IGNORE_SELECTOR =
+    'input, textarea, select, button, a, [role="button"], [contenteditable="true"]';
+
+/** True while any modal (.modal) is displayed. */
+function isAnyModalOpen() {
+    return Array.from(document.querySelectorAll('.modal'))
+        .some(el => window.getComputedStyle(el).display !== 'none');
+}
+
+/**
+ * Go back to the welcome screen (clicking the app title): the same state as a
+ * fresh launch. Closes the dropdowns and search results, then clears the
+ * category so handleCategoryChange() shows the welcome message. Does nothing
+ * while a modal is open.
+ */
+function goToWelcomePage() {
+    if (isAnyModalOpen()) return;
+
+    if (Elements.ipaEditDropdown) Elements.ipaEditDropdown.style.display = 'none';
+    if (Elements.wordDebtDropdown) Elements.wordDebtDropdown.classList.remove('show');
+    if (Elements.searchResults) Elements.searchResults.style.display = 'none';
+
+    Elements.categorySelect.value = '';
+    handleCategoryChange({ target: Elements.categorySelect });
+}
+
+/**
+ * True when a plain Enter key press should leave the welcome screen.
+ *
+ * Only while the welcome screen is visible, never for held-down key repeats,
+ * modified keys, text entry or a focused button/link (which the browser
+ * already activates on Enter), and never while a modal, dropdown or the
+ * search results sit on top of the page.
+ */
+function shouldEnterFromWelcome(event) {
+    if (event.repeat || event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) {
+        return false;
+    }
+
+    const welcome = Elements.welcomeMessage;
+    if (!welcome || window.getComputedStyle(welcome).display === 'none') return false;
+
+    if (event.target instanceof Element && event.target.closest(WELCOME_ENTER_IGNORE_SELECTOR)) {
+        return false;
+    }
+
+    const isShown = (el) => el && window.getComputedStyle(el).display !== 'none';
+    const overlayOpen =
+        isAnyModalOpen() ||
+        isShown(Elements.ipaEditDropdown) ||
+        isShown(document.getElementById('searchResults')) ||
+        (Elements.wordDebtDropdown && Elements.wordDebtDropdown.classList.contains('show'));
+
+    return !overlayOpen;
 }
 
 // Swipe navigation. A swipe must travel this far, and be clearly more
