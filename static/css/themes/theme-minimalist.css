@@ -465,7 +465,7 @@ body.dark-mode .word-card:hover {
 
 .btn-quiz,
 .btn-quiz:hover {
-    background: var(--torii);
+    background: var(--wisteria);
     color: var(--btn-ink);
 }
 
@@ -507,7 +507,7 @@ body.dark-mode .btn-cancel:hover {
 
 .btn-image,
 .btn-image:hover {
-    background: var(--blossom);
+    background: var(--wisteria);
     color: var(--btn-ink);
 }
 
@@ -793,35 +793,33 @@ body.dark-mode .modal-content {
     border: 2px solid var(--ink);
 }
 
-.daily-badge {
+/* Daily and Word Debt badges share one set of rules (same size and style) */
+.daily-badge,
+.debt-badge {
     color: var(--btn-ink);
     background: var(--sun);
     border: 2px solid var(--ink);
     box-shadow: 0 3px 0 var(--ink);
 }
 
-.daily-badge:hover {
+.daily-badge:hover,
+.debt-badge:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 0 var(--ink);
 }
 
-.daily-badge.completed {
+.daily-badge.completed,
+.debt-badge.debt-clear {
     color: var(--btn-ink);
     background: var(--leaf);
     border-color: var(--ink);
     box-shadow: 0 3px 0 var(--ink);
 }
 
-.debt-badge {
-    background: var(--sky-pale);
-    color: var(--btn-ink);
-    border: 2px solid var(--ink);
-}
-
-.debt-badge:hover {
-    background: var(--sky);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 0 var(--ink);
+/* Badge number in deep red while the badge is yellow (readable on sun-yellow) */
+.daily-badge:not(.completed) .badge-amount,
+.debt-badge:not(.debt-clear) .badge-amount {
+    color: #C0281A;
 }
 
 .review-counter-badge {

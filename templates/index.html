@@ -19,7 +19,7 @@
 
         <!-- Header Section -->
         <header class="app-header">
-            <h1 class="app-title">📚 Easy Vocab</h1>
+            <h1 id="appTitle" class="app-title" role="button" tabindex="0" title="Back to the welcome page">📚 Easy Vocab</h1>
             <div class="header-controls" style="display: none;">
                 <select id="themeSwitcher" class="theme-select" title="Switch GUI theme">
                     <option value="default">🎨 Default</option>
@@ -140,7 +140,7 @@
 
                     <span id="dailyCounter" class="status-badge daily-badge">0</span>
                     <div class="debt-wrapper">
-                        <button id="wordDebtBtn" class="status-badge debt-badge">Word Debt: 0</button>
+                        <button id="wordDebtBtn" class="status-badge debt-badge debt-clear">Word Debt:&nbsp;&nbsp;0</button>
                         <div id="wordDebtDropdown" class="debt-dropdown">
                             <!-- Populated by JS -->
                         </div>
@@ -329,7 +329,7 @@
                     <div id="imageScrollPane" class="image-scroll-pane"></div>
                 </div>
                 <div class="modal-footer">
-                    <button id="addAnotherImageBtn" class="btn btn-secondary">Add Image</button>
+                    <button id="addAnotherImageBtn" class="btn btn-image">Add Image</button>
                     <button id="closeImageDisplayFooterBtn" class="btn btn-primary">Close</button>
                 </div>
             </div>

@@ -25,6 +25,7 @@ body.settings-page {
     --neon-pink: #ff2a6d;
     --neon-yellow: #f9f002;
     --neon-green: #00ff9f;
+    --neon-purple: #b44dff;
     --neon-cyan-rgb: 5, 224, 245;
     --neon-pink-rgb: 255, 42, 109;
 
@@ -380,9 +381,13 @@ body.vocab-page .btn-save {
 }
 
 body.vocab-page .btn-quiz,
-body.vocab-page .btn-image,
 body.settings-page .btn-quiz {
-    --btn-c: var(--neon-pink);
+    --btn-c: var(--neon-purple);
+}
+
+/* Add Image: same purple as Quiz Me */
+body.vocab-page .btn-image {
+    --btn-c: var(--neon-purple);
 }
 
 body.vocab-page .btn-generate {
@@ -495,18 +500,22 @@ body.vocab-page .review-counter-badge {
     box-shadow: none;
 }
 
-body.vocab-page .daily-badge {
+/* Daily and Word Debt badges share one set of rules (same size and style) */
+body.vocab-page .daily-badge,
+body.vocab-page .debt-badge {
     color: var(--neon-yellow);
     background: rgba(249, 240, 2, 0.07);
     border: 1px solid var(--neon-yellow);
     text-shadow: 0 0 10px rgba(249, 240, 2, 0.6);
 }
 
-body.vocab-page .daily-badge:hover {
+body.vocab-page .daily-badge:hover,
+body.vocab-page .debt-badge:hover {
     box-shadow: 0 0 14px rgba(249, 240, 2, 0.35);
 }
 
-body.vocab-page .daily-badge.completed {
+body.vocab-page .daily-badge.completed,
+body.vocab-page .debt-badge.debt-clear {
     color: var(--neon-green);
     background: rgba(0, 255, 159, 0.08);
     border-color: var(--neon-green);
@@ -514,29 +523,27 @@ body.vocab-page .daily-badge.completed {
     box-shadow: none;
 }
 
-body.vocab-page .debt-badge {
-    font-size: 0.78rem;
-    color: var(--neon-cyan);
-    background: rgba(var(--neon-cyan-rgb), 0.07);
-    border: 1px solid var(--neon-cyan);
-    text-shadow: 0 0 10px rgba(var(--neon-cyan-rgb), 0.6);
-}
-
-body.vocab-page .debt-badge:hover {
-    background: rgba(var(--neon-cyan-rgb), 0.2);
-    box-shadow: 0 0 14px rgba(var(--neon-cyan-rgb), 0.35);
-}
-
-body.vocab-page .review-counter-badge {
+/* Badge number in neon red/pink while the badge is yellow */
+body.vocab-page .daily-badge:not(.completed) .badge-amount,
+body.vocab-page .debt-badge:not(.debt-clear) .badge-amount {
     color: var(--neon-pink);
-    background: rgba(var(--neon-pink-rgb), 0.08);
-    border: 1px solid var(--neon-pink);
-    text-shadow: 0 0 10px rgba(var(--neon-pink-rgb), 0.7);
+    text-shadow: 0 0 10px rgba(var(--neon-pink-rgb), 0.6);
+}
+
+/* Review counter matches the IPA button beside it: grey-blue outline, cyan on hover */
+body.vocab-page .review-counter-badge {
+    color: var(--text-secondary);
+    background: color-mix(in srgb, var(--text-secondary) 7%, transparent);
+    border: 1px solid var(--text-secondary);
+    border-radius: var(--radius-sm);
+    text-shadow: none;
 }
 
 body.vocab-page .review-counter-badge:hover {
-    background: rgba(var(--neon-pink-rgb), 0.22);
-    box-shadow: 0 0 16px rgba(var(--neon-pink-rgb), 0.45);
+    color: #fff;
+    border-color: var(--neon-cyan);
+    background: color-mix(in srgb, var(--neon-cyan) 24%, transparent);
+    box-shadow: inset 0 0 16px color-mix(in srgb, var(--neon-cyan) 45%, transparent);
 }
 
 body.vocab-page .debt-dropdown,
