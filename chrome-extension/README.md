@@ -1,19 +1,27 @@
-# Add to BKDict (Chrome extension)
+# Add to BKDict (Chrome and Edge extension)
 
 Highlight a word on any web page, right-click, choose **Add to BKDict**. The word
 goes into the Search box of your local EasyVocab app and the search runs.
 
-Windows 11 + Chrome only; it talks to `http://127.0.0.1:5001` (or `localhost:5001`).
+Windows 11 with Chrome or Edge (both Chromium, so one folder serves both); it talks
+to `http://127.0.0.1:5001` (or `localhost:5001`).
 
 ## Install
 
-1. Open `chrome://extensions` and turn on **Developer mode**.
+1. Open `chrome://extensions` (Chrome) or `edge://extensions` (Edge) and turn on
+   **Developer mode**. In Edge the toggle is in the left sidebar.
 2. Click **Load unpacked** and pick this `chrome-extension` folder.
 3. Start the app (`python app.py`), highlight a word somewhere, right-click it.
 
+Each browser keeps its own list of extensions, so repeat these steps in the other
+browser if you want it in both. They can share the same folder.
+
 After editing the extension's files, click the reload icon on its card in
-`chrome://extensions`. A tab that was open before a reload gets the new content
-script the next time you use the menu item.
+`chrome://extensions` or `edge://extensions`. A tab that was open before a reload
+gets the new content script the next time you use the menu item.
+
+To show the icon in the toolbar, open the puzzle-piece (Chrome) or Extensions
+(Edge) menu and pin it.
 
 ## Behaviour
 
