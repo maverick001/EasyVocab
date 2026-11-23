@@ -7,6 +7,12 @@
 - **Sentry Sampling**: `SENTRY_TRACES_SAMPLE_RATE` now defaults to `0.5` (was `1.0`), halving the requests that wait on a Sentry upload.
 - **Full Backups**: `scripts/backup_db.py` now also saves `categories`, `daily_word_reviews` and every stored word image (as files next to the JSON).
 - **Faster Translation**: Gemini calls now use low reasoning effort (`GEMINI_REASONING_EFFORT`, default `low`), cutting a translation from roughly 10-50 seconds to about 2 seconds with the same quality. If a model rejects the setting the call is retried without it. Set the variable empty to restore each model's default.
+- **Ghibli-Style Theme**: the Minimalist theme is now a hand-drawn cartoon countryside (sky, clouds, hills, a red gate, cream cards with ink outlines). The quiz page always uses this look, and dark mode is now one setting shared by both pages (`bkdict-theme`). The theme key and file keep the name `minimalist`, so saved selections carry over.
+- **Cyberpunk Theme Upgrade**: neon HUD look on the vocab page (navy background, cut-corner panels, outlined neon buttons, Orbitron/Rajdhani fonts, dark dropdowns and windows). The Add New Word window title is now readable in Cyberpunk and Glassmorphism, and the review counter matches the IPA button beside it.
+- **Word Debt Badge**: now matches the Word Today badge in size and style in every theme: yellow while there is debt (or the daily target is unmet), green when debt is 0 or below (or the target is met), with the number in red while yellow. The gap after each label is also wider.
+- **Word Debt Can Go Negative**: debt is no longer floored at 0, so a surplus banks as credit (a negative number such as `-2`) and later missed days draw it down. The live count on the page follows the same rule as the server total.
+- **Purple Quiz Me and Add Image**: both buttons are purple in every theme (Cyberpunk gets a new neon purple, Ghibli uses its lavender), and the Add Image button in the image window matches them.
+- **Comma In Translations**: generated translations are joined with the Chinese comma instead of a semicolon, matching the Gemini prompt, in both the edit-translation and Add New Word flows.
 
 ### Security
 - **Session Key Check**: on Vercel the app refuses to start if `SECRET_KEY` is missing or a public placeholder, instead of signing sessions with a value from the repo.
@@ -17,9 +23,12 @@
 - **Text Shown As Text**: quiz example sentences and the "word already exists" message are no longer inserted as HTML; a category name containing `'` no longer breaks the Go to Word button.
 - **Arrow-Key Navigation**: holding an arrow key can no longer end on the wrong word when responses arrive out of order.
 - **Silent API Errors**: routes that answer with a JSON 500 now write the traceback to the server log and report it to Sentry.
+- **Category Move Counts As A Review**: moving a word to another category now bumps its review count and last-reviewed date (once per word per day, like other edits), so the history date and the counter no longer disagree.
 
 ### Added
 - **Optional Monitoring**: Sentry (errors, request timing) and Langfuse (Gemini call traces) turn on only when their keys are set in `.env` or on Vercel. Both are forced off under `SKIP_DB=true`, and a missing package or unreachable service never breaks a request.
+- **Settings Page**: a new `/settings` page, reached from a Settings button on the vocab and quiz pages, for the daily target, turning word debt on or off, the debt start date, the timezone and the quiz session length. Values live in an `app_settings` table that is created on startup or on first save; a missing table, row or bad value falls back to the previous defaults.
+- **Welcome Page Shortcuts**: pressing Enter on the welcome page does the same as clicking "Enter" (ignored while typing, on a focused button, with a window open, or on key repeat), and clicking the app title on the vocab page returns to the welcome page.
 
 
 ## [1.6.1] - 2026-02-09
