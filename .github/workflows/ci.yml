@@ -3,6 +3,10 @@ name: CI Test & Auto-Merge
 on:
   push:
     branches: [development]
+  # Run the tests on every PR into development too, so a failure shows up
+  # before the merge. The merge-to-main job below still runs on pushes only.
+  pull_request:
+    branches: [development]
 
 permissions:
   contents: write
@@ -40,6 +44,8 @@ jobs:
   # Job 2: Merge development to main (only runs if tests pass)
   merge-to-main:
     needs: test
+    # Never promote to main from a PR run, only after a push to development
+    if: github.event_name == 'push'
     runs-on: windows-latest
     
     steps:
