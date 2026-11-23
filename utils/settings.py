@@ -195,7 +195,8 @@ def calculate_debt(daily_counts, earliest_date, today, target, start_date=None):
 
     Every day before today adds (target - count): a miss adds debt, a surplus
     pays it down. Today's shortfall is not counted until the day ends; only
-    today's surplus over the target is. Debt never goes below 0.
+    today's surplus over the target is. The total can go below 0: that is a
+    credit, banked surplus that later misses draw down.
 
     start_date, when set and later than earliest_date, ignores everything
     before it.
@@ -213,8 +214,6 @@ def calculate_debt(daily_counts, earliest_date, today, target, start_date=None):
     today_count = daily_counts.get(today, 0)
     if today_count > target:
         total_debt -= today_count - target
-
-    total_debt = max(total_debt, 0)
 
     breakdown = []
     day = today - timedelta(days=1)

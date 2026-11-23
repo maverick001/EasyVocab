@@ -2691,6 +2691,7 @@ def get_word_debt():
     Debt = daily target - review_count for each day (target is a setting, default 100)
     - Days with no activity add the full target to the debt
     - Days exceeding the target get negative debt (surplus)
+    - The total can go below 0 (a credit from banked surplus)
     - Today's deficit is not counted until the day ends
     - Debt can be switched off, or counted only from a start date (settings)
     """
