@@ -1334,6 +1334,17 @@ class TestGeminiReasoningEffort:
         assert len(calls) == 1
         assert 'reasoning_effort' not in calls[0]
 
+    def test_effort_argument_overrides_the_configured_one(self, monkeypatch):
+        """The quiz asks for the model's own default even when translations use 'low'"""
+        from app import app, create_gemini_completion
+        monkeypatch.setitem(app.config, 'GEMINI_REASONING_EFFORT', 'low')
+        calls = []
+        client = self._client(calls, lambda kwargs: 'reply')
+        create_gemini_completion(client, 'm', 'hello', 'generate-quiz-options', effort='')
+        create_gemini_completion(client, 'm', 'hello', 'generate-quiz-options', effort='minimal')
+        assert 'reasoning_effort' not in calls[0]
+        assert calls[1]['reasoning_effort'] == 'minimal'
+
     def test_other_errors_are_not_retried(self, monkeypatch):
         """Only a 400 response is retried; any other error reaches the route unchanged"""
         from app import app, create_gemini_completion

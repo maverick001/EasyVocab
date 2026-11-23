@@ -38,6 +38,7 @@ from utils.settings import (
     zero_fill_history,
 )
 from utils.sample_prompts import build_sample_prompt
+from utils.quiz_options import EXTRA_OPTIONS, build_options_prompt, parse_options_reply
 from utils.word_types import (
     build_type_prompt,
     effective_types,
@@ -3010,7 +3011,10 @@ def clean_gemini_response(text):
     return "\n".join(final_lines).strip()
 
 
-def create_gemini_completion(client, model, prompt, trace_name):
+_CONFIGURED_EFFORT = object()
+
+
+def create_gemini_completion(client, model, prompt, trace_name, effort=_CONFIGURED_EFFORT):
     """
     Ask Gemini (via the OpenAI SDK) for a short completion.
 
@@ -3022,6 +3026,8 @@ def create_gemini_completion(client, model, prompt, trace_name):
         model: Gemini model name
         prompt: User prompt text
         trace_name: Label for the call in Langfuse (ignored when it is off)
+        effort: reasoning effort to send instead of the configured one; "" sends
+            none, so the model uses its own default
     """
     kwargs = {
         "model": model,
@@ -3029,7 +3035,8 @@ def create_gemini_completion(client, model, prompt, trace_name):
         "temperature": app.config.get("GEMINI_TEMPERATURE", 0.9),
         **langfuse_kwargs(trace_name),
     }
-    effort = app.config.get("GEMINI_REASONING_EFFORT")
+    if effort is _CONFIGURED_EFFORT:
+        effort = app.config.get("GEMINI_REASONING_EFFORT")
     if effort:
         try:
             return client.chat.completions.create(reasoning_effort=effort, **kwargs)
@@ -3234,9 +3241,10 @@ def classify_word_types(word, translation):
         )
         response = create_gemini_completion(
             client,
-            app.config["GEMINI_TYPE_MODEL"],
+            app.config["GEMINI_QUIZ_MODEL"],
             build_type_prompt(word, translation),
             "classify-word-type",
+            effort=QUIZ_REASONING_EFFORT,
         )
         if not response.choices or not response.choices[0].message.content:
             return None
@@ -3248,11 +3256,66 @@ def classify_word_types(word, translation):
         flush_langfuse()
 
 
-def quiz_word_types(conn, cursor, word, use_ai_cache):
+# A quiz question waits at most this long for Gemini's wrong options before the
+# database options are used instead.
+QUIZ_OPTIONS_TIMEOUT_SECONDS = 3.0
+# After Gemini fails, skip it for this long so an outage does not add the
+# timeout to every question.
+QUIZ_OPTIONS_PAUSE_SECONDS = 30
+_quiz_options_paused_until = 0.0
+# The quiz's short answers use gemini-3.5-flash-lite's own default effort: about
+# 1.0 s for the wrong options, where the "low" used for translations takes 2.0 s.
+QUIZ_REASONING_EFFORT = ""
+
+
+def generate_ai_distractors(word, wrong_count):
+    """
+    Wrong answers written by Gemini in the style of the right one: a list of up
+    to wrong_count options (possibly fewer, or empty), or None when Gemini was
+    not used or gave nothing usable (no API key, paused after a failure, error,
+    timeout, unreadable reply).
+    """
+    global _quiz_options_paused_until
+    if not app.config["GEMINI_API_KEY"] or time.time() < _quiz_options_paused_until:
+        return None
+
+    try:
+        client = OpenAI(
+            api_key=app.config["GEMINI_API_KEY"],
+            base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+            timeout=QUIZ_OPTIONS_TIMEOUT_SECONDS,
+            max_retries=0,
+        )
+        response = create_gemini_completion(
+            client,
+            app.config["GEMINI_QUIZ_MODEL"],
+            build_options_prompt(word["word"], word["translation"], wrong_count + EXTRA_OPTIONS),
+            "generate-quiz-options",
+            effort=QUIZ_REASONING_EFFORT,
+        )
+        content = response.choices[0].message.content if response.choices else None
+        options = parse_options_reply(
+            clean_gemini_response(content or ""),
+            word["translation"],
+            parse_word_types(word["translation"]),
+            wrong_count,
+        )
+        if options is None:
+            raise ValueError("Gemini's quiz options were not a JSON list")
+        return options
+    except Exception as e:
+        report_api_error(e)
+        _quiz_options_paused_until = time.time() + QUIZ_OPTIONS_PAUSE_SECONDS
+        return None
+    finally:
+        flush_langfuse()
+
+
+def quiz_word_types(conn, cursor, word, use_ai_cache, ask_gemini=True):
     """
     The types of the quiz word: its translation prefixes, else the cached Gemini
-    answer, else a fresh Gemini answer that is cached for next time. () when the
-    type cannot be found.
+    answer, else (when ask_gemini) a fresh Gemini answer that is cached for next
+    time. () when the type cannot be found.
     """
     types = parse_word_types(word["translation"])
     if types or not use_ai_cache:
@@ -3262,6 +3325,8 @@ def quiz_word_types(conn, cursor, word, use_ai_cache):
     row = cursor.fetchone()
     if row and row["ai_pos"] is not None:
         return split_ai_pos(row["ai_pos"])
+    if not ask_gemini:
+        return ()
 
     asked = classify_word_types(word["word"], word["translation"])
     if asked is None:
@@ -3275,17 +3340,18 @@ def quiz_word_types(conn, cursor, word, use_ai_cache):
     return asked
 
 
-def find_same_type_distractors(conn, cursor, word, category, wrong_count):
+def find_same_type_distractors(conn, cursor, word, category, wrong_count, allow_gemini=True):
     """
     Wrong answers that are the same kind of word as the right one.
 
     Fills from the chosen category first, then from every category. Never mixes
     types, so the list can be shorter than wrong_count. None means the word's
     type is unknown or nothing of that type exists; the caller then falls back
-    to random wrong answers.
+    to random wrong answers. allow_gemini=False never asks Gemini for a type
+    (used when Gemini has just failed to write the options).
     """
     use_ai_cache = ensure_ai_pos_column()
-    types = quiz_word_types(conn, cursor, word, use_ai_cache)
+    types = quiz_word_types(conn, cursor, word, use_ai_cache, allow_gemini)
     if not types:
         return None
 
@@ -3380,7 +3446,8 @@ def get_next_quiz_word():
     Returns:
         JSON response with word data. 
         If mode='quiz', includes 'options' (list of strings; 4 unless the quiz_choice_count setting says otherwise).
-        The wrong options are the same word type (n./v./adj. ...) as the right one, so
+        The wrong options are written by Gemini in the style of the right one, with
+        same-word-type (n./v./adj. ...) options from the database as the fallback, so
         there are fewer than that when too few words of that type exist.
     """
     conn = None
@@ -3449,15 +3516,26 @@ def get_next_quiz_word():
             # Wrong answers = the saved choice count (default 4) minus the right one
             wrong_count = load_settings(cursor)["quiz_choice_count"] - 1
 
-            # Wrong answers are the same kind of word (n./v./adj. ...) as the
-            # right one. The quiz still works when that cannot be worked out.
-            try:
-                distractors = find_same_type_distractors(conn, cursor, word, category, wrong_count)
-            except mysql.connector.Error as err:
-                report_api_error(err)
-                distractors = None
-            if distractors is None:
-                distractors = random_distractors(cursor, word, category, wrong_count)
+            # Gemini writes plausible wrong answers in the style of the right
+            # one. Whatever it does not supply (no key, failure, too few usable
+            # options) comes from the database: same word type (n./v./adj. ...)
+            # when that can be worked out, otherwise random words.
+            distractors = generate_ai_distractors(word, wrong_count) or []
+            missing = wrong_count - len(distractors)
+            if missing > 0:
+                extra = None
+                try:
+                    extra = find_same_type_distractors(
+                        conn, cursor, word, category, missing,
+                        # Gemini just failed to write the options: do not
+                        # also wait on it for the word's type
+                        allow_gemini=bool(distractors),
+                    )
+                except mysql.connector.Error as err:
+                    report_api_error(err)
+                if extra is None:
+                    extra = random_distractors(cursor, word, category, missing)
+                distractors += [option for option in extra if option not in distractors]
 
             # Combine and shuffle
             import random

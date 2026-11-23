@@ -9,6 +9,9 @@ let quizChartInstance = null;
 // Session length from the Settings page: 0 = no limit (the behaviour before it existed)
 let sessionLimit = 0;
 let sessionAnswered = 0;
+// The next multiple-choice question, fetched while the current one is answered:
+// {url, result} where result is a promise of {status, data}, or null if it failed
+let prefetchedQuestion = null;
 
 // DOM Elements
 const quizLoading = document.getElementById('quizLoading');
@@ -192,6 +195,33 @@ function showSessionDone() {
     quizSessionDone.style.display = 'block';
 }
 
+/** URL of the request for the next word, from the current category, filter and mode */
+function nextWordUrl() {
+    const category = categorySelect.value;
+    const filter = quizFilterSelect ? quizFilterSelect.value : 'none';
+    return `/api/quiz/next-word?category=${encodeURIComponent(category)}&mode=${currentMode}&filter=${filter}`;
+}
+
+/** Fetch one question: {status, data} */
+async function fetchQuestion(url) {
+    const response = await fetch(url);
+    return { status: response.status, data: await response.json() };
+}
+
+/**
+ * Multiple-choice mode: start fetching the next question now, while this one
+ * is being answered, so Gemini writing its wrong options does not make the
+ * next question wait. Not done in flashcard mode, where the next word depends
+ * on how this one is answered, nor for the last question of a session.
+ */
+function prefetchNextQuestion(url) {
+    if (currentMode !== 'quiz') return;
+    if (sessionLimit > 0 && sessionAnswered + 1 >= sessionLimit) return;
+    // A failed prefetch is not an error: the question is requested again on Next
+    const result = fetchQuestion(url).catch(() => null);
+    prefetchedQuestion = { url, result };
+}
+
 /**
  * Load the next word for review
  */
@@ -204,12 +234,15 @@ async function loadNextWord() {
         showLoading();
         resetCard();
 
-        const category = categorySelect.value;
-        const filter = quizFilterSelect ? quizFilterSelect.value : 'none';
-        const response = await fetch(`/api/quiz/next-word?category=${encodeURIComponent(category)}&mode=${currentMode}&filter=${filter}`);
-        const data = await response.json();
+        const url = nextWordUrl();
+        // Use the question fetched in the background while the last one was
+        // being answered, if the category, filter and mode are unchanged.
+        const early = prefetchedQuestion && prefetchedQuestion.url === url ? prefetchedQuestion.result : null;
+        prefetchedQuestion = null;
+        const result = (early && await early) || await fetchQuestion(url);
+        const { status, data } = result;
 
-        if (response.status === 404) {
+        if (status === 404) {
             showEmpty();
             return;
         }
@@ -221,6 +254,7 @@ async function loadNextWord() {
 
         currentWord = data.word;
         displayWord(currentWord);
+        prefetchNextQuestion(url);
 
     } catch (error) {
         console.error('Error loading word:', error);

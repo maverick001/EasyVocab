@@ -11,6 +11,7 @@ import re
 
 import pytest
 
+from utils.quiz_options import build_options_prompt, parse_options_reply
 from utils.word_types import (
     build_batch_prompt,
     build_type_prompt,
@@ -334,12 +335,13 @@ class TestClassifyWordTypes:
 
         used = []
 
-        def fake_completion(client, model, prompt, trace_name):
+        def fake_completion(client, model, prompt, trace_name, **kwargs):
             used.append(model)
+            assert kwargs == {"effort": ""}  # the model's own default effort
             return Response()
 
         monkeypatch.setitem(module.app.config, "GEMINI_API_KEY", "test-key")
-        monkeypatch.setitem(module.app.config, "GEMINI_TYPE_MODEL", "small-fast-model")
+        monkeypatch.setitem(module.app.config, "GEMINI_QUIZ_MODEL", "small-fast-model")
         monkeypatch.setattr(module, "OpenAI", lambda **kw: object())
         monkeypatch.setattr(module, "create_gemini_completion", fake_completion)
         assert module.classify_word_types("fast", "快的") == ("adj", "adv")
@@ -349,7 +351,7 @@ class TestClassifyWordTypes:
     def test_default_type_model_is_the_fast_one(self):
         from config import Config
 
-        assert Config.GEMINI_TYPE_MODEL == "gemini-3.5-flash-lite"
+        assert Config.GEMINI_QUIZ_MODEL == "gemini-3.5-flash-lite"
 
     def test_an_api_error_means_no_answer(self, monkeypatch):
         import app as module
@@ -365,8 +367,12 @@ class TestClassifyWordTypes:
 
 
 class TestQuizRoute:
-    def run_route(self, app_module, monkeypatch, distractors, word_row=None):
-        """Call /api/quiz/next-word with the database stubbed out."""
+    def run_route(self, app_module, monkeypatch, distractors, word_row=None, ai=None):
+        """Call /api/quiz/next-word with the database stubbed out.
+
+        `ai` is what Gemini's wrong options come back as (None = unavailable).
+        """
+        monkeypatch.setattr(app_module, "generate_ai_distractors", lambda word, count: ai)
         word_row = word_row or {
             "id": 7, "word": "beautiful", "translation": "adj. 美丽的", "category": "Food",
         }
@@ -413,6 +419,199 @@ class TestQuizRoute:
         monkeypatch.setattr(app_module, "random_distractors", lambda *a: ["x", "y", "z"])
         data, _ = self.run_route(app_module, monkeypatch, [])
         assert sorted(data["word"]["options"]) == ["adj. 美丽的", "x", "y", "z"]
+
+    def test_gemini_options_replace_the_database_lookup(self, app_module, monkeypatch):
+        data, cursor = self.run_route(
+            app_module, monkeypatch, [], ai=["adj. 丑的", "adj. 大的", "adj. 小的"]
+        )
+        assert sorted(data["word"]["options"]) == ["adj. 丑的", "adj. 大的", "adj. 小的", "adj. 美丽的"]
+        assert not any(sql.startswith("SELECT translation") for sql, _ in cursor.executed)
+
+    def test_missing_options_come_from_the_database(self, app_module, monkeypatch):
+        data, _ = self.run_route(
+            app_module, monkeypatch, ["adj. 大的", "adj. 小的"], ai=["adj. 丑的"]
+        )
+        assert sorted(data["word"]["options"]) == ["adj. 丑的", "adj. 大的", "adj. 小的", "adj. 美丽的"]
+
+    def test_an_option_is_never_shown_twice(self, app_module, monkeypatch):
+        data, _ = self.run_route(
+            app_module, monkeypatch, ["adj. 丑的", "adj. 大的", "adj. 小的"], ai=["adj. 丑的"]
+        )
+        options = data["word"]["options"]
+        assert len(options) == len(set(options))
+
+    def test_gemini_failure_does_not_also_wait_on_gemini_for_the_type(self, app_module, monkeypatch):
+        def must_not_run(text, translation):
+            raise AssertionError("Gemini was asked for the type after it had just failed")
+
+        monkeypatch.setattr(app_module, "classify_word_types", must_not_run)
+        untyped = {"id": 7, "word": "beautiful", "translation": "美丽的", "category": "Food"}
+        data, _ = self.run_route(app_module, monkeypatch, ["x", "y", "z"], word_row=untyped, ai=None)
+        assert sorted(data["word"]["options"]) == sorted(["美丽的", "x", "y", "z"])
+
+
+class TestGeminiOptionsReply:
+    def test_prompt_names_the_word_the_answer_and_the_count(self):
+        prompt = build_options_prompt("beautiful", "adj. 美丽的", 5)
+        assert "beautiful" in prompt and "adj. 美丽的" in prompt
+        assert "5 WRONG options" in prompt and "JSON array of 5" in prompt
+
+    def test_reads_a_json_array(self):
+        reply = '["adj. 丑的", "adj. 大的", "adj. 小的"]'
+        assert parse_options_reply(reply, "adj. 美丽的", ("adj",), 3) == ["adj. 丑的", "adj. 大的", "adj. 小的"]
+
+    def test_tolerates_code_fences_and_chatter(self):
+        reply = 'Here you go:\n```json\n["adj. 丑的", "adj. 大的"]\n```'
+        assert parse_options_reply(reply, "adj. 美丽的", ("adj",), 3) == ["adj. 丑的", "adj. 大的"]
+
+    def test_keeps_multi_line_options(self):
+        reply = '["n. 猫\\nvt. 抓", "n. 狗"]'
+        assert parse_options_reply(reply, "n. 鸟", ("n",), 2) == ["n. 猫\nvt. 抓", "n. 狗"]
+
+    def test_drops_the_right_answer_repeats_blanks_and_non_text(self):
+        reply = '["adj. 美丽的", "adj. 丑的", "adj. 丑的", "  ", 7, null, "adj. 大的"]'
+        assert parse_options_reply(reply, "adj. 美丽的", ("adj",), 3) == ["adj. 丑的", "adj. 大的"]
+
+    def test_drops_options_of_another_word_type(self):
+        reply = '["n. 例子", "adj. 丑的", "丑的", "vt. 吃"]'
+        assert parse_options_reply(reply, "adj. 美丽的", ("adj",), 3) == ["adj. 丑的"]
+
+    def test_a_shared_type_is_enough_for_a_multi_type_answer(self):
+        reply = '["vt. 吃", "adj. 丑的", "n. 例子"]'
+        assert parse_options_reply(reply, "n. 工作 vt. 做", ("n", "v"), 3) == ["vt. 吃", "n. 例子"]
+
+    def test_options_with_a_prefix_are_dropped_when_the_answer_has_none(self):
+        # A prefix on every wrong option would show which one is right
+        reply = '["威权的", "n. 例子", "adj. 大的", "军事政府"]'
+        assert parse_options_reply(reply, "威权政府", (), 3) == ["威权的", "军事政府"]
+
+    def test_prompt_forbids_a_prefix_when_the_answer_has_none(self):
+        assert "do NOT write 'n.'" in build_options_prompt("authority", "威权政府", 3)
+        assert "do NOT write" not in build_options_prompt("observant", "adj. 善于观察的", 3)
+
+    def test_stops_at_the_count(self):
+        reply = '["adj. a", "adj. b", "adj. c", "adj. d"]'
+        assert parse_options_reply(reply, "adj. x", ("adj",), 2) == ["adj. a", "adj. b"]
+
+    @pytest.mark.parametrize("reply", ["", None, "no list here", "[unclosed", '{"a": 1}', "[1, 2"])
+    def test_unreadable_replies_are_none(self, reply):
+        assert parse_options_reply(reply, "adj. 美丽的", ("adj",), 3) is None
+
+    def test_a_valid_list_with_nothing_usable_is_empty_not_none(self):
+        assert parse_options_reply('["n. 例子"]', "adj. 美丽的", ("adj",), 3) == []
+
+
+class FakeGeminiReply:
+    def __init__(self, content):
+        message = type("Message", (), {"content": content})
+        self.choices = [type("Choice", (), {"message": message})]
+
+
+@pytest.fixture
+def gemini(monkeypatch):
+    """Fake Gemini for generate_ai_distractors; `calls` records each request."""
+    import app as module
+
+    state = type("State", (), {
+        "calls": [], "client_args": [], "efforts": [],
+        "reply": '["adj. 丑的", "adj. 大的", "adj. 小的", "adj. 新的"]',
+    })()
+
+    def fake_openai(**kwargs):
+        state.client_args.append(kwargs)
+        return object()
+
+    def fake_completion(client, model, prompt, trace_name, **kwargs):
+        state.calls.append((model, prompt, trace_name))
+        state.efforts.append(kwargs.get("effort", "configured"))
+        if isinstance(state.reply, Exception):
+            raise state.reply
+        return FakeGeminiReply(state.reply)
+
+    monkeypatch.setitem(module.app.config, "GEMINI_API_KEY", "test-key")
+    monkeypatch.setitem(module.app.config, "GEMINI_QUIZ_MODEL", "small-fast-model")
+    monkeypatch.setattr(module, "OpenAI", fake_openai)
+    monkeypatch.setattr(module, "create_gemini_completion", fake_completion)
+    monkeypatch.setattr(module, "report_api_error", lambda e: None)
+    monkeypatch.setattr(module, "_quiz_options_paused_until", 0.0)
+    state.module = module
+    return state
+
+
+class TestGenerateAiDistractors:
+    def test_returns_the_wrong_options(self, gemini):
+        assert gemini.module.generate_ai_distractors(word(), 3) == ["adj. 丑的", "adj. 大的", "adj. 小的"]
+
+    def test_uses_the_small_model_with_a_short_timeout_and_no_retries(self, gemini):
+        gemini.module.generate_ai_distractors(word(), 3)
+        model, _, trace = gemini.calls[0]
+        assert model == "small-fast-model" and trace == "generate-quiz-options"
+        client_args = gemini.client_args[0]
+        assert client_args["timeout"] == gemini.module.QUIZ_OPTIONS_TIMEOUT_SECONDS <= 3.0
+        assert client_args["max_retries"] == 0
+
+    def test_asks_for_one_spare_option(self, gemini):
+        gemini.module.generate_ai_distractors(word(), 3)
+        assert "JSON array of 4" in gemini.calls[0][1]
+
+    def test_uses_the_models_own_reasoning_effort(self, gemini):
+        gemini.module.generate_ai_distractors(word(), 3)
+        assert gemini.efforts == [""]
+
+    def test_options_of_the_wrong_type_are_dropped(self, gemini):
+        gemini.reply = '["n. 例子", "adj. 丑的", "丑的"]'
+        assert gemini.module.generate_ai_distractors(word(), 3) == ["adj. 丑的"]
+
+    def test_no_api_key_means_no_call(self, gemini, monkeypatch):
+        monkeypatch.setitem(gemini.module.app.config, "GEMINI_API_KEY", None)
+        assert gemini.module.generate_ai_distractors(word(), 3) is None
+        assert gemini.calls == []
+
+    def test_a_failure_gives_none_and_pauses_gemini(self, gemini):
+        gemini.reply = TimeoutError("slow")
+        assert gemini.module.generate_ai_distractors(word(), 3) is None
+        assert len(gemini.calls) == 1
+        # Within the pause Gemini is not called again, so no question waits on it
+        gemini.reply = '["adj. 丑的"]'
+        assert gemini.module.generate_ai_distractors(word(), 3) is None
+        assert len(gemini.calls) == 1
+
+    def test_gemini_is_used_again_after_the_pause(self, gemini):
+        gemini.reply = TimeoutError("slow")
+        gemini.module.generate_ai_distractors(word(), 3)
+        gemini.module._quiz_options_paused_until = 0.0
+        gemini.reply = '["adj. 丑的"]'
+        assert gemini.module.generate_ai_distractors(word(), 3) == ["adj. 丑的"]
+
+    def test_an_unreadable_reply_gives_none_and_pauses(self, gemini):
+        gemini.reply = "Sorry, I cannot do that."
+        assert gemini.module.generate_ai_distractors(word(), 3) is None
+        assert gemini.module._quiz_options_paused_until > 0
+
+    def test_nothing_usable_is_an_empty_list_without_a_pause(self, gemini):
+        gemini.reply = '["n. 例子"]'
+        assert gemini.module.generate_ai_distractors(word(), 3) == []
+        assert gemini.module._quiz_options_paused_until == 0.0
+
+
+class TestQuizScriptPrefetch:
+    @pytest.fixture
+    def source(self):
+        with open(os.path.join(ROOT, "static", "js", "quiz.js"), encoding="utf-8") as handle:
+            return handle.read()
+
+    def test_next_question_is_fetched_while_the_current_one_is_answered(self, source):
+        assert "prefetchNextQuestion(url)" in source
+        assert "prefetchedQuestion.url === url" in source
+
+    def test_flashcard_mode_and_the_last_question_do_not_prefetch(self, source):
+        body = source.split("function prefetchNextQuestion")[1].split("\n}\n")[0]
+        assert "currentMode !== 'quiz'" in body
+        assert "sessionAnswered + 1 >= sessionLimit" in body
+
+    def test_a_failed_prefetch_falls_back_to_a_normal_request(self, source):
+        assert ".catch(() => null)" in source
+        assert "|| await fetchQuestion(url)" in source
 
 
 def load_script():
