@@ -156,10 +156,15 @@ class TestCalculateDebt:
         total, _ = calculate_debt(counts, self.TODAY - timedelta(days=1), self.TODAY, 100)
         assert total == 100 - 30
 
-    def test_debt_never_goes_negative(self):
+    def test_surplus_can_take_debt_below_zero(self):
         counts = {self.TODAY - timedelta(days=1): 500}
         total, _ = calculate_debt(counts, self.TODAY - timedelta(days=1), self.TODAY, 100)
-        assert total == 0
+        assert total == 100 - 500
+
+    def test_banked_surplus_is_drawn_down_by_a_later_miss(self):
+        counts = {self.TODAY - timedelta(days=2): 250}  # day-1 has no reviews
+        total, _ = calculate_debt(counts, self.TODAY - timedelta(days=2), self.TODAY, 100)
+        assert total == (100 - 250) + 100
 
     def test_a_different_target_changes_the_debt(self):
         total, _ = calculate_debt({}, self.TODAY - timedelta(days=2), self.TODAY, 25)

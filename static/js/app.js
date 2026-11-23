@@ -2742,8 +2742,9 @@ function incrementDailyCounter(wordId) {
     AppState.countedWordIds.add(wordId);
     AppState.dailyProgress++;
 
-    // If user has exceeded the daily target, decrement total debt
-    if (AppState.dailyProgress > AppState.dailyTarget && AppState.totalDebt > 0) {
+    // If user has exceeded the daily target, decrement total debt (it may go
+    // below 0; the server reports it the same way)
+    if (AppState.dailyProgress > AppState.dailyTarget) {
         AppState.totalDebt--;
         updateDebtDisplay();
         console.log('📉 Debt reduced by 1 due to extra review!');
