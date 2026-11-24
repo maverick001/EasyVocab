@@ -3289,7 +3289,9 @@ def generate_ai_distractors(word, wrong_count):
         response = create_gemini_completion(
             client,
             app.config["GEMINI_QUIZ_MODEL"],
-            build_options_prompt(word["word"], word["translation"], wrong_count + EXTRA_OPTIONS),
+            build_options_prompt(
+                word["word"], word["translation"], wrong_count + EXTRA_OPTIONS, word.get("category")
+            ),
             "generate-quiz-options",
             effort=QUIZ_REASONING_EFFORT,
         )

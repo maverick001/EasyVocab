@@ -79,6 +79,11 @@ def parse_word_types(translation):
     return tuple(sorted({TYPE_ALIASES[m] for m in _PREFIX_RE.findall(translation)}))
 
 
+def strip_type_prefixes(text):
+    """The text without its "n." / "vt." / "adj." markers."""
+    return _PREFIX_RE.sub(" ", text or "")
+
+
 def split_ai_pos(value):
     """Types stored in words.ai_pos ("adj,n") as a tuple; None or "" -> ()."""
     if not value:

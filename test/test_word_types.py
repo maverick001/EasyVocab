@@ -489,6 +489,41 @@ class TestGeminiOptionsReply:
         assert "do NOT write 'n.'" in build_options_prompt("authority", "威权政府", 3)
         assert "do NOT write" not in build_options_prompt("observant", "adj. 善于观察的", 3)
 
+    def test_prompt_asks_for_members_of_the_same_group(self):
+        prompt = build_options_prompt("blue", "adj. 蓝色的", 3)
+        assert "SAME GROUP" in prompt and "natural set" in prompt
+        assert "same topic or field" in prompt
+
+    def test_prompt_takes_the_group_from_the_first_meaning(self):
+        assert "FIRST meaning" in build_options_prompt("creamy", "adj. 奶油色的；乳脂状的", 3)
+
+    def test_prompt_forbids_shades_and_near_synonyms(self):
+        prompt = build_options_prompt("blue", "adj. 蓝色的", 3)
+        assert "shade, sub-type or near-synonym" in prompt
+
+    def test_prompt_passes_the_category_as_a_hint(self):
+        assert "Topic hint" in build_options_prompt("blue", "adj. 蓝色的", 3, "颜色")
+        assert "颜色" in build_options_prompt("blue", "adj. 蓝色的", 3, "颜色")
+
+    def test_prompt_has_no_hint_without_a_category(self):
+        assert "Topic hint" not in build_options_prompt("blue", "adj. 蓝色的", 3)
+        assert "Topic hint" not in build_options_prompt("blue", "adj. 蓝色的", 3, None)
+
+    def test_shades_of_the_right_answer_are_dropped(self):
+        reply = '["adj. 浅蓝色的", "adj. 黄色的", "adj. 天蓝色的", "adj. 红色的"]'
+        assert parse_options_reply(reply, "adj. 蓝色的", ("adj",), 3) == ["adj. 黄色的", "adj. 红色的"]
+
+    def test_an_option_repeating_any_meaning_of_the_answer_is_dropped(self):
+        reply = '["adj. 机警的；敏捷的", "adj. 严格的；苛刻的"]'
+        assert parse_options_reply(reply, "adj. 善于观察的；机警的", ("adj",), 3) == ["adj. 严格的；苛刻的"]
+
+    def test_a_shared_bracketed_tag_is_not_a_repeated_meaning(self):
+        reply = '["n. [车辆] 刹车片"]'
+        assert parse_options_reply(reply, "n. [车辆] 调光器；光暗掣", ("n",), 3) == ["n. [车辆] 刹车片"]
+
+    def test_single_character_meanings_never_block_an_option(self):
+        assert parse_options_reply('["vt.吃惊"]', "vt.吃", ("v",), 3) == ["vt.吃惊"]
+
     def test_stops_at_the_count(self):
         reply = '["adj. a", "adj. b", "adj. c", "adj. d"]'
         assert parse_options_reply(reply, "adj. x", ("adj",), 2) == ["adj. a", "adj. b"]
@@ -553,6 +588,18 @@ class TestGenerateAiDistractors:
     def test_asks_for_one_spare_option(self, gemini):
         gemini.module.generate_ai_distractors(word(), 3)
         assert "JSON array of 4" in gemini.calls[0][1]
+
+    def test_the_words_category_is_sent_as_a_topic_hint(self, gemini):
+        gemini.module.generate_ai_distractors({**word(), "category": "颜色"}, 3)
+        assert "Topic hint" in gemini.calls[0][1] and "颜色" in gemini.calls[0][1]
+
+    def test_a_word_without_a_category_sends_no_hint(self, gemini):
+        gemini.module.generate_ai_distractors(word(), 3)
+        assert "Topic hint" not in gemini.calls[0][1]
+
+    def test_shades_of_the_answer_in_the_reply_are_dropped(self, gemini):
+        gemini.reply = '["adj. 浅美丽的", "adj. 丑的"]'
+        assert gemini.module.generate_ai_distractors(word(), 3) == ["adj. 丑的"]
 
     def test_uses_the_models_own_reasoning_effort(self, gemini):
         gemini.module.generate_ai_distractors(word(), 3)
