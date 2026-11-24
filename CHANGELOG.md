@@ -32,6 +32,9 @@
 - **Settings Page**: a new `/settings` page, reached from a Settings button on the vocab and quiz pages, for the daily target, turning word debt on or off, the debt start date, the timezone and the quiz session length. Values live in an `app_settings` table that is created on startup or on first save; a missing table, row or bad value falls back to the previous defaults.
 - **Welcome Page Shortcuts**: pressing Enter on the welcome page does the same as clicking "Enter" (ignored while typing, on a focused button, with a window open, or on key repeat), and clicking the app title on the vocab page returns to the welcome page.
 
+### Removed
+- **Unused API Routes**: `GET /api/category/<category>/count`, `POST /api/upload` (the Import button uses `/api/upload-local`) and the path form `GET /api/words/<category>` (the page uses `/api/words-query?category=…`, which stays). Nothing in the app called them.
+
 
 ## [1.6.1] - 2026-02-09
 ### Added

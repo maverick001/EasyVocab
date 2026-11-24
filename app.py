@@ -21,7 +21,6 @@ from mysql.connector import pooling
 import os
 import requests
 import platform
-from werkzeug.utils import secure_filename
 from config import Config
 from utils import parse_and_import_xml, XMLParserError
 from utils.word_images import CREATE_WORD_IMAGES_TABLE_SQL
@@ -1516,18 +1515,13 @@ def get_available_images():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route("/api/words/<category>", methods=["GET"])
-@app.route(
-    "/api/words-query", methods=["GET"]
-)  # Alternative endpoint for Vercel (uses ?category=)
+@app.route("/api/words-query", methods=["GET"])
 def get_word_by_category(category=None):
     """
     Get a specific word from a category by index position
 
-    Args:
-        category: Category name (from URL path)
-
     Query Parameters:
+        category: Category name ("All" for every category)
         index: Position of word in category (0-based, default=0)
         sort_by: Sorting method - 'updated_at' (latest edits) or 'review_count' (most reviewed)
                  Default: 'updated_at'
@@ -3185,48 +3179,6 @@ def generate_translation():
         flush_langfuse()
 
 
-@app.route("/api/category/<category>/count", methods=["GET"])
-def get_category_count(category):
-    """
-    Get total word count for a specific category
-
-    Args:
-        category: Category name (from URL path)
-
-    Returns:
-        JSON response:
-        {
-            "success": true,
-            "category": "文化",
-            "count": 120
-        }
-    """
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-
-        cursor.execute(
-            """
-            SELECT COUNT(*) as count
-            FROM words
-            WHERE category = %s
-        """,
-            (category,),
-        )
-
-        result = cursor.fetchone()
-        count = result["count"] if result else 0
-
-        cursor.close()
-        conn.close()
-
-        return jsonify({"success": True, "category": category, "count": count})
-
-    except Exception as e:
-        report_api_error(e)
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
 def classify_word_types(word, translation):
     """
     Ask Gemini for a word's types: a tuple, () for "none", None if it could not
@@ -3743,88 +3695,6 @@ def upload_local_xml():
             return jsonify({"success": True, "stats": stats, "message": message})
 
         except XMLParserError as e:
-            return jsonify(
-                {"success": False, "error": f"XML parsing error: {str(e)}"}
-            ), 400
-        finally:
-            if conn:
-                conn.close()
-
-    except Exception as e:
-        report_api_error(e)
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-@app.route("/api/upload", methods=["POST"])
-def upload_xml():
-    """
-    Upload and import XML vocabulary file
-
-    Request:
-        multipart/form-data with 'file' field containing XML file
-
-    Returns:
-        JSON response:
-        {
-            "success": true,
-            "stats": {
-                "total_processed": 500,
-                "added": 450,
-                "skipped_duplicates": 50,
-                "errors": 0
-            },
-            "message": "Import completed: 450 words added, 50 duplicates skipped"
-        }
-    """
-    try:
-        # Check if file is in request
-        if "file" not in request.files:
-            return jsonify({"success": False, "error": "No file provided"}), 400
-
-        file = request.files["file"]
-
-        # Check if filename is empty
-        if file.filename == "":
-            return jsonify({"success": False, "error": "No file selected"}), 400
-
-        # Validate file type
-        if not allowed_file(file.filename):
-            return jsonify(
-                {
-                    "success": False,
-                    "error": "Invalid file type. Only XML files are allowed.",
-                }
-            ), 400
-
-        # Save file securely
-        filename = secure_filename(file.filename)
-        filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-        file.save(filepath)
-
-        # Parse and import XML
-        conn = None
-        try:
-            conn = get_db_connection()
-            stats = parse_and_import_xml(
-                filepath, conn, batch_size=app.config["XML_BATCH_SIZE"]
-            )
-
-            # Clean up uploaded file
-            os.remove(filepath)
-
-            # Build response message
-            message = f"Import completed: {stats['added']} words added"
-            if stats["skipped_duplicates"] > 0:
-                message += f", {stats['skipped_duplicates']} duplicates skipped"
-            if stats["errors"] > 0:
-                message += f", {stats['errors']} errors encountered"
-
-            return jsonify({"success": True, "stats": stats, "message": message})
-
-        except XMLParserError as e:
-            # Clean up uploaded file on error
-            if os.path.exists(filepath):
-                os.remove(filepath)
             return jsonify(
                 {"success": False, "error": f"XML parsing error: {str(e)}"}
             ), 400
