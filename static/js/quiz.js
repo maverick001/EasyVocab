@@ -239,7 +239,12 @@ async function loadNextWord() {
         // being answered, if the category, filter and mode are unchanged.
         const early = prefetchedQuestion && prefetchedQuestion.url === url ? prefetchedQuestion.result : null;
         prefetchedQuestion = null;
-        const result = (early && await early) || await fetchQuestion(url);
+        let result = early ? await early : null;
+        // A prefetch that failed (network error, 500, 503 from Gemini) is not
+        // shown as an error: ask again, as every Next click did before prefetching.
+        if (!result || !(result.status === 404 || result.data.success)) {
+            result = await fetchQuestion(url);
+        }
         const { status, data } = result;
 
         if (status === 404) {

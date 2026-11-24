@@ -60,14 +60,19 @@ _SENSE_SEPARATORS = re.compile(r"[；;，,、。\n]")
 _BRACKETED = re.compile(r"\[[^\]]*\]|\([^)]*\)|（[^）]*）")
 
 
+# Meanings shorter than this are too generic to count as "repeated": rejecting
+# every option that contains 要求 or 红色 emptied the list for some words.
+MIN_SENSE_CHARS = 3
+
+
 def _senses(text):
-    """The separate meanings in a translation, at least two characters each.
+    """The separate meanings in a translation, at least MIN_SENSE_CHARS each.
 
     "adj. 善于观察的；机警的" -> ["善于观察的", "机警的"]. Prefixes and bracketed
     tags such as "[车辆]" are not meanings.
     """
     text = _BRACKETED.sub(" ", strip_type_prefixes(text))
-    return [s for s in (p.strip() for p in _SENSE_SEPARATORS.split(text)) if len(s) >= 2]
+    return [s for s in (p.strip() for p in _SENSE_SEPARATORS.split(text)) if len(s) >= MIN_SENSE_CHARS]
 
 
 def _json_array(text):
