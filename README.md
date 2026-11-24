@@ -8,7 +8,7 @@
 ![MySQL](https://img.shields.io/badge/mysql-8.0-orange)
 
 <p align="center">
-  <img src="static/images/readme-desktop.png" alt="EasyVocab main vocabulary page in the Duolingo-like theme" width="800">
+  <img src="static/images/readme-desktop.png" alt="EasyVocab main vocabulary page in the Ghibli-style theme" width="800">
 </p>
 
 ## 🌟 Features
@@ -35,7 +35,7 @@
 <table>
   <tr>
     <td width="50%" valign="top"><img src="static/images/readme-quiz-flashcard.png" alt="Quiz in flashcard mode with the answer revealed"></td>
-    <td width="50%" valign="top"><img src="static/images/readme-quiz-choice.png" alt="Quiz in multiple-choice mode with the correct answer selected and the daily progress chart"></td>
+    <td width="50%" valign="top"><img src="static/images/readme-quiz-choice.png" alt="Quiz in multiple-choice mode with the correct answer selected"></td>
   </tr>
   <tr>
     <td align="center"><sub>Flashcard mode</sub></td>
