@@ -17,7 +17,7 @@
 - **Secure Access**: Password-protected site with login rate limiting to prevent brute force attacks
 - **AI-Powered Word Entry**: Auto-generate translations and example sentences with Google Gemini (Gemini 4 Hydrogen by default, or Gemini 3.5 Flash-Lite)
 - **Private Word Images**: Attach pictures to a word; they live in your database and are shown only to logged-in users
-- **Smart Quiz**: Spaced repetition based on the Ebbinghaus forgetting curve, with a flashcard mode, a multiple-choice mode (Gemini writes plausible wrong choices in the same format and word type as the answer), Image-only / IPA-only filters and a daily progress chart
+- **Smart Quiz**: Spaced repetition based on the Ebbinghaus forgetting curve, with a flashcard mode, a multiple-choice mode (Gemini writes the wrong choices: other members of the answer's group, in the same format and word type; needs `GOOGLE_API_KEY`), Image-only / IPA-only filters and a daily progress chart
 - **Browse by Category**: Organize and review vocabulary by 20+ categories, and file a word under more than one category
 - **Interactive Word Cards**: Word, translation, example sentences, IPA, an optional picture and the word's categories on one card
 - **Daily Tracking**: "Word Today" and "Word Debt" counters, plus a per-word edit history

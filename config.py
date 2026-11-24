@@ -69,9 +69,9 @@ class Config:
     # Gemini API Configuration (OpenAI-compatible)
     GEMINI_API_KEY = os.environ.get('GOOGLE_API_KEY')
     GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-4-hydrogen')
-    # Model for the quiz's small jobs: writing the wrong options and tagging a
-    # word's type (n./v./adj.). Short answers need no big model: this one takes
-    # ~0.7s where gemini-4-hydrogen takes ~3.4s.
+    # Model that writes the wrong options in multiple-choice quiz mode. A short
+    # answer needs no big model: this one takes ~1s where gemini-4-hydrogen
+    # takes ~3.4s.
     GEMINI_QUIZ_MODEL = os.environ.get('GEMINI_QUIZ_MODEL', 'gemini-3.5-flash-lite')
     GEMINI_TEMPERATURE = float(os.environ.get('GEMINI_TEMPERATURE', 0.9))
     # How much the model "thinks" before answering. 'low' cuts translation from
