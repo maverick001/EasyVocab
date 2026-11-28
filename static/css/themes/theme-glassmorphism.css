@@ -1,40 +1,51 @@
 /*
- * Theme: Glassmorphism (Windows 11-like)
- * Frosted glass effects, vibrant backgrounds, glowing borders
- * Segoe UI Variable for modern Windows aesthetic
+ * Theme: Coral Neo (file and key keep the old name "glassmorphism")
+ *
+ * Neumorphic style after a dark-navy and coral UI kit: a light grey surface
+ * with large raised cards and inset wells, navy rounded buttons and dropdowns,
+ * and a coral-red gradient for the main action and selected states. Dark mode
+ * keeps the same look with a slightly dimmer surface.
+ *
+ * Every raised or inset effect comes from the --neu-* variables below, so a
+ * colour tweak only needs the two variable blocks.
  */
 
 :root {
-    /* Windows 11-inspired Color Palette */
-    --primary-blue: #0078D4;
-    --primary-light: #2B88D8;
-    --primary-dark: #005A9E;
+    /* One navy for both the text and the boxes (buttons, dropdowns, badges) */
+    --navy: #5A5F78;
+    --navy-box: var(--navy);
+    --navy-fill: linear-gradient(145deg, #676C86, #4F546D);
+    --on-navy: #FFFFFF;
+    --on-navy-coral: #FF8A7D;
+    --on-navy-green: #5FD9A5;
 
-    --success: #10893E;
-    --warning: #FFC83D;
-    --error: #D13438;
+    /* Coral: main action, selected state, accents */
+    --primary-blue: #E8504C;
+    --primary-light: #F58C80;
+    --primary-dark: #C9363A;
+    --accent-blue: #F07A5A;
+    --accent-fill: linear-gradient(135deg, #F0625A, #D93E44);
 
-    /* Glassmorphism Effects */
-    --glass-bg: rgba(255, 255, 255, 0.1);
-    --glass-border: rgba(255, 255, 255, 0.2);
-    --glass-blur: 20px;
+    --success: #1F9D68;
+    --warning: #E8A317;
+    --error: #D93F44;
 
-    /* Backgrounds - Vibrant Gradients */
-    --bg-main: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    --bg-card: rgba(255, 255, 255, 0.15);
-    --bg-hover: rgba(255, 255, 255, 0.25);
+    /* One grey surface for the page and every card: neumorphism needs them equal */
+    --bg-main: #ECECEF;
+    --bg-card: #ECECEF;
+    --bg-hover: #E1E1E7;
+    --bg-overlay: rgba(38, 40, 57, 0.55);
 
     /* Typography */
     --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    --text-primary: #FFFFFF;
-    --text-secondary: rgba(255, 255, 255, 0.8);
-    --text-light: rgba(255, 255, 255, 0.6);
+    --text-primary: var(--navy);
+    --text-secondary: #6A6F86;
+    --text-light: #8A8EA0;
 
-    /* Borders & Glow */
-    --border-color: rgba(255, 255, 255, 0.3);
+    /* Dividers are a soft groove, not a line */
+    --border-color: rgba(60, 62, 85, 0.14);
     --border-width: 1px;
-    --glow-primary: 0 0 20px rgba(0, 120, 212, 0.6);
-    --glow-hover: 0 0 30px rgba(0, 120, 212, 0.8);
+    --shadow: rgba(60, 62, 85, 0.3);
 
     /* Spacing */
     --spacing-xs: 0.5rem;
@@ -43,133 +54,553 @@
     --spacing-lg: 2rem;
     --spacing-xl: 3rem;
 
-    /* Border Radius - Rounded */
-    --radius-sm: 8px;
-    --radius-md: 12px;
-    --radius-lg: 16px;
+    /* Radius: big rounded squares for cards, softer rectangles for buttons */
+    --radius-sm: 12px;
+    --radius-md: 16px;
+    --radius-lg: 28px;
+    --radius-btn: 14px;
+    --radius-pill: 999px;
 
-    /* Shadows - Strong & Colored */
-    --shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.2);
-    --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.3);
-    --shadow-floating: 0 16px 48px rgba(0, 0, 0, 0.4);
+    /* The shadow pair */
+    --neu-dark: rgba(150, 152, 170, 0.6);
+    --neu-light: rgba(255, 255, 255, 0.95);
+    --neu-navy: rgba(38, 40, 57, 0.34);
+    --neu-focus: 0 0 0 3px rgba(232, 80, 76, 0.35);
 
-    /* Transitions */
-    --transition-speed: 0.3s;
-    --transition-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    --transition-speed: 0.25s;
 }
 
-/* Fix: dropdowns with hardcoded white backgrounds need dark text */
-.category-select,
-.sort-select,
-.model-select,
-.history-select,
-.category-change-select,
-.theme-select {
-    color: #1a1a2e;
+/* Dark mode: the same look, a slightly dimmer surface and deeper shadows */
+body.dark-mode {
+    --primary-blue: #EE5B56;
+    --primary-light: #F58C80;
+    --primary-dark: #C9363A;
+    --accent-blue: #F07A5A;
+
+    --success: #1B8F5E;
+    --warning: #D9950F;
+    --error: #D13A3F;
+
+    --bg-main: #DCDDE4;
+    --bg-card: #DCDDE4;
+    --bg-hover: #D0D2DB;
+    --bg-overlay: rgba(20, 21, 33, 0.65);
+
+    --text-primary: var(--navy);
+    --text-secondary: #62677E;
+    --text-light: #80849A;
+
+    --border-color: rgba(50, 52, 75, 0.16);
+    --shadow: rgba(40, 42, 65, 0.38);
+
+    --neu-dark: rgba(116, 119, 142, 0.62);
+    --neu-light: rgba(255, 255, 255, 0.72);
+    --neu-navy: rgba(20, 21, 35, 0.42);
 }
 
-body.dark-mode .category-select,
-body.dark-mode .sort-select,
-body.dark-mode .model-select,
-body.dark-mode .history-select,
-body.dark-mode .category-change-select,
-body.dark-mode .theme-select {
+/*
+ * The shadow recipes are declared for both :root and body.dark-mode on
+ * purpose. A custom property that uses var() is resolved where it is declared,
+ * so a recipe declared only on :root would keep the light-mode shadow colours
+ * even after dark mode redefines them.
+ */
+:root,
+body.dark-mode {
+    --neu-raised: 10px 10px 26px var(--neu-dark), -10px -10px 26px var(--neu-light);
+    --neu-raised-sm: 6px 6px 14px var(--neu-dark), -6px -6px 14px var(--neu-light);
+    --neu-raised-xs: 3px 3px 8px var(--neu-dark), -3px -3px 8px var(--neu-light);
+    --neu-inset: inset 5px 5px 11px var(--neu-dark), inset -5px -5px 11px var(--neu-light);
+    --neu-inset-sm: inset 3px 3px 7px var(--neu-dark), inset -3px -3px 7px var(--neu-light);
+    --neu-navy-raised: 4px 7px 15px var(--neu-navy), -4px -4px 10px var(--neu-light);
+    --neu-navy-raised-sm: 3px 5px 10px var(--neu-navy), -3px -3px 7px var(--neu-light);
+
+    /* Legacy names some rules still read */
+    --shadow-sm: var(--neu-raised-xs);
+    --shadow-card: var(--neu-raised);
+    --shadow-floating: var(--neu-raised);
+}
+
+/*
+ * Selector note: style.css has dark-mode rules written as `body.dark-mode .x`
+ * (specificity 0,2,1). `:root body .x` has the same weight and this file loads
+ * later, so one rule here wins in both modes without a dark twin.
+ */
+
+/* ---------- Page and surfaces ---------- */
+
+:root body {
+    background: var(--bg-main);
     color: var(--text-primary);
-
 }
 
-/* Fix: search result items have white background, so text must be dark */
-.search-result-word {
-    color: #1a1a2e;
+:root body .app-header,
+:root body .control-panel,
+:root body .word-card,
+:root body .welcome-message,
+:root body .search-results-panel,
+:root body .modal-content,
+:root body .settings-card {
+    background: var(--bg-card);
+    border: none;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--neu-raised);
+    backdrop-filter: none;
 }
 
-.search-result-translation {
-    color: #555;
+:root body .word-card:hover {
+    box-shadow: var(--neu-raised);
 }
 
-.search-result-meta {
-    color: #777;
+:root body .app-footer {
+    background: var(--bg-card);
+    border-top: none;
+    color: var(--text-secondary);
 }
 
-/* Fix: labels should match section-title color (--primary-dark) */
-.control-label,
-.action-label {
+:root body .app-title,
+:root body .word-display,
+:root body .welcome-message h2 {
+    color: var(--navy);
+    text-shadow: 1px 1px 1px var(--neu-light);
+}
+
+:root body .section-title,
+:root body .control-label,
+:root body .action-label {
     color: var(--primary-dark);
 }
 
-/* Dark Mode Overrides */
-body.dark-mode {
-    --primary-blue: #5B9BD5;
-    --primary-light: #3E5C76;
-    --primary-dark: #8BB8E8;
-    --accent-blue: #79A8C9;
-
-    --bg-main: #1A1D23;
-    --bg-card: #242830;
-    --bg-hover: #2D323C;
-
-    --text-primary: #E8ECF1;
-    --text-secondary: #A8B2C1;
-    --text-light: #6E7A8A;
-
-    --border-color: #3A4150;
-    --shadow: rgba(0, 0, 0, 0.4);
-    --success: #52C65D;
-    --warning: #F39C12;
-    --error: #E74C3C;
+:root body .welcome-message p {
+    color: var(--text-secondary);
 }
 
-/* Remove background highlight from content display */
-.content-display {
-    background: transparent;
-    border-color: var(--primary-blue);
-    color: #1a1a2e;
+/* ---------- Dividers ---------- */
+
+:root body .primary-controls,
+:root body .word-section,
+:root body .navigation-buttons,
+:root body .modal-header,
+:root body .modal-footer,
+:root body .search-results-header {
+    border-color: var(--border-color);
 }
 
-body.dark-mode .content-display {
-    color: var(--text-primary);
+/* ---------- Buttons ---------- */
+
+/* Base: a light raised rounded button with navy text. Navy and coral variants follow. */
+:root body .btn {
+    background: var(--bg-card);
+    color: var(--navy);
+    border: none;
+    border-radius: var(--radius-btn);
+    box-shadow: var(--neu-raised-sm);
+    text-decoration: none;
+    transition: box-shadow var(--transition-speed) ease, transform var(--transition-speed) ease,
+        color var(--transition-speed) ease, filter var(--transition-speed) ease;
 }
 
-/* Fix: sample sentences need dark text too */
-.sentence-item {
-    color: #1a1a2e;
+/* The base sweep highlight reads as noise on a soft surface */
+:root body .btn::before {
+    display: none;
 }
 
-body.dark-mode .sentence-item {
-    color: var(--text-primary);
+:root body .btn:hover {
+    background: var(--bg-card);
+    color: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: var(--neu-raised);
 }
 
-.content-display.editable-field:hover {
-    background: var(--bg-hover);
-    border-color: var(--primary-blue);
+:root body .btn:active {
+    transform: translateY(0);
+    box-shadow: var(--neu-inset-sm);
 }
 
-/* Make 'No sample sentences yet...' text blue */
-#sampleDisplay .empty-hint {
-    color: var(--primary-blue);
+/* Navy buttons: the secondary actions */
+:root body .btn-import,
+:root body .btn-quiz,
+:root body .btn-settings,
+:root body .btn-view-image {
+    background: var(--navy-fill);
+    color: var(--on-navy);
+    box-shadow: var(--neu-navy-raised);
 }
 
-body.dark-mode #sampleDisplay .empty-hint {
-    color: var(--primary-light);
+:root body .btn-import:hover,
+:root body .btn-quiz:hover,
+:root body .btn-settings:hover,
+:root body .btn-view-image:hover {
+    background: var(--navy-fill);
+    color: var(--on-navy);
+    filter: brightness(1.18);
+    box-shadow: var(--neu-navy-raised);
 }
 
-/* Make the cancelSampleBtn show a light green background */
-#cancelSampleBtn {
-    background-color: #90EE90;
-    color: #1a1a2e;
+:root body .btn-import:active,
+:root body .btn-quiz:active,
+:root body .btn-settings:active,
+:root body .btn-view-image:active {
+    filter: brightness(0.95);
+    box-shadow: var(--neu-navy-raised-sm);
 }
 
-/* Add New Word window has a white panel in light mode, so its title must be dark */
-body:not(.dark-mode) .modal-header h2 {
-    color: #000;
-}
-
-/* Cancel buttons inside the white modal: --text-light is translucent white in this theme, so they vanish */
-body:not(.dark-mode) .modal-content .btn-cancel {
-    background: #7F8C8D;
+/* Coral gradient: the main action and selected states */
+:root body .btn-primary,
+:root body .btn-nav,
+:root body .btn-generate,
+:root body .btn-add-word,
+:root body .btn-save {
+    background: var(--accent-fill);
     color: #fff;
+    box-shadow: 4px 7px 15px rgba(217, 62, 68, 0.35), -4px -4px 10px var(--neu-light);
 }
 
-body:not(.dark-mode) .modal-content .btn-cancel:hover {
-    background: #5D6D7E;
+:root body .btn-primary:hover,
+:root body .btn-nav:hover,
+:root body .btn-generate:hover,
+:root body .btn-add-word:hover,
+:root body .btn-save:hover {
+    background: var(--accent-fill);
+    color: #fff;
+    filter: brightness(1.07);
+    box-shadow: 4px 7px 15px rgba(217, 62, 68, 0.35), -4px -4px 10px var(--neu-light);
+}
+
+:root body .btn-primary:active,
+:root body .btn-nav:active,
+:root body .btn-generate:active,
+:root body .btn-add-word:active,
+:root body .btn-save:active {
+    filter: brightness(0.95);
+    box-shadow: 2px 4px 9px rgba(217, 62, 68, 0.35), -3px -3px 7px var(--neu-light);
+}
+
+:root body .btn:disabled,
+:root body .btn-nav:disabled,
+:root body .btn-generate:disabled {
+    background: var(--bg-card);
+    color: var(--text-light);
+    box-shadow: var(--neu-raised-xs);
+    filter: none;
+    opacity: 0.6;
+    transform: none;
+    cursor: not-allowed;
+}
+
+/* Delete reads as a warning without becoming a big red block */
+:root body .btn-delete,
+:root body .btn-delete:hover {
+    color: var(--error);
+}
+
+/* Base forces this one red with !important, so the override needs it too */
+:root body .btn-delete-inline {
+    background: var(--bg-card) !important;
+    color: var(--error) !important;
+}
+
+:root body .btn-delete-inline:hover {
+    background: var(--bg-card) !important;
+    box-shadow: var(--neu-raised);
+}
+
+/* Settings range switch: the chosen one is coral */
+:root body .range-btn.active {
+    background: var(--accent-fill);
+    color: #fff;
+    box-shadow: var(--neu-raised-xs);
+}
+
+/* Small round and icon buttons */
+:root body .theme-toggle {
+    background: var(--navy-fill);
+    box-shadow: var(--neu-navy-raised-sm);
+}
+
+:root body .theme-toggle:hover {
+    filter: brightness(1.18);
+    box-shadow: var(--neu-navy-raised-sm);
+    transform: none;
+}
+
+:root body .btn-ipa-word {
+    background: var(--bg-card);
+    border: none;
+    border-radius: var(--radius-btn);
+    color: var(--navy);
+    box-shadow: var(--neu-raised-xs);
+    padding: 0.2rem 0.8rem;
+}
+
+:root body .btn-ipa-word:hover {
+    color: var(--primary-dark);
+}
+
+/* "IPA saved" marker: base uses !important lime and gold */
+:root body .btn-ipa-has-content {
+    background: var(--accent-fill) !important;
+    border: none !important;
+    color: #fff !important;
+}
+
+:root body .btn-edit-word,
+:root body .btn-close {
+    background: transparent;
+    box-shadow: none;
+}
+
+:root body .btn-close {
+    color: var(--text-secondary);
+}
+
+:root body .btn-close:hover {
+    color: var(--error);
+}
+
+:root body .review-counter-badge {
+    background: var(--navy-fill);
+    color: var(--on-navy);
+    box-shadow: var(--neu-navy-raised-sm);
+}
+
+:root body .review-counter-badge:hover {
+    box-shadow: var(--neu-navy-raised);
+}
+
+/* ---------- Dropdowns: navy, like the select in the kit ---------- */
+
+:root body .category-select,
+:root body .sort-select,
+:root body .model-select,
+:root body .history-select,
+:root body .category-change-select,
+:root body .theme-select {
+    background: var(--navy-fill);
+    color: var(--on-navy);
+    border: none;
+    border-radius: var(--radius-btn);
+    box-shadow: var(--neu-navy-raised-sm);
+    padding-left: 1.1rem;
+    padding-right: 1.1rem;
+}
+
+:root body .category-select:hover,
+:root body .sort-select:hover,
+:root body .model-select:hover,
+:root body .history-select:hover,
+:root body .category-change-select:hover,
+:root body .theme-select:hover {
+    border: none;
+    filter: brightness(1.18);
+}
+
+:root body .category-select:focus,
+:root body .sort-select:focus,
+:root body .model-select:focus,
+:root body .history-select:focus,
+:root body .category-change-select:focus,
+:root body .theme-select:focus {
+    outline: none;
+    border: none;
+    box-shadow: var(--neu-navy-raised-sm), var(--neu-focus);
+}
+
+/* The open list is drawn by the browser; navy with white text matches the kit */
+:root body select option {
+    background: var(--navy-box);
+    color: var(--on-navy);
+}
+
+/* ---------- Text fields: inset ---------- */
+
+:root body .search-input,
+:root body .ipa-input,
+:root body .file-input,
+:root body .form-input,
+:root body .form-textarea,
+:root body .content-textarea,
+:root body .word-input,
+:root body .settings-field input[type="number"],
+:root body .settings-field input[type="date"],
+:root body .settings-field input[type="text"] {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: none;
+    border-radius: var(--radius-md);
+    box-shadow: var(--neu-inset-sm);
+}
+
+:root body .search-input:focus,
+:root body .form-input:focus,
+:root body .form-textarea:focus,
+:root body .content-textarea:focus,
+:root body .word-input:focus,
+:root body .settings-field input:focus {
+    outline: none;
+    border: none;
+    box-shadow: var(--neu-inset-sm), var(--neu-focus);
+}
+
+:root body .word-input {
+    color: var(--navy);
+}
+
+/* ---------- Badges and chips ---------- */
+
+/* Navy chips, like the month and year chips of the calendar in the kit */
+:root body .status-badge,
+:root body .position-badge,
+:root body .daily-badge,
+:root body .debt-badge,
+:root body .daily-badge.completed,
+:root body .debt-badge.debt-clear {
+    background: var(--navy-fill);
+    color: var(--on-navy);
+    border: none;
+    box-shadow: var(--neu-navy-raised-sm);
+}
+
+:root body .daily-badge:hover,
+:root body .debt-badge:hover {
+    filter: brightness(1.18);
+    box-shadow: var(--neu-navy-raised-sm);
+}
+
+:root body .daily-badge:not(.completed) .badge-amount,
+:root body .debt-badge:not(.debt-clear) .badge-amount {
+    color: var(--on-navy-coral);
+}
+
+:root body .daily-badge.completed .badge-amount,
+:root body .debt-badge.debt-clear .badge-amount {
+    color: var(--on-navy-green);
+}
+
+:root body .word-category-tag,
+:root body .search-result-category {
+    background: var(--bg-card);
+    color: var(--navy);
+    border: none;
+    border-radius: var(--radius-pill);
+    padding: 4px 14px;
+    box-shadow: var(--neu-inset-sm);
+}
+
+/* ---------- Content blocks: inset wells ---------- */
+
+:root body .content-display,
+:root body .sentence-edit-item {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: none;
+    border-radius: var(--radius-md);
+    box-shadow: var(--neu-inset-sm);
+}
+
+:root body .content-display.editable-field:hover {
+    background: var(--bg-card);
+    box-shadow: var(--neu-inset);
+    transform: none;
+}
+
+:root body .sentence-item {
+    color: var(--text-primary);
+}
+
+:root body .word-actions,
+:root body .add-sentence-area {
+    background: var(--bg-card);
+    border: none;
+    border-radius: var(--radius-md);
+    box-shadow: var(--neu-inset-sm);
+}
+
+:root body .empty-hint,
+:root body #sampleDisplay .empty-hint {
+    color: var(--text-light);
+}
+
+/* ---------- Dropdown panels and results ---------- */
+
+:root body .ipa-dropdown,
+:root body .debt-dropdown {
+    background: var(--bg-card);
+    border: none;
+    border-radius: var(--radius-md);
+    box-shadow: var(--neu-raised);
+}
+
+:root body .debt-item {
+    border-bottom-color: var(--border-color);
+}
+
+:root body .debt-item:hover {
+    background: var(--bg-hover);
+}
+
+:root body .search-result-item {
+    background: var(--bg-card);
+    border: none;
+    border-radius: var(--radius-md);
+    box-shadow: var(--neu-raised-xs);
+}
+
+:root body .search-result-item:hover {
+    background: var(--bg-card);
+    box-shadow: var(--neu-raised-sm);
+    transform: none;
+}
+
+:root body .search-result-word {
+    color: var(--text-primary);
+}
+
+:root body .search-result-translation {
+    color: var(--text-secondary);
+}
+
+:root body .search-result-meta,
+:root body .search-count,
+:root body .search-no-results {
+    color: var(--text-light);
+}
+
+:root body .search-results-header h3 {
+    color: var(--primary-dark);
+}
+
+/* ---------- Modal ---------- */
+
+:root body .modal {
+    background-color: var(--bg-overlay);
+    backdrop-filter: blur(4px);
+}
+
+:root body .modal-header h2 {
+    color: var(--navy);
+}
+
+:root body .modal-footer {
+    background: var(--bg-card);
+}
+
+/* ---------- Messages ---------- */
+
+:root body .toast {
+    background: var(--navy-fill);
+    color: var(--on-navy);
+    border-radius: var(--radius-md);
+    box-shadow: var(--neu-navy-raised);
+}
+
+:root body .error-message {
+    background: var(--bg-card);
+    border: none;
+    color: var(--error);
+    box-shadow: var(--neu-inset-sm);
+}
+
+:root body .spinner {
+    border-color: var(--bg-hover);
+    border-top-color: var(--primary-blue);
 }
