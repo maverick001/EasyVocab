@@ -25,7 +25,7 @@
 - **In-Place Editing**: Edit translations and add sample sentences directly in the interface
 - **XML Import**: Bulk import vocabulary from XML files with validation and duplicate handling
 - **Performance Optimized**: Handles 30,000+ words efficiently with database indexing
-- **Themes**: 5 GUI themes (Default, Ghibli-style, Cyberpunk, Glassmorphism, Duolingo-like) plus dark mode
+- **Themes**: 5 GUI themes (Default, Ghibli-style, Cyberpunk, Coral Neo, Duolingo-like) plus dark mode
 - **Mobile Friendly**: Layout adapts to phones as well as desktop browsers
 
 ## 📸 Screenshots

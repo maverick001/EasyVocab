@@ -3,6 +3,7 @@
 
 ## [Unreleased]
 ### Changed
+- **Coral Neo Theme**: the Glassmorphism theme is now "Coral Neo", a neumorphic look after a navy and coral UI kit: a light grey surface with large raised cards and inset wells, navy buttons, dropdowns and badges, and a coral-red gradient for the main actions. Dark mode keeps the same look on a slightly dimmer surface. The theme key and file keep the name `glassmorphism`, so saved selections carry over.
 - **Static File Caching**: CSS, JS, theme and favicon URLs now carry a `?v=<content hash>` and are cached for a year by the browser and Vercel's CDN, so repeat page loads no longer fetch them through the Python function. Editing a file changes its hash, so changes still appear at once.
 - **Sentry Sampling**: `SENTRY_TRACES_SAMPLE_RATE` now defaults to `0.5` (was `1.0`), halving the requests that wait on a Sentry upload.
 - **Full Backups**: `scripts/backup_db.py` now also saves `categories`, `daily_word_reviews` and every stored word image (as files next to the JSON).
